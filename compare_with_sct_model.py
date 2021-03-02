@@ -98,9 +98,12 @@ def compare_to_sct(log_folder="/home/nas/PycharmProjects/ivadomed-personal-scrip
 
     sct_segmented_files_to_run_dice_scores_on = []
 
+    # Randomization helps in parallel processing
+    random.shuffle(files_to_run_sct_deepseg_on)
+
     run_segmentation = 1
     if run_segmentation:
-        for FileFullPath in random.shuffle(files_to_run_sct_deepseg_on):  # Randomization helps in parallel processing
+        for FileFullPath in files_to_run_sct_deepseg_on:  # Randomization helps in parallel processing
 
             filename = os.path.basename(FileFullPath)
             filename = filename.replace(".nii.gz", "") + '_seg-sct.nii.gz'
