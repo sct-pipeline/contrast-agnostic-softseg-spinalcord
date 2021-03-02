@@ -27,6 +27,7 @@ from shutil import copyfile
 import subprocess
 import argparse
 import json
+import random
 
 
 def compare_to_sct(log_folder="/home/nas/PycharmProjects/ivadomed-personal-scripts/ResultsNewModel/Artificial_Log_folders/t1w_new_model",
@@ -99,9 +100,8 @@ def compare_to_sct(log_folder="/home/nas/PycharmProjects/ivadomed-personal-scrip
 
     run_segmentation = 1
     if run_segmentation:
-        for i in range(len(files_to_run_sct_deepseg_on)):
+        for FileFullPath in random.shuffle(files_to_run_sct_deepseg_on):  # Randomization helps in parallel processing
 
-            FileFullPath = files_to_run_sct_deepseg_on[i]
             filename = os.path.basename(FileFullPath)
             filename = filename.replace(".nii.gz", "") + '_seg-sct.nii.gz'
 
