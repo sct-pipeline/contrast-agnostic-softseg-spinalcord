@@ -64,15 +64,12 @@ def compare_to_sct(log_folder="/home/nas/PycharmProjects/ivadomed-personal-scrip
     # Collect the absolute path of the files that were used for testing
     files_to_run_sct_deepseg_on = []  # This will hold all the original files
     gt_to_run_dice_score = []  # This will hold the derivatives
-    all_contrasts = []  # This will hold the modality of each file used
 
     copy_files = 1  #FOR DEBUGGING - copies the files that were used in training (and their derivatives) to the output folder
 
     for single_subject_with_modality_string in subjects_with_modality_string:
         filename = single_subject_with_modality_string + '.nii.gz'
         subject_WITHOUT_modality_string = single_subject_with_modality_string.replace("_T1w", "").replace("_T2w", "").replace("_T1star", "")
-        modality = single_subject_with_modality_string.split("_")[-1]
-        all_contrasts.append(modality)
 
         for single_bids_folder in BIDS_path:
             if os.path.exists(os.path.join(single_bids_folder, subject_WITHOUT_modality_string, 'anat', filename)):
@@ -109,7 +106,7 @@ def compare_to_sct(log_folder="/home/nas/PycharmProjects/ivadomed-personal-scrip
             filename = filename.replace(".nii.gz", "") + '_seg-sct.nii.gz'
 
             # Get appropriate input for SCT contrast
-            contrast = all_contrasts[i]
+            contrast = FileFullPath.split("_")[-1].replace(".nii.gz", "")
             if contrast == "T1w":
                 contrast_sct_input = "t1"
             elif contrast == "T2w":
