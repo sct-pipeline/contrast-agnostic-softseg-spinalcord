@@ -106,7 +106,7 @@ def compare_to_sct(log_folder="/home/nas/PycharmProjects/ivadomed-personal-scrip
         for FileFullPath in files_to_run_sct_deepseg_on:  # Randomization helps in parallel processing
 
             filename = os.path.basename(FileFullPath)
-            filename = filename.replace(".nii.gz", "") + '_seg-sct.nii.gz'
+            filename = filename.replace(".nii.gz", "'_seg-sct.nii.gz'")
 
             # Get appropriate input for SCT contrast
             contrast = FileFullPath.split("_")[-1].replace(".nii.gz", "")
@@ -119,8 +119,10 @@ def compare_to_sct(log_folder="/home/nas/PycharmProjects/ivadomed-personal-scrip
 
             # Do the segmentation if not already done it before - Consider improving and using batch sct
             if not os.path.exists(os.path.join(sct_deepseg_folder, filename)):
-                os.system(os.path.join(SCT_PATH, "sct_deepseg_sc") + " -i " + FileFullPath
-                          + " -c " + contrast_sct_input + " -o " + os.path.join(sct_deepseg_folder, filename))
+                os.system(os.path.join(SCT_PATH, "sct_deepseg_sc") +
+                          " -i " + FileFullPath +
+                          " -c " + contrast_sct_input +
+                          " -o " + os.path.join(sct_deepseg_folder, filename))
                 #subprocess.run(["sct_deepseg_sc", "-i", FileFullPath,
                 #          "-c", contrast_sct_input, "-o", os.path.join(sct_deepseg_folder, filename)])
 
@@ -138,10 +140,13 @@ def compare_to_sct(log_folder="/home/nas/PycharmProjects/ivadomed-personal-scrip
         sct_file_fullpath = os.path.join(output_Folder_to_create_SCT_log_folders_in, "sct_deepseg", basename + "_seg-sct.nii.gz")
 
         if os.path.exists(sct_file_fullpath):
-            diceScoreFile = os.path.join(output_Folder_to_create_SCT_log_folders_in, "dice_score.txt")  # Temp file
+            diceScoreFile = os.path.join(output_Folder_to_create_SCT_log_folders_in,
+                                         os.path.basename(log_folder) + "_SCT", "dice_score.txt")  # Temp file
 
-            os.system(os.path.join(SCT_PATH, "sct_dice_coefficient") + " -i " + File + " -d " +
-                      sct_file_fullpath + " -o " + diceScoreFile)
+            os.system(os.path.join(SCT_PATH, "sct_dice_coefficient") +
+                      " -i " + File +
+                      " -d " + sct_file_fullpath +
+                      " -o " + diceScoreFile)
 
             with open(diceScoreFile) as f:
                 text = f.read()
