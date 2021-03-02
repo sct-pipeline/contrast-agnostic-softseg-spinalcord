@@ -32,16 +32,20 @@ import json
 def compare_to_sct(log_folder="/home/nas/PycharmProjects/ivadomed-personal-scripts/ResultsNewModel/Artificial_Log_folders/t1w_new_model",
                    output_Folder_to_create_SCT_log_folders_in="/home/nas/PycharmProjects/ivadomed-personal-scripts/ResultsNewModel"):
 
+
+    # Path for spinalcordtoolbox
+    #SCT_PATH = "/home/nas/PycharmProjects/spinalcordtoolbox/bin/"
+    SCT_PATH = "/home/GRAMES.POLYMTL.CA/u111358/sct_5.1.0/bin/"
+
     # Gather used parameters from the training
     config_file = os.path.join(log_folder, 'config_file.json')
     with open(config_file) as json_file:
         parameters = json.load(json_file)
 
-    if isinstance(parameters['loader_parameters']['bids_path'], str):
-        BIDS_path = parameters['loader_parameters']['bids_path']
-    elif isinstance(parameters['loader_parameters']['bids_path'], list):
-        print("THIS NEEDS TO GENERALIZE TO THE NEW LOADER WITH MULTIPLE BIDS FOLDERS")
-        BIDS_path = parameters['loader_parameters']['bids_path'][0]  # Generalize for multiple
+    if isinstance(parameters['loader_parameters']['path_data'], str):
+        BIDS_path = [parameters['loader_parameters']['path_data']]  # Convert to list
+    elif isinstance(parameters['loader_parameters']['path_data'], list):
+        BIDS_path = parameters['loader_parameters']['path_data']  # Generalize for multiple
     suffix = parameters['loader_parameters']['target_suffix'][0]  # Only "_seg-manual" is expected here - maybe generalize
 
     # Get the scores that the new model achieved - This is what will be used for comparison to SCT performance on the
@@ -50,7 +54,6 @@ def compare_to_sct(log_folder="/home/nas/PycharmProjects/ivadomed-personal-scrip
     results = pd.read_csv(results_file)
 
     # Get the subjectID in a list
-    subjects = [x.replace("_T1w", "").replace("_T2w", "").replace("_T1star", "") for x in results["image_id"].to_list()]
     subjects_with_modality_string = results["image_id"].to_list()
 
     # CREATE NECESSARY FOLDERS
@@ -70,20 +73,22 @@ def compare_to_sct(log_folder="/home/nas/PycharmProjects/ivadomed-personal-scrip
         subject_WITHOUT_modality_string = single_subject_with_modality_string.replace("_T1w", "").replace("_T2w", "").replace("_T1star", "")
         modality = single_subject_with_modality_string.split("_")[-1]
         all_contrasts.append(modality)
-        if os.path.exists(os.path.join(BIDS_path, subject_WITHOUT_modality_string, 'anat', filename)):
-            if copy_files:
-                copyfile(os.path.join(BIDS_path, subject_WITHOUT_modality_string, 'anat', filename),
-                         os.path.join(output_Folder_to_create_SCT_log_folders_in, os.path.basename(log_folder) + "_SCT", filename))
-            files_to_run_sct_deepseg_on.append(os.path.join(BIDS_path, subject_WITHOUT_modality_string, 'anat', filename))
 
-        # Copy the derivatives
-        derivative_filename = single_subject_with_modality_string + suffix + '.nii.gz'
-        if os.path.exists(os.path.join(BIDS_path, 'derivatives', 'labels', subject_WITHOUT_modality_string, 'anat', derivative_filename)):
-            if copy_files:
-                copyfile(os.path.join(BIDS_path, 'derivatives', 'labels', subject_WITHOUT_modality_string, 'anat', derivative_filename),
-                         os.path.join(output_Folder_to_create_SCT_log_folders_in, os.path.basename(log_folder) + "_SCT", "derivatives", derivative_filename))
+        for single_bids_folder in BIDS_path:
+            if os.path.exists(os.path.join(single_bids_folder, subject_WITHOUT_modality_string, 'anat', filename)):
+                if copy_files:
+                    copyfile(os.path.join(single_bids_folder, subject_WITHOUT_modality_string, 'anat', filename),
+                             os.path.join(output_Folder_to_create_SCT_log_folders_in, os.path.basename(log_folder) + "_SCT", filename))
+                files_to_run_sct_deepseg_on.append(os.path.join(single_bids_folder, subject_WITHOUT_modality_string, 'anat', filename))
 
-            gt_to_run_dice_score.append(os.path.join(BIDS_path, 'derivatives', 'labels', subject_WITHOUT_modality_string, 'anat', derivative_filename))
+            # Copy the derivatives
+            derivative_filename = single_subject_with_modality_string + suffix + '.nii.gz'
+            if os.path.exists(os.path.join(single_bids_folder, 'derivatives', 'labels', subject_WITHOUT_modality_string, 'anat', derivative_filename)):
+                if copy_files:
+                    copyfile(os.path.join(single_bids_folder, 'derivatives', 'labels', subject_WITHOUT_modality_string, 'anat', derivative_filename),
+                             os.path.join(output_Folder_to_create_SCT_log_folders_in, os.path.basename(log_folder) + "_SCT", "derivatives", derivative_filename))
+
+                gt_to_run_dice_score.append(os.path.join(single_bids_folder, 'derivatives', 'labels', subject_WITHOUT_modality_string, 'anat', derivative_filename))
 
     # Now run sct_deep_seg_sc on each file - already computed segmentations will be skipped
     # This creates a pool of all possible files within the testing set that was used in the log_folder
@@ -95,7 +100,7 @@ def compare_to_sct(log_folder="/home/nas/PycharmProjects/ivadomed-personal-scrip
 
     sct_segmented_files_to_run_dice_scores_on = []
 
-    run_segmentation = 0
+    run_segmentation = 1
     if run_segmentation:
         for i in range(len(files_to_run_sct_deepseg_on)):
 
@@ -114,7 +119,7 @@ def compare_to_sct(log_folder="/home/nas/PycharmProjects/ivadomed-personal-scrip
 
             # Do the segmentation if not already done it before - Consider improving and using batch sct
             if not os.path.exists(os.path.join(sct_deepseg_folder, filename)):
-                os.system('/home/nas/PycharmProjects/spinalcordtoolbox/bin/sct_deepseg_sc -i ' + FileFullPath
+                os.system(os.path.join(SCT_PATH, "sct_deepseg_sc") + " -i " + FileFullPath
                           + " -c " + contrast_sct_input + " -o " + os.path.join(sct_deepseg_folder, filename))
                 #subprocess.run(["sct_deepseg_sc", "-i", FileFullPath,
                 #          "-c", contrast_sct_input, "-o", os.path.join(sct_deepseg_folder, filename)])
@@ -135,7 +140,7 @@ def compare_to_sct(log_folder="/home/nas/PycharmProjects/ivadomed-personal-scrip
         if os.path.exists(sct_file_fullpath):
             diceScoreFile = os.path.join(output_Folder_to_create_SCT_log_folders_in, "dice_score.txt")  # Temp file
 
-            os.system("/home/nas/PycharmProjects/spinalcordtoolbox/bin/sct_dice_coefficient -i " + File + " -d " +
+            os.system(os.path.join(SCT_PATH, "sct_dice_coefficient") + " -i " + File + " -d " +
                       sct_file_fullpath + " -o " + diceScoreFile)
 
             with open(diceScoreFile) as f:
@@ -149,7 +154,7 @@ def compare_to_sct(log_folder="/home/nas/PycharmProjects/ivadomed-personal-scrip
             subject_labels.append(basename)
             diceScores.append(diceScore)
 
-    # Remove temp file
+    # Cleanup
     os.remove(diceScoreFile)
 
     # Export all results to a .csv file within the "logFolder_SCT"
