@@ -106,7 +106,7 @@ def compare_to_sct(log_folder="/home/nas/PycharmProjects/ivadomed-personal-scrip
         for FileFullPath in files_to_run_sct_deepseg_on:  # Randomization helps in parallel processing
 
             filename = os.path.basename(FileFullPath)
-            filename = filename.replace(".nii.gz", "'_seg-sct.nii.gz'")
+            filename = filename.replace(".nii.gz", "_seg-sct.nii.gz")
 
             # Get appropriate input for SCT contrast
             contrast = FileFullPath.split("_")[-1].replace(".nii.gz", "")
