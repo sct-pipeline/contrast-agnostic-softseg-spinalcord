@@ -70,7 +70,7 @@ def compare_to_sct(log_folder="/home/nas/PycharmProjects/ivadomed-personal-scrip
 
     for single_subject_with_modality_string in subjects_with_modality_string:
         filename = single_subject_with_modality_string + '.nii.gz'
-        subject_WITHOUT_modality_string = single_subject_with_modality_string.replace("_T1w", "").replace("_T2w", "").replace("_T1star", "")
+        subject_WITHOUT_modality_string = single_subject_with_modality_string.replace("_T1w", "").replace("_T2w", "").replace("_T2star", "")
 
         for single_bids_folder in BIDS_path:
             if os.path.exists(os.path.join(single_bids_folder, subject_WITHOUT_modality_string, 'anat', filename)):
