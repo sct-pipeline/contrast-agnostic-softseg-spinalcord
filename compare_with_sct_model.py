@@ -66,17 +66,41 @@ def compare_to_sct(log_folder="/home/nas/PycharmProjects/ivadomed-personal-scrip
     files_to_run_sct_deepseg_on = []  # This will hold all the original files
     gt_to_run_dice_score = []  # This will hold the derivatives
 
+    # Randomization helps in parallel processing when running this code in multiple instances when segmenting
+    random.shuffle(subjects_with_modality_string)
+
     copy_files = 1  #FOR DEBUGGING - copies the files that were used in training (and their derivatives) to the output folder
+    create_centerline = 1
 
     for single_subject_with_modality_string in subjects_with_modality_string:
         filename = single_subject_with_modality_string + '.nii.gz'
         subject_WITHOUT_modality_string = single_subject_with_modality_string.replace("_T1w", "").replace("_T2w", "").replace("_T2star", "")
 
         for single_bids_folder in BIDS_path:
-            if os.path.exists(os.path.join(single_bids_folder, subject_WITHOUT_modality_string, 'anat', filename)):
+            file = os.path.join(single_bids_folder, subject_WITHOUT_modality_string, 'anat', filename)
+            if os.path.exists(file):
                 if copy_files:
-                    copyfile(os.path.join(single_bids_folder, subject_WITHOUT_modality_string, 'anat', filename),
+                    copyfile(file,
                              os.path.join(output_Folder_to_create_SCT_log_folders_in, os.path.basename(log_folder) + "_SCT", filename))
+
+                if create_centerline:
+                    centerline_file = os.path.join(single_bids_folder, 'derivatives', 'labels', subject_WITHOUT_modality_string, 'anat', single_subject_with_modality_string+"_centerline")
+
+                    # Get appropriate input for SCT contrast
+                    contrast = file.split("_")[-1].replace(".nii.gz", "")
+                    if contrast == "T1w":
+                        contrast_sct_input = "t1"
+                    elif contrast == "T2w":
+                        contrast_sct_input = "t2"
+                    elif contrast == "T2star":
+                        contrast_sct_input = "t2s"
+
+                    if not os.path.exists(centerline_file):
+                        os.system(os.path.join(SCT_PATH, "sct_get_centerline") +
+                                  " -i " + file +
+                                  " -c " + contrast_sct_input +
+                                  " -o " + centerline_file)
+
                 files_to_run_sct_deepseg_on.append(os.path.join(single_bids_folder, subject_WITHOUT_modality_string, 'anat', filename))
 
             # Copy the derivatives
