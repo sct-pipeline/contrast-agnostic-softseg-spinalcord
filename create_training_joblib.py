@@ -54,7 +54,7 @@ def create_new_joblib(dataset_sct_file, input_bids_folders, outputFolder):
     df_merged_reduced = df_merged[np.invert(np.in1d(df_merged['data_id'], subjectsUsedForTesting))]
 
     train, validate, test2 = np.split(df_merged_reduced.sample(frac=1),
-                                      [int(percentage_train*(len(df_merged_reduced)+len(test)/2)),
+                                      [int(percentage_train*(len(df_merged_reduced))+len(test)/2),
                                        int((percentage_train+percentage_validation)*len(df_merged_reduced)+len(test)/2)])
 
     # Append the testing from sct to the new testing entries
