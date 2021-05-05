@@ -26,5 +26,5 @@ Problems with this approach:
 2. The order that processes need to be done might confuse people a bit:
     i. Joblib needs to be created
     ii. The ivadomed model needs to be trained
-    iii. This script needs to run
+    iii. compare_with_sct_model script needs to run
     iv. The ivadomed model needs to be tested 
