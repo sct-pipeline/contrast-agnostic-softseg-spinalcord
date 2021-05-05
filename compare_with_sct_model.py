@@ -11,7 +11,7 @@
 # Creating a similar evaluation_3Dmetrics.csv allows usage of the violinplots function we already have for comparison
 
 # Inputs:
-# --logfolder: Log folder of newly trained mode. The SCT segmentation will be compared to that
+# --logfolders: Log folder of newly trained mode. The SCT segmentation will be compared to that
 # --ofolder: This is the parent folder where all new files will be created : a new subfolder will be
 #            created within it for each log folder with the folderName of the logFolder and the suffix _SCT")
 # --copyfiles: FOR DEBUGGING - copies the files that were used in training (and their derivatives) to the output folder,
