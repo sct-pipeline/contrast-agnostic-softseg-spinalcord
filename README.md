@@ -23,7 +23,7 @@ The output folder will contain as many folders as inputs are given to `compare_w
 
 Problems with this approach: 
 1. _centerline.nii.gz derivatives for the testing set files are created in the database
-2. The order that process need to be done might confuse people a bit:
+2. The order that processes need to be done might confuse people a bit:
     i. Joblib needs to be created
     ii. The ivadomed model needs to be trained
     iii. This script needs to run
