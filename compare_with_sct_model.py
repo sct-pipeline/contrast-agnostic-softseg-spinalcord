@@ -29,10 +29,8 @@ from shutil import copyfile
 import subprocess
 import argparse
 import json
-import random
 import platform
 import multiprocessing as mp
-
 
 def get_parser():
     parser = argparse.ArgumentParser()
@@ -51,14 +49,23 @@ def compare_to_sct(log_folder,
                    output_Folder_to_create_SCT_log_folders_in,
                    copy_files=False):
 
-    # Path for spinalcordtoolbox
-    node = platform.node()
-    if "acheron" in node:
-        SCT_PATH = "/home/nas/PycharmProjects/spinalcordtoolbox/bin/"
-    elif "rosenberg" in node:
-        SCT_PATH = "/home/GRAMES.POLYMTL.CA/u111358/sct_5.1.0/bin/"
+    if "SCT_DIR" in os.environ:
+        SCT_PATH = os.path.join(os.environ.get("SCT_DIR"), "bin")
     else:
-        raise NameError("need to specify a path for the sct toolbox")
+        # Get username and computer name- I use this to differentiate path to spinalcordtoolbox across users
+        # This is needed in case the path is not present in the system variables
+        import getpass
+        username = getpass.getuser()
+
+        # Path for spinalcordtoolbox
+        node = platform.node()
+        if "acheron" in node:
+            SCT_PATH = "/home/nas/PycharmProjects/spinalcordtoolbox/bin/"
+            import ivadomed
+        elif "rosenberg" in node and username == "u111358":
+            SCT_PATH = "/home/GRAMES.POLYMTL.CA/u111358/sct_5.1.0/bin/"
+        else:
+            raise NameError("need to specify a path for the sct toolbox")
 
     # Gather used parameters from the training
     config_file = os.path.join(log_folder, 'config_file.json')
@@ -68,8 +75,8 @@ def compare_to_sct(log_folder,
     if isinstance(parameters['loader_parameters']['path_data'], str):
         BIDS_path = [parameters['loader_parameters']['path_data']]  # Convert to list
     elif isinstance(parameters['loader_parameters']['path_data'], list):
-        BIDS_path = parameters['loader_parameters']['path_data']  # Generalize for multiple
-    suffix = parameters['loader_parameters']['target_suffix'][0]  # Only "_seg-manual" is expected here - maybe generalize
+        BIDS_path = parameters['loader_parameters']['path_data']
+    suffix = parameters['loader_parameters']['target_suffix'][0]  # TODO - Only a single suffix is expected here - maybe generalize
 
     # Get the scores that the new model achieved - This is what will be used for comparison to SCT performance on the
     # same files
@@ -88,26 +95,39 @@ def compare_to_sct(log_folder,
     files_to_run_sct_deepseg_on = []  # This will hold all the original files
     gt_to_run_dice_score = []  # This will hold the derivatives
 
-    # Randomization helps in parallel processing when running this code in multiple instances when segmenting
-    random.shuffle(subjects_with_modality_string)
-
     # Creates the centerline for the
     create_centerline = 1
 
+    ## Get all .nii.gz files within BIDS_paths
+    import subprocess
+    list_files_bids_dict = {}
+
+    for bids_folder in BIDS_path:
+        list_files_bids_dict = {bids_folder: subprocess.run(["find", bids_folder, "-type", "f", "-name", "sub-*nii.gz"],
+                                   stdout=subprocess.PIPE).stdout.decode("utf-8").split("\n")}
+        if list_files_bids_dict[bids_folder][0] == '':
+            raise Exception("No subjects were selected for BIDS folder: " + bids_folder +
+                   "\nMake sure the config.json file contains a valid BIDS folder in the field 'path_data'")
+
+    # Create File lists
     for single_subject_with_modality_string in subjects_with_modality_string:
         filename = single_subject_with_modality_string + '.nii.gz'
-        subject_WITHOUT_modality_string = single_subject_with_modality_string.replace("_T1w", "").replace("_T2w", "").replace("_T2star", "")
 
         for single_bids_folder in BIDS_path:
-            file = os.path.join(single_bids_folder, subject_WITHOUT_modality_string, 'anat', filename)
-            if os.path.exists(file):
+
+            selected_file_and_derivatives = [file for file in list_files_bids_dict[single_bids_folder] if single_subject_with_modality_string in file]
+            file = [x for x in selected_file_and_derivatives if filename in x][0]
+            # If we want to generalize to more than one suffix take care of the selection of a specific derivative here
+            derivative = [x for x in selected_file_and_derivatives if single_subject_with_modality_string+suffix in x][0]
+            derivative_folder = os.path.dirname(derivative)
+
+            if not file == [] and not derivative == []:
                 if copy_files:
                     copyfile(file,
                              os.path.join(output_Folder_to_create_SCT_log_folders_in, os.path.basename(log_folder) + "_SCT", filename))
 
                 if create_centerline:
-                    centerline_file = os.path.join(single_bids_folder, 'derivatives', 'labels',
-                                                   subject_WITHOUT_modality_string, 'anat',
+                    centerline_file = os.path.join(derivative_folder,
                                                    single_subject_with_modality_string+"_centerline") # Don't add .nii.gz here - sct bug
 
                     # Get appropriate input for SCT contrast
@@ -125,16 +145,14 @@ def compare_to_sct(log_folder,
                                   " -c " + contrast_sct_input +
                                   " -o " + centerline_file)
 
-                files_to_run_sct_deepseg_on.append(os.path.join(single_bids_folder, subject_WITHOUT_modality_string, 'anat', filename))
+                files_to_run_sct_deepseg_on.append(file)
 
             # Copy the derivatives
-            derivative_filename = single_subject_with_modality_string + suffix + '.nii.gz'
-            if os.path.exists(os.path.join(single_bids_folder, 'derivatives', 'labels', subject_WITHOUT_modality_string, 'anat', derivative_filename)):
-                if copy_files:
-                    copyfile(os.path.join(single_bids_folder, 'derivatives', 'labels', subject_WITHOUT_modality_string, 'anat', derivative_filename),
-                             os.path.join(output_Folder_to_create_SCT_log_folders_in, os.path.basename(log_folder) + "_SCT", "derivatives", derivative_filename))
+            if copy_files:
+                copyfile(derivative,
+                         os.path.join(output_Folder_to_create_SCT_log_folders_in, os.path.basename(log_folder) + "_SCT", "derivatives", os.path.basename(derivative)))
 
-                gt_to_run_dice_score.append(os.path.join(single_bids_folder, 'derivatives', 'labels', subject_WITHOUT_modality_string, 'anat', derivative_filename))
+            gt_to_run_dice_score.append(derivative)
 
     # Now run sct_deep_seg_sc on each file - already computed segmentations will be skipped
     # This creates a pool of all possible files within the testing set that was used in the log_folder
@@ -146,12 +164,9 @@ def compare_to_sct(log_folder,
 
     sct_segmented_files_to_run_dice_scores_on = []
 
-    # Randomization helps in parallel processing
-    random.shuffle(files_to_run_sct_deepseg_on)
-
     run_segmentation = 1
     if run_segmentation:
-        for FileFullPath in files_to_run_sct_deepseg_on:  # Randomization helps in parallel processing
+        for FileFullPath in files_to_run_sct_deepseg_on:
 
             filename = os.path.basename(FileFullPath)
             filename = filename.replace(".nii.gz", "_seg-sct.nii.gz")
@@ -224,7 +239,7 @@ def main():
     parser = get_parser()
     args = parser.parse_args()
 
-    run_parallel = True
+    run_parallel = False
     if run_parallel:
         # Parallelize processing
         print('Starting parallel processing')
@@ -236,9 +251,11 @@ def main():
         print('Just finished parallel processing')
     else:
         for logfolder in args.logfolders:
-            compare_to_sct(log_folders=logfolder,
-                           output_Folder_to_create_SCT_log_folders_in=args.outputFolder[0],
-                           copy_files=args.copyfiles)
+            output_Folder_to_create_SCT_log_folders_in = args.outputFolder[0]
+            copy_files = args.copyfiles
+            compare_to_sct(logfolder,
+                           output_Folder_to_create_SCT_log_folders_in,
+                           copy_files)
 
 
 if __name__ == '__main__':
