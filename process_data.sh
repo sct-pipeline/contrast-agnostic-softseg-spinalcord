@@ -120,12 +120,27 @@ ImageMath 3 ${file_t2_mask}.nii.gz MD ${file_t2_seg}.nii.gz 40
 #file_t2="${file_t2}_crop"
 
 sct_register_multimodal -i ${file_t1}.nii.gz -d ${file_t2}.nii.gz -iseg ${file_t1_seg}.nii.gz -dseg ${file_t2_seg}.nii.gz -m ${file_t2_mask}.nii.gz -param step=1,type=im,algo=slicereg,slicewise=1,metric=CC,iter=10,shrink=4:step=2,type=im,algo=slicereg,slicewise=1,metric=CC,iter=10,shrink=2 -x spline -qc ${PATH_QC} -qc-subject ${SUBJECT}
-
+# step=3,type=im,algo=rigid,metric=CC,deformation=1x1x1,shrink=1,iter=5,smooth=1 -z 0
+# TODO: remove -x spline to test
+# TODO: compute T1 segmentation here with sct_deep_seg
 # Register T1w cord segmentation to T2w
 sct_apply_transfo -i ${file_t1_seg}.nii.gz -d ${file_t2_seg}.nii.gz -w warp_${file_t1}2${file_t2}.nii.gz -x nn -o ${file_t1_seg}_reg.nii.gz
-file_t1_seg="${file_t1_seg}_reg"
 
-sct_qc -i ${file_t1}.nii.gz -s ${file_t1_seg}.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
+file_t1_seg_reg="${file_t1_seg}_reg"
+
+sct_qc -i ${file_t1}_reg.nii.gz -s ${file_t1_seg_reg}.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
+
+# Create soft SC segmentation
+sct_maths -i ${file_t2_seg}.nii.gz -add ${file_t1_seg_reg}.nii.gz -o ${SUBJECT}_seg_add.nii.gz
+sct_maths -i ${SUBJECT}_seg_add.nii.gz -div 2 -o ${SUBJECT}_seg_mean.nii.gz
+
+file_softseg="${SUBJECT}_seg_mean"
+
+# Warp softseg back to T1w space
+sct_apply_transfo -i ${file_softseg}.nii.gz -d ${file_t1_seg}.nii.gz -w warp_${file_t2}2${file_t1}.nii.gz -x nn -o ${file_t1_seg}_soft.nii.gz
+
+sct_qc -i ${file_t1}.nii.gz -s ${file_t1_seg}_soft.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
+sct_qc -i ${file_t2}.nii.gz -s ${file_softseg}.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
 
 
 # Display useful info for the log
