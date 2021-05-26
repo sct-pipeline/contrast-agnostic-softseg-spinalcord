@@ -54,7 +54,12 @@ cd ${SUBJECT}/anat/
 segment_if_does_not_exist(){
   local file="$1"
   local contrast="$2"
-  folder_contrast="anat"
+  # Find contrast
+  if [[ $contrast == "dwi" ]]; then
+    folder_contrast="dwi"
+  else
+    folder_contrast="anat"
+  fi
 
   # Update global variable with segmentation file name
   FILESEG="${file}_seg"
@@ -76,11 +81,6 @@ segment_if_does_not_exist(){
 # ------------------------------------------------------------------------------
 file_t1="${SUBJECT}_T1w"
 
-# Reorient to RPI and resample to 0.8mm iso (supposed to be the effective resolution)
-sct_image -i ${file_t1}.nii.gz -setorient RPI -o ${file_t1}_RPI.nii.gz
-sct_resample -i ${file_t1}_RPI.nii.gz -mm 1x1x1 -o ${file_t1}_RPI_r.nii.gz # Do we want the resolution of T2?
-file_t1="${file_t1}_RPI_r"
-
 # Segment spinal cord (only if it does not exist)
 segment_if_does_not_exist $file_t1 "t1"
 file_t1_seg=$FILESEG
@@ -89,58 +89,91 @@ file_t1_seg=$FILESEG
 # ------------------------------------------------------------------------------
 file_t2="${SUBJECT}_T2w"
 
-sct_image -i ${file_t2}.nii.gz -setorient RPI -o ${file_t2}_RPI.nii.gz
-sct_resample -i ${file_t2}_RPI.nii.gz -mm 0.8x0.8x0.8 -o ${file_t2}_RPI_r.nii.gz 
-file_t2="${file_t2}_RPI_r"
-
 # Segment spinal cord (only if it does not exist)
 segment_if_does_not_exist $file_t2 "t2"
 file_t2_seg=$FILESEG
 
 # T2s
 # ------------------------------------------------------------------------------
-#file_t2s="${SUBJECT}_T2star"
-# Compute root-mean square across 4th dimension (if it exists), corresponding to all echoes in Philips scans.
-#sct_maths -i ${file_t2s}.nii.gz -rms t -o ${file_t2s}_rms.nii.gz
-#file_t2s="${file_t2s}_rms"
-# 
-#sct_image -i ${file_t2s}.nii.gz -setorient RPI -o ${file_t2s}_RPI.nii.gz
-# sct_resample -i ${file_t2}_RPI.nii.gz -mm 0.8x0.8x0.8 -o ${file_t2}_RPI_r.nii.gz | NO resampeling??
+file_t2s="${SUBJECT}_T2star"
+
 # Segment spinal cord (only if it does not exist)
-#segment_if_does_not_exist $file_t2s "t2s" 
-#file_t2s_seg=$FILESEG
+segment_if_does_not_exist $file_t2s "t2s" 
+file_t2s_seg=$FILESEG
+
+# MTS
+# ------------------------------------------------------------------------------
+file_t1w="${SUBJECT}_acq-T1w_MTS"
+file_mton="${SUBJECT}_acq-MTon_MTS"
+
+# Segment spinal cord (only if it does not exist)
+segment_if_does_not_exist $file_t1w "t1" 
+file_t1w_seg=$FILESEG
+segment_if_does_not_exist $file_mton "t2s"
+file_mton_seg=$FILESEG
+
+
+# DWI
+# ------------------------------------------------------------------------------
+cd ../dwi
+file_dwi_mean="${SUBJECT}_rec-average_dwi"
+
+# Segment spinal cord (only if it does not exist)
+segment_if_does_not_exist ${file_dwi_mean} "dwi"
+
+# Go back to parent folder
+cd ../anat
 
 # Registration
 # ------------------------------------------------------------------------------
-file_t2_mask="${file_t2_seg}_dil"
-ImageMath 3 ${file_t2_mask}.nii.gz MD ${file_t2_seg}.nii.gz 40
+# Create mask
+file_t2_mask="${file_t2_seg}_mask"
+sct_create_mask -i ${file_t2}.nii.gz -p centerline,${file_t2_seg}.nii.gz -size 55mm -o ${file_t2_mask}.nii.gz
 
-# Crop image for faster computing ??
-#sct_crop_image -i ${file_t2}.nii.gz -m ${file_t2_mask}.nii.gz -o ${file_t2}_crop.nii.gz
-#file_t2="${file_t2}_crop"
+# Register T1w to T2w
+sct_register_multimodal -i ${file_t1}.nii.gz -d ${file_t2}.nii.gz -iseg ${file_t1_seg}.nii.gz -dseg ${file_t2_seg}.nii.gz -m ${file_t2_mask}.nii.gz -param step=1,type=im,algo=slicereg,slicewise=1,metric=CC,iter=10,shrink=4,poly=2:step=2,type=im,algo=slicereg,slicewise=1,metric=CC,iter=10,shrink=2 -qc ${PATH_QC} -qc-subject ${SUBJECT}
+# Regeister T2s to T2
+sct_register_multimodal -i ${file_t2s}.nii.gz -d ${file_t2}.nii.gz -iseg ${file_t2s_seg}.nii.gz -dseg ${file_t2_seg}.nii.gz -m ${file_t2_mask}.nii.gz -param step=1,type=im,algo=slicereg,slicewise=1,metric=CC,iter=10,shrink=4:step=2,type=im,algo=slicereg,slicewise=1,metric=CC,iter=10,shrink=2 -qc ${PATH_QC} -qc-subject ${SUBJECT}
 
-sct_register_multimodal -i ${file_t1}.nii.gz -d ${file_t2}.nii.gz -iseg ${file_t1_seg}.nii.gz -dseg ${file_t2_seg}.nii.gz -m ${file_t2_mask}.nii.gz -param step=1,type=im,algo=slicereg,slicewise=1,metric=CC,iter=10,shrink=4:step=2,type=im,algo=slicereg,slicewise=1,metric=CC,iter=10,shrink=2 -x spline -qc ${PATH_QC} -qc-subject ${SUBJECT}
-# step=3,type=im,algo=rigid,metric=CC,deformation=1x1x1,shrink=1,iter=5,smooth=1 -z 0
 # TODO: remove -x spline to test
-# TODO: compute T1 segmentation here with sct_deep_seg
-# Register T1w cord segmentation to T2w
-sct_apply_transfo -i ${file_t1_seg}.nii.gz -d ${file_t2_seg}.nii.gz -w warp_${file_t1}2${file_t2}.nii.gz -x nn -o ${file_t1_seg}_reg.nii.gz
+# TODO: test poly=2 or other
 
-file_t1_seg_reg="${file_t1_seg}_reg"
+# SC Segmentation of registered images
+# ------------------------------------------------------------------------------
 
-sct_qc -i ${file_t1}_reg.nii.gz -s ${file_t1_seg_reg}.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
+# Either run sct_deepseg again or sct_apply_transfo --> binarize after or apply with -x nn
+
+# T1w segmentation
+sct_deepseg_sc -i ${file_t1}_reg.nii.gz -c t1 -qc ${PATH_QC} -qc-subject ${SUBJECT}
+file_t1_seg="${file_t1}_reg_seg"
+# T2s segmentation _T2star2sub-amu01_T2w | Try segmentation on T2s_reg but in T2s space
+# sct_apply_transfo -i ${file_t2s_seg}.nii.gz -d ${file_t2_seg}.nii.gz -w warp_${file_t2s}2${file_t2}.nii.gz
+sct_deepseg_sc -i ${file_t2s}_reg.nii.gz -c t2s -qc ${PATH_QC} -qc-subject ${SUBJECT}
+file_t2s_seg="${file_t2s}_reg_seg"
+
+
+# Extra Registration
+# ------------------------------------------------------------------------------
+# Register MTon and T1w_MT to T2 | TODO: continue to tweek parameters
+sct_register_multimodal -i ${file_t1w}.nii.gz -d ${file_t2}.nii.gz -iseg ${file_t1w_seg}.nii.gz -dseg ${file_t2_seg}.nii.gz -m ${file_t2_mask}.nii.gz -param step=1,type=im,algo=slicereg,slicewise=1,metric=CC,iter=10,shrink=4:step=2,type=im,algo=slicereg,slicewise=1,metric=CC,iter=10,shrink=2 -qc ${PATH_QC} -qc-subject ${SUBJECT}
+sct_register_multimodal -i ${file_mton}.nii.gz -d ${file_t2}.nii.gz -iseg ${file_mton_seg}.nii.gz -dseg ${file_t2_seg}.nii.gz -m ${file_t2_mask}.nii.gz -param step=1,type=im,algo=slicereg,slicewise=1,metric=CC,iter=10,shrink=4:step=2,type=im,algo=slicereg,slicewise=1,metric=CC,iter=10,shrink=2 -qc ${PATH_QC} -qc-subject ${SUBJECT}
+
 
 # Create soft SC segmentation
-sct_maths -i ${file_t2_seg}.nii.gz -add ${file_t1_seg_reg}.nii.gz -o ${SUBJECT}_seg_add.nii.gz
-sct_maths -i ${SUBJECT}_seg_add.nii.gz -div 2 -o ${SUBJECT}_seg_mean.nii.gz
+# ------------------------------------------------------------------------------
+# TODO: find a way that on the slices where T2 star is not, to have only 2 values
+sct_image -i ${file_t2_seg}.nii.gz ${file_t1_seg}.nii.gz  ${file_t2s_seg}.nii.gz -concat t -o tmp.concat.nii.gz
+sct_maths -i tmp.concat.nii.gz -mean t -o ${file_t2}_seg_mean.nii.gz
 
-file_softseg="${SUBJECT}_seg_mean"
+file_softseg="${file_t2}_seg_mean"
 
-# Warp softseg back to T1w space
-sct_apply_transfo -i ${file_softseg}.nii.gz -d ${file_t1_seg}.nii.gz -w warp_${file_t2}2${file_t1}.nii.gz -x nn -o ${file_t1_seg}_soft.nii.gz
-
-sct_qc -i ${file_t1}.nii.gz -s ${file_t1_seg}_soft.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
+sct_qc -i ${file_t1}_reg.nii.gz -s ${file_softseg}.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
 sct_qc -i ${file_t2}.nii.gz -s ${file_softseg}.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
+
+# Register softseg to T2s_reg
+sct_register_multimodal -i ${file_softseg}.nii.gz -d ${file_t2s}_reg_seg.nii.gz -identity 1 -x nn
+sct_qc -i ${file_t2s}.nii.gz -s ${file_softseg}_reg.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
+
 
 
 # Display useful info for the log
