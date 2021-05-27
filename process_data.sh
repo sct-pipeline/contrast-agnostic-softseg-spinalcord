@@ -120,7 +120,7 @@ file_dwi_mean="${SUBJECT}_rec-average_dwi"
 
 # Segment spinal cord (only if it does not exist)
 segment_if_does_not_exist ${file_dwi_mean} "dwi"
-
+file_dwi_mean_seg=$FILESEG
 # Go back to parent folder
 cd ../anat
 
@@ -128,7 +128,7 @@ cd ../anat
 # ------------------------------------------------------------------------------
 # Create mask
 file_t2_mask="${file_t2_seg}_mask"
-sct_create_mask -i ${file_t2}.nii.gz -p centerline,${file_t2_seg}.nii.gz -size 55mm -o ${file_t2_mask}.nii.gz
+sct_create_mask -i ${file_t2}.nii.gz -p centerline,${file_t2_seg}.nii.gz -size 55mm -o ${file_t2_mask}.nii.gz # TODO try with a smaller mask
 
 # Register T1w to T2w
 sct_register_multimodal -i ${file_t1}.nii.gz -d ${file_t2}.nii.gz -iseg ${file_t1_seg}.nii.gz -dseg ${file_t2_seg}.nii.gz -m ${file_t2_mask}.nii.gz -param step=1,type=im,algo=slicereg,slicewise=1,metric=CC,iter=10,shrink=4,poly=2:step=2,type=im,algo=slicereg,slicewise=1,metric=CC,iter=10,shrink=2 -qc ${PATH_QC} -qc-subject ${SUBJECT}
@@ -154,26 +154,48 @@ file_t2s_seg="${file_t2s}_reg_seg"
 
 # Extra Registration
 # ------------------------------------------------------------------------------
-# Register MTon and T1w_MT to T2 | TODO: continue to tweek parameters
-sct_register_multimodal -i ${file_t1w}.nii.gz -d ${file_t2}.nii.gz -iseg ${file_t1w_seg}.nii.gz -dseg ${file_t2_seg}.nii.gz -m ${file_t2_mask}.nii.gz -param step=1,type=im,algo=slicereg,slicewise=1,metric=CC,iter=10,shrink=4:step=2,type=im,algo=slicereg,slicewise=1,metric=CC,iter=10,shrink=2 -qc ${PATH_QC} -qc-subject ${SUBJECT}
-sct_register_multimodal -i ${file_mton}.nii.gz -d ${file_t2}.nii.gz -iseg ${file_mton_seg}.nii.gz -dseg ${file_t2_seg}.nii.gz -m ${file_t2_mask}.nii.gz -param step=1,type=im,algo=slicereg,slicewise=1,metric=CC,iter=10,shrink=4:step=2,type=im,algo=slicereg,slicewise=1,metric=CC,iter=10,shrink=2 -qc ${PATH_QC} -qc-subject ${SUBJECT}
+# Register T1w_MT to T2 | TODO: continue to tweek parameters
+sct_register_multimodal -i ${file_t1w}.nii.gz -d ${file_t2}.nii.gz -iseg ${file_t1w_seg}.nii.gz -dseg ${file_t2_seg}.nii.gz -m ${file_t2_mask}.nii.gz -param step=1,type=im,algo=slicereg,slicewise=1,metric=CC,iter=10,shrink=4:step=2,type=im,algo=slicereg,slicewise=1,metric=CC,iter=10,shrink=2:step=3,type=im,algo=slicereg,slicewise=1,metric=CC,iter=10,shrink=1 -qc ${PATH_QC} -qc-subject ${SUBJECT}
+# Register MTon to T2
+sct_register_multimodal -i ${file_mton}.nii.gz -d ${file_t2}.nii.gz -iseg ${file_mton_seg}.nii.gz -dseg ${file_t2_seg}.nii.gz -m ${file_t2_mask}.nii.gz -param step=1,type=im,algo=slicereg,slicewise=1,metric=CC,iter=10,shrink=4:step=2,type=im,algo=slicereg,slicewise=1,metric=CC,iter=10,shrink=2:step=3,type=im,algo=slicereg,slicewise=1,metric=CC,iter=5,shrink=1 -qc ${PATH_QC} -qc-subject ${SUBJECT}
 
 
 # Create soft SC segmentation
 # ------------------------------------------------------------------------------
-# TODO: find a way that on the slices where T2 star is not, to have only 2 values
+# TODO: Find a simpler way :) --> do python script for this!
+sct_create_mask -i ${file_t2s}_reg.nii.gz -p centerline,${file_t2s_seg}.nii.gz -size 55mm -o ${file_t2s_seg}_mask.nii.gz
+
+# Concat only T1 and T2 seg
+sct_image -i ${file_t2_seg}.nii.gz ${file_t1_seg}.nii.gz -concat t -o tmp.concat_t1_t2.nii.gz
+sct_maths -i tmp.concat_t1_t2.nii.gz -mean t -o ${file_t2}_t1t2_seg_mean.nii.gz
+
+# Concat T1, T2 and T2s seg
 sct_image -i ${file_t2_seg}.nii.gz ${file_t1_seg}.nii.gz  ${file_t2s_seg}.nii.gz -concat t -o tmp.concat.nii.gz
-sct_maths -i tmp.concat.nii.gz -mean t -o ${file_t2}_seg_mean.nii.gz
+sct_maths -i tmp.concat.nii.gz -mean t -o ${file_t2}_seg_mean_t1t2t2s.nii.gz 
 
-file_softseg="${file_t2}_seg_mean"
+# Substract middle of T1/T2 seg
+sct_maths -i ${file_t2}_t1t2_seg_mean.nii.gz -sub ${file_t2s_seg}_mask.nii.gz -o ${file_t2}_t1t2_seg_mean_crop.nii.gz
+sct_maths -i ${file_t2}_t1t2_seg_mean_crop.nii.gz -thr 0.4 -o ${file_t2}_t1t2_seg_mean_crop_thr.nii.gz
+# Crop to keep T2s FOV
+sct_crop_image -i ${file_t2}_seg_mean_t1t2t2s.nii.gz -m ${file_t2s_seg}_mask.nii.gz -b 0 -o ${file_t2}_seg_mean_t1t2t2s_crop.nii.gz
+# Add both
+sct_maths -i ${file_t2}_t1t2_seg_mean_crop_thr.nii.gz -add ${file_t2}_seg_mean_t1t2t2s_crop.nii.gz -o ${file_t2}_seg_soft.nii.gz 
 
-sct_qc -i ${file_t1}_reg.nii.gz -s ${file_softseg}.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
+file_softseg="${file_t2}_seg_soft"
+
+# Register softseg to T1w reg + QC
+sct_register_multimodal -i ${file_softseg}.nii.gz -d ${file_t1}_reg_seg.nii.gz -identity 1 -x nn -o ${file_softseg}_reg_T1w.nii.gz
+sct_qc -i ${file_t1}_reg.nii.gz -s ${file_softseg}_reg_T1w.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
+# QC for T2w
 sct_qc -i ${file_t2}.nii.gz -s ${file_softseg}.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
 
 # Register softseg to T2s_reg
-sct_register_multimodal -i ${file_softseg}.nii.gz -d ${file_t2s}_reg_seg.nii.gz -identity 1 -x nn
-sct_qc -i ${file_t2s}.nii.gz -s ${file_softseg}_reg.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
+sct_register_multimodal -i ${file_softseg}.nii.gz -d ${file_t2s}_reg_seg.nii.gz -identity 1 -x nn -o ${file_softseg}_reg_t2s.nii.gz
+sct_qc -i ${file_t2s}.nii.gz -s ${file_softseg}_reg_t2s.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
 
+# Register dwi to T2w
+cd ..
+sct_register_multimodal -i /dwi/${file_dwi_mean}.nii.gz -d /anat/${file_t2}.nii.gz -iseg /dwi/${file_dwi_mean_seg}.nii.gz -dseg /anat/${file_t2_seg}.nii.gz -m /anat/${file_t2_mask}.nii.gz -param step=1,type=im,algo=slicereg,slicewise=1,metric=CC,iter=10,shrink=4:step=2,type=im,algo=slicereg,slicewise=1,metric=CC,iter=10,shrink=2 -qc ${PATH_QC} -qc-subject ${SUBJECT}
 
 
 # Display useful info for the log
