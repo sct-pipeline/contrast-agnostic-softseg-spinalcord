@@ -135,21 +135,30 @@ sct_register_multimodal -i ${file_t1}.nii.gz -d ${file_t2}.nii.gz -iseg ${file_t
 # Regeister T2s to T2
 sct_register_multimodal -i ${file_t2s}.nii.gz -d ${file_t2}.nii.gz -iseg ${file_t2s_seg}.nii.gz -dseg ${file_t2_seg}.nii.gz -m ${file_t2_mask}.nii.gz -param step=1,type=im,algo=slicereg,slicewise=1,metric=CC,iter=10,shrink=4:step=2,type=im,algo=slicereg,slicewise=1,metric=CC,iter=10,shrink=2 -qc ${PATH_QC} -qc-subject ${SUBJECT}
 
-# TODO: remove -x spline to test
-# TODO: test poly=2 or other
 
 # SC Segmentation of registered images
 # ------------------------------------------------------------------------------
 
-# Either run sct_deepseg again or sct_apply_transfo --> binarize after or apply with -x nn
-
+# OPTION 1: With sct_deepseg_sc:
 # T1w segmentation
-sct_deepseg_sc -i ${file_t1}_reg.nii.gz -c t1 -qc ${PATH_QC} -qc-subject ${SUBJECT}
-file_t1_seg="${file_t1}_reg_seg"
-# T2s segmentation _T2star2sub-amu01_T2w | Try segmentation on T2s_reg but in T2s space
-# sct_apply_transfo -i ${file_t2s_seg}.nii.gz -d ${file_t2_seg}.nii.gz -w warp_${file_t2s}2${file_t2}.nii.gz
-sct_deepseg_sc -i ${file_t2s}_reg.nii.gz -c t2s -qc ${PATH_QC} -qc-subject ${SUBJECT}
-file_t2s_seg="${file_t2s}_reg_seg"
+#sct_deepseg_sc -i ${file_t1}_reg.nii.gz -c t1 -qc ${PATH_QC} -qc-subject ${SUBJECT}
+#file_t1_seg="${file_t1}_reg_seg"
+
+# T2s segmentation 
+#sct_deepseg_sc -i ${file_t2s}_reg.nii.gz -c t2s -qc ${PATH_QC} -qc-subject ${SUBJECT}
+#file_t2s_seg="${file_t2s}_reg_seg"
+
+# OPTION 2: With sct_apply_transfo -x linear
+#T1w segmentation
+sct_apply_transfo -i ${file_t1_seg}.nii.gz -d ${file_t2_seg}.nii.gz -w warp_${file_t1}2${file_t2}.nii.gz
+sct_maths -i ${file_t1_seg}.nii.gz -thr 0.1 -o ${file_t1_seg}_thr01.nii.gz
+file_t1_seg="${file_t1_seg}_thr01"
+# T2s segmentation
+sct_apply_transfo -i ${file_t2s_seg}.nii.gz -d ${file_t2_seg}.nii.gz -w warp_${file_t2s}2${file_t2}.nii.gz
+sct_maths -i ${file_t2s_seg}.nii.gz -thr 0.1 -o ${file_t2s_seg}_thr01.nii.gz
+sct_maths -i ${file_t2s_seg}.nii.gz -bin 0.5 -o ${file_t2s_seg}_bin05.nii.gz
+file_t2s_seg_bin="${file_t2s_seg}_bin05"
+file_t2s_seg="${file_t2s_seg}_thr01"
 
 
 # Extra Registration
@@ -162,24 +171,10 @@ sct_register_multimodal -i ${file_mton}.nii.gz -d ${file_t2}.nii.gz -iseg ${file
 
 # Create soft SC segmentation
 # ------------------------------------------------------------------------------
-# TODO: Find a simpler way :) --> do python script for this!
-sct_create_mask -i ${file_t2s}_reg.nii.gz -p centerline,${file_t2s_seg}.nii.gz -size 55mm -o ${file_t2s_seg}_mask.nii.gz
-
-# Concat only T1 and T2 seg
-sct_image -i ${file_t2_seg}.nii.gz ${file_t1_seg}.nii.gz -concat t -o tmp.concat_t1_t2.nii.gz
-sct_maths -i tmp.concat_t1_t2.nii.gz -mean t -o ${file_t2}_t1t2_seg_mean.nii.gz
-
 # Concat T1, T2 and T2s seg
 sct_image -i ${file_t2_seg}.nii.gz ${file_t1_seg}.nii.gz  ${file_t2s_seg}.nii.gz -concat t -o tmp.concat.nii.gz
-sct_maths -i tmp.concat.nii.gz -mean t -o ${file_t2}_seg_mean_t1t2t2s.nii.gz 
 
-# Substract middle of T1/T2 seg
-sct_maths -i ${file_t2}_t1t2_seg_mean.nii.gz -sub ${file_t2s_seg}_mask.nii.gz -o ${file_t2}_t1t2_seg_mean_crop.nii.gz
-sct_maths -i ${file_t2}_t1t2_seg_mean_crop.nii.gz -thr 0.4 -o ${file_t2}_t1t2_seg_mean_crop_thr.nii.gz
-# Crop to keep T2s FOV
-sct_crop_image -i ${file_t2}_seg_mean_t1t2t2s.nii.gz -m ${file_t2s_seg}_mask.nii.gz -b 0 -o ${file_t2}_seg_mean_t1t2t2s_crop.nii.gz
-# Add both
-sct_maths -i ${file_t2}_t1t2_seg_mean_crop_thr.nii.gz -add ${file_t2}_seg_mean_t1t2t2s_crop.nii.gz -o ${file_t2}_seg_soft.nii.gz 
+python -i tmp.concat.nii.gz -o ${file_t2}_seg_soft.nii.gz
 
 file_softseg="${file_t2}_seg_soft"
 
