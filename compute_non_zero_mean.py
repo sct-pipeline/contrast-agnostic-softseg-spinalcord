@@ -32,8 +32,8 @@ def main():
     
     image = nib.load(args.i)
     image_np = image.get_fdata()
+   # image_np = np.clip(image_np, 0, 1) # Remove values higher than 1 or do it after??
     images_FOV = np.zeros((image_np.shape[-1], 2), dtype=int)
-    image_soft_segs = np.zeros(image_np.shape)
     image_soft_seg = np.zeros(image_np.shape[-1])
     # Get indexes of max and min of segmentation for each images
     for i in range(image_np.shape[-1]):
@@ -43,8 +43,6 @@ def main():
         max_index = np.argmax(index_non_zero[:,2])
         max = index_non_zero[max_index][2]
         images_FOV[i] = [min,max]
-    images_FOV_cp = images_FOV.copy()
-    small_image_index = np.inf
     for i in range(image_np.shape[-1]):
         image_np_cp = image_np.copy()
         small_image_index = np.argmin(images_FOV[:,1]-images_FOV[:,0])
@@ -55,14 +53,14 @@ def main():
         if i==0:
             image_soft_seg = np.mean(image_np_cp, axis=3)
         else:
-            FOV_previous =  [item for item in images_FOV_cp if item not in images_FOV][0]
-            print(FOV_previous)
-            image_soft_seg[:,:,0:FOV_previous[0]] = np.mean(image_np_cp, axis=3)[:,:,0:FOV_previous[0]]
-            image_soft_seg[:,:,FOV_previous[1]+1::] = np.mean(image_np_cp, axis=3)[:,:,FOV_previous[1]+1::]
+            image_soft_seg[:,:,0:previous_min] = np.mean(image_np_cp, axis=3)[:,:,0:previous_min]
+            image_soft_seg[:,:,previous_max::] = np.mean(image_np_cp, axis=3)[:,:,previous_max::]
         
+        previous_min = low_FOV
+        previous_max = high_FOV
         images_FOV =  np.delete(images_FOV, small_image_index, axis=0)
         image_np = np.delete(image_np, small_image_index, axis=3)
-    
+    image_soft_seg = np.clip(image_soft_seg, 0, 1)
     save_Nifti1(image_soft_seg, image, args.o)
 
 if __name__ == '__main__':
