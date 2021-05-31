@@ -30,6 +30,9 @@ SUBJECT=$1
 # get starting time:
 start=`date +%s`
 
+# Save script path
+PATH_SCRIPT=$PWD
+
 # Display useful info for the log, such as SCT version, RAM and CPU cores available
 sct_check_dependencies -short
 
@@ -151,15 +154,37 @@ sct_register_multimodal -i ${file_t2s}.nii.gz -d ${file_t2}.nii.gz -iseg ${file_
 # OPTION 2: With sct_apply_transfo -x linear
 #T1w segmentation
 sct_apply_transfo -i ${file_t1_seg}.nii.gz -d ${file_t2_seg}.nii.gz -w warp_${file_t1}2${file_t2}.nii.gz
+file_t1_seg="${file_t1_seg}_reg"
 sct_maths -i ${file_t1_seg}.nii.gz -thr 0.1 -o ${file_t1_seg}_thr01.nii.gz
+#sct_register_multimodal -i ${file_t1_seg}_thr01.nii.gz -d ${file_t2_seg}.nii.gz -identity 1 -x nn -o ${file_t1_seg}_thr01.nii.gz
 file_t1_seg="${file_t1_seg}_thr01"
+
 # T2s segmentation
 sct_apply_transfo -i ${file_t2s_seg}.nii.gz -d ${file_t2_seg}.nii.gz -w warp_${file_t2s}2${file_t2}.nii.gz
-sct_maths -i ${file_t2s_seg}.nii.gz -thr 0.1 -o ${file_t2s_seg}_thr01.nii.gz
-sct_maths -i ${file_t2s_seg}.nii.gz -bin 0.5 -o ${file_t2s_seg}_bin05.nii.gz
-file_t2s_seg_bin="${file_t2s_seg}_bin05"
+file_t2s_seg="${file_t2s_seg}_reg"
+sct_maths -i ${file_t2s_seg}.nii.gz -thr 0.1 -o ${file_t2s_seg}_thr01.nii.gz # We would need to apply a higher threshold --> 0.7 
+#sct_register_multimodal -i ${file_t2s_seg}_thr01.nii.gz -d ${file_t2_seg}.nii.gz -identity 1 -x nn -o ${file_t2s_seg}_thr01.nii.gz
 file_t2s_seg="${file_t2s_seg}_thr01"
 
+
+# Create soft SC segmentation
+# ------------------------------------------------------------------------------
+# Concat T1, T2 and T2s seg
+sct_image -i ${file_t2_seg}.nii.gz ${file_t1_seg}.nii.gz  ${file_t2s_seg}.nii.gz -concat t -o tmp.concat.nii.gz
+
+python ${PATH_SCRIPT}/compute_non_zero_mean.py -i tmp.concat.nii.gz -o ${file_t2}_seg_soft.nii.gz
+
+file_softseg="${file_t2}_seg_soft"
+
+# Register softseg to T1w reg + QC
+sct_register_multimodal -i ${file_softseg}.nii.gz -d ${file_t1}_seg_reg.nii.gz -identity 1 -x nn -o ${file_softseg}_reg_T1w.nii.gz
+sct_qc -i ${file_t1}_reg.nii.gz -s ${file_softseg}_reg_T1w.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
+# QC for T2w
+sct_qc -i ${file_t2}.nii.gz -s ${file_softseg}.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
+
+# Register softseg to T2s_reg
+sct_register_multimodal -i ${file_softseg}.nii.gz -d ${file_t2s}_seg_reg.nii.gz -identity 1 -x nn -o ${file_softseg}_reg_t2s.nii.gz
+sct_qc -i ${file_t2s}.nii.gz -s ${file_softseg}_reg_t2s.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
 
 # Extra Registration
 # ------------------------------------------------------------------------------
@@ -168,29 +193,9 @@ sct_register_multimodal -i ${file_t1w}.nii.gz -d ${file_t2}.nii.gz -iseg ${file_
 # Register MTon to T2
 sct_register_multimodal -i ${file_mton}.nii.gz -d ${file_t2}.nii.gz -iseg ${file_mton_seg}.nii.gz -dseg ${file_t2_seg}.nii.gz -m ${file_t2_mask}.nii.gz -param step=1,type=im,algo=slicereg,slicewise=1,metric=CC,iter=10,shrink=4:step=2,type=im,algo=slicereg,slicewise=1,metric=CC,iter=10,shrink=2:step=3,type=im,algo=slicereg,slicewise=1,metric=CC,iter=5,shrink=1 -qc ${PATH_QC} -qc-subject ${SUBJECT}
 
-
-# Create soft SC segmentation
-# ------------------------------------------------------------------------------
-# Concat T1, T2 and T2s seg
-sct_image -i ${file_t2_seg}.nii.gz ${file_t1_seg}.nii.gz  ${file_t2s_seg}.nii.gz -concat t -o tmp.concat.nii.gz
-
-python -i tmp.concat.nii.gz -o ${file_t2}_seg_soft.nii.gz
-
-file_softseg="${file_t2}_seg_soft"
-
-# Register softseg to T1w reg + QC
-sct_register_multimodal -i ${file_softseg}.nii.gz -d ${file_t1}_reg_seg.nii.gz -identity 1 -x nn -o ${file_softseg}_reg_T1w.nii.gz
-sct_qc -i ${file_t1}_reg.nii.gz -s ${file_softseg}_reg_T1w.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
-# QC for T2w
-sct_qc -i ${file_t2}.nii.gz -s ${file_softseg}.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
-
-# Register softseg to T2s_reg
-sct_register_multimodal -i ${file_softseg}.nii.gz -d ${file_t2s}_reg_seg.nii.gz -identity 1 -x nn -o ${file_softseg}_reg_t2s.nii.gz
-sct_qc -i ${file_t2s}.nii.gz -s ${file_softseg}_reg_t2s.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
-
 # Register dwi to T2w
 cd ..
-sct_register_multimodal -i /dwi/${file_dwi_mean}.nii.gz -d /anat/${file_t2}.nii.gz -iseg /dwi/${file_dwi_mean_seg}.nii.gz -dseg /anat/${file_t2_seg}.nii.gz -m /anat/${file_t2_mask}.nii.gz -param step=1,type=im,algo=slicereg,slicewise=1,metric=CC,iter=10,shrink=4:step=2,type=im,algo=slicereg,slicewise=1,metric=CC,iter=10,shrink=2 -qc ${PATH_QC} -qc-subject ${SUBJECT}
+#sct_register_multimodal -i /dwi/${file_dwi_mean}.nii.gz -d /anat/${file_t2}.nii.gz -iseg /dwi/${file_dwi_mean_seg}.nii.gz -dseg /anat/${file_t2_seg}.nii.gz -m /anat/${file_t2_mask}.nii.gz -param step=1,type=im,algo=slicereg,slicewise=1,metric=CC,iter=10,shrink=4:step=2,type=im,algo=slicereg,slicewise=1,metric=CC,iter=10,shrink=2 -qc ${PATH_QC} -qc-subject ${SUBJECT}
 
 
 # Display useful info for the log
