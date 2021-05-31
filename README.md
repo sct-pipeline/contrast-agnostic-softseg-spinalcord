@@ -28,3 +28,12 @@ Problems with this approach:
     ii. The ivadomed model needs to be trained
     iii. compare_with_sct_model script needs to run
     iv. The ivadomed model needs to be tested 
+## Processing pipeline to generate softseg ground truth
+
+Specify the path of preprocessed dataset with the flag `-path-data`.
+
+Launch processing:
+
+```
+sct_run_batch -jobs -1 -path-data <PATH_DATA> -path-output <PATH-OUTPUT> -script process_data.sh
+```
