@@ -172,7 +172,7 @@ file_t2s_seg="${file_t2s_seg}_thr01"
 # Concat T1, T2 and T2s seg
 sct_image -i ${file_t2_seg}.nii.gz ${file_t1_seg}.nii.gz  ${file_t2s_seg}.nii.gz -concat t -o tmp.concat.nii.gz
 
-python ${PATH_SCRIPT}/compute_non_zero_mean.py -i tmp.concat.nii.gz -o ${file_t2}_seg_soft.nii.gz
+python ${PATH_SCRIPT}/generate_softseg.py -i tmp.concat.nii.gz -o ${file_t2}_seg_soft.nii.gz
 
 file_softseg="${file_t2}_seg_soft"
 
