@@ -64,6 +64,9 @@ segment_if_does_not_exist(){
     folder_contrast="anat"
   fi
 
+ # TODO create a function to register + create coverage + bring to t2w space
+
+
   # Update global variable with segmentation file name
   FILESEG="${file}_seg"
   FILESEGMANUAL="${PATH_DATA}/derivatives/labels/${SUBJECT}/${folder_contrast}/${FILESEG}-manual.nii.gz"
@@ -149,7 +152,7 @@ sct_register_multimodal -i ${file_t2s}.nii.gz -d ${file_t2}.nii.gz -iseg ${file_
 
 
 # Register T1w_MT to T2
-# With type=im
+# With type=im --> TYPE IM MAYBE BETTER FOR T1w_MTS
 # sct_register_multimodal -i ${file_t1w}.nii.gz -d ${file_t2}.nii.gz -iseg ${file_t1w_seg}.nii.gz -dseg ${file_t2_seg}.nii.gz -m ${file_t2_mask}.nii.gz -param step=1,type=im,algo=slicereg,metric=CC,iter=10,shrink=4:step=2,type=im,algo=slicereg,metric=CC,iter=10,shrink=2:step=3,type=im,algo=slicereg,metric=CC,iter=10,shrink=1 -qc ${PATH_QC} -qc-subject ${SUBJECT} 
 # With type=seg
 sct_register_multimodal -i ${file_t1w}.nii.gz -d ${file_t2}.nii.gz -iseg ${file_t1w_seg}.nii.gz -dseg ${file_t2_seg}.nii.gz -param step=1,type=seg,algo=slicereg,metric=CC,iter=10,shrink=4:step=2,type=seg,algo=slicereg,metric=CC,iter=10,shrink=2 -qc ${PATH_QC} -qc-subject ${SUBJECT} 
@@ -164,6 +167,32 @@ sct_register_multimodal -i ${file_mton}.nii.gz -d ${file_t2}.nii.gz -iseg ${file
 #cd ..
 #sct_register_multimodal -i ./dwi/${file_dwi_mean}.nii.gz -d ./anat/${file_t2}.nii.gz -iseg ./dwi/${file_dwi_mean_seg}.nii.gz -dseg ./anat/${file_t2_seg}.nii.gz -param step=1,type=seg,algo=slicereg,metric=CC,iter=10,shrink=4:step=2,type=seg,algo=slicereg,metric=CC,iter=10,shrink=2 -qc ${PATH_QC} -qc-subject ${SUBJECT} -o ./dwi/${file_dwi_mean}_reg.nii.gz
 #cd ./anat
+
+
+# Generate SC segmentation coverage and register to T2w
+# ------------------------------------------------------------------------------
+# T1w
+sct_create_mask -i ${file_t1}.nii.gz -o ${file_t1}_ones.nii.gz -size 500 -p centerline,${file_t1_seg}.nii.gz
+sct_apply_transfo -i ${file_t1}_ones.nii.gz -d ${file_t2}.nii.gz -w warp_${file_t1}2${file_t2}.nii.gz -x linear
+
+# T2w
+sct_create_mask -i ${file_t2}.nii.gz -o ${file_t2}_ones.nii.gz -size 500 -p centerline,${file_t2_seg}.nii.gz
+
+# T2s
+sct_create_mask -i ${file_t2s}.nii.gz -o ${file_t2s}_ones.nii.gz -size 500 -p centerline,${file_t2s_seg}.nii.gz
+sct_apply_transfo -i ${file_t2s}_ones.nii.gz -d ${file_t2}.nii.gz -w warp_${file_t2s}2${file_t2}.nii.gz -x linear
+
+
+# T1w_MTS
+sct_create_mask -i ${file_t1w}.nii.gz -o ${file_t1w}_ones.nii.gz -size 500 -p centerline,${file_t1w_seg}.nii.gz
+sct_apply_transfo -i ${file_t1w}_ones.nii.gz -d ${file_t2}.nii.gz -w warp_${file_t1w}2${file_t2}.nii.gz -x linear
+
+# MTon_MTS
+sct_create_mask -i ${file_mton}.nii.gz -o ${file_mton}_ones.nii.gz -size 500 -p centerline,${file_mton_seg}.nii.gz
+sct_apply_transfo -i ${file_mton}_ones.nii.gz -d ${file_t2}.nii.gz -w warp_${file_mton}2${file_t2}.nii.gz -x linear
+
+# dwi
+# TODO
 
 # Bring SC segmentations to T2w space
 # ------------------------------------------------------------------------------
@@ -200,37 +229,13 @@ file_mton_seg="${file_mton_seg}_reg"
 #file_dwi_mean_seg="${file_dwi_mean_seg}_reg"
 #cd ./anat
 
-# Generate SC segmentation coverage and register to T2w
-# ------------------------------------------------------------------------------
-# T1w
-python ${PATH_SCRIPT}/image_2_ones.py -i ${file_t1}.nii.gz -o ${file_t1}_ones.nii.gz
-sct_apply_transfo -i ${file_t1}_ones.nii.gz -d ${file_t2}.nii.gz -w warp_${file_t1}2${file_t2}.nii.gz -x linear
-
-# T2w
-python ${PATH_SCRIPT}/image_2_ones.py -i ${file_t2}.nii.gz -o ${file_t2}_ones.nii.gz
-
-# T2s
-python ${PATH_SCRIPT}/image_2_ones.py -i ${file_t2s}.nii.gz -o ${file_t2s}_ones.nii.gz
-sct_apply_transfo -i ${file_t2s}_ones.nii.gz -d ${file_t2}.nii.gz -w warp_${file_t2s}2${file_t2}.nii.gz -x linear
-
-
-# T1w_MTS
-python ${PATH_SCRIPT}/image_2_ones.py -i ${file_t1w}.nii.gz -o ${file_t1w}_ones.nii.gz
-sct_apply_transfo -i ${file_t1w}_ones.nii.gz -d ${file_t2}.nii.gz -w warp_${file_t1w}2${file_t2}.nii.gz -x linear
-
-# MTon_MTS
-python ${PATH_SCRIPT}/image_2_ones.py -i ${file_mton}.nii.gz -o ${file_mton}_ones.nii.gz
-sct_apply_transfo -i ${file_mton}_ones.nii.gz -d ${file_t2}.nii.gz -w warp_${file_mton}2${file_t2}.nii.gz -x linear
-
-# dwi
-# TODO
-
-
 # Create soft SC segmentation
 # ------------------------------------------------------------------------------
 
 # Sum all coverage images
 sct_maths -i ${file_t1}_ones_reg.nii.gz -add ${file_t2}_ones.nii.gz ${file_t2s}_ones_reg.nii.gz ${file_t1w}_ones_reg.nii.gz ${file_mton}_ones_reg.nii.gz -o sum_coverage.nii.gz
+
+# Without T1w_MTS and MTon_MTS
 
 # Sum all segmentations
 sct_maths -i ${file_t1_seg}.nii.gz -add ${file_t2_seg}.nii.gz ${file_t2s_seg}.nii.gz ${file_t1w_seg}.nii.gz ${file_mton_seg}.nii.gz -o sum_sc_seg.nii.gz
@@ -246,7 +251,7 @@ file_softseg="${file_t2}_seg_soft"
 #sct_register_multimodal -i ${file_softseg}.nii.gz -d ${file_t1}_seg_reg.nii.gz -identity 1 -x nn -o ${file_softseg}_reg_T1w.nii.gz
 #sct_qc -i ${file_t1}_reg.nii.gz -s ${file_softseg}_reg_T1w.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
 # QC for T2w
-#sct_qc -i ${file_t2}.nii.gz -s ${file_softseg}.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
+sct_qc -i ${file_t2}.nii.gz -s ${file_softseg}.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
 
 # Register softseg to T2s_reg
 #sct_register_multimodal -i ${file_softseg}.nii.gz -d ${file_t2s}_seg_reg.nii.gz -identity 1 -x nn -o ${file_softseg}_reg_t2s.nii.gz
