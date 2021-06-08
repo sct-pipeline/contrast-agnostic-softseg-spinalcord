@@ -261,21 +261,21 @@ sct_qc -i ${file_t2}.nii.gz -s ${file_softseg}.nii.gz -p sct_deepseg_sc -qc ${PA
 
 # Register softseg to T2s_reg
 sct_register_multimodal -i ${file_softseg}.nii.gz -d ${file_t2s}_seg_reg.nii.gz -identity 1 -x nn -o ${file_softseg}_reg_t2s.nii.gz
-sct_qc -i ${file_t2s}.nii.gz -s ${file_softseg}_reg_t2s.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
+sct_qc -i ${file_t2s}_reg.nii.gz -s ${file_softseg}_reg_t2s.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
 
 # Register softseg to T1w MTS
 sct_register_multimodal -i ${file_softseg}.nii.gz -d ${file_t1w}_seg_reg.nii.gz -identity 1 -x nn -o ${file_softseg}_reg_T1w_MTS.nii.gz
-sct_qc -i ${file_t1w}.nii.gz -s ${file_softseg}_reg_T1w_MTS.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
+sct_qc -i ${file_t1w}_reg.nii.gz -s ${file_softseg}_reg_T1w_MTS.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
 
 # Register softseg to MT_on MTS
 sct_register_multimodal -i ${file_softseg}.nii.gz -d ${file_mton}_seg_reg.nii.gz -identity 1 -x nn -o ${file_softseg}_reg_MTon_MTS.nii.gz
-sct_qc -i ${file_mton}.nii.gz -s ${file_softseg}_reg_MTon_MTS.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
+sct_qc -i ${file_mton}_reg.nii.gz -s ${file_softseg}_reg_MTon_MTS.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
 
 # Register softseg to dwi
 cd ..
 sct_register_multimodal -i ./anat/${file_softseg}.nii.gz -d ./dwi/${file_dwi_mean}_seg_reg.nii.gz -identity 1 -x nn -o ./dwi/${file_softseg}_reg_dwi.nii.gz
 cd ./dwi
-sct_qc -i ${file_dwi_mean}.nii.gz -s ${file_softseg}_reg_dwi.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
+sct_qc -i ${file_dwi_mean}_reg.nii.gz -s ${file_softseg}_reg_dwi.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
 
 
 # Display useful info for the log
