@@ -155,9 +155,9 @@ sct_register_multimodal -i ${file_t2s}.nii.gz -d ${file_t2}.nii.gz -iseg ${file_
 
 
 # Register T1w_MT to T2
-# With type=im --> TYPE IM MAYBE BETTER FOR T1w_MTS
+# With type=im 
 # sct_register_multimodal -i ${file_t1w}.nii.gz -d ${file_t2}.nii.gz -iseg ${file_t1w_seg}.nii.gz -dseg ${file_t2_seg}.nii.gz -m ${file_t2_mask}.nii.gz -param step=1,type=im,algo=slicereg,metric=CC,iter=10,shrink=4:step=2,type=im,algo=slicereg,metric=CC,iter=10,shrink=2:step=3,type=im,algo=slicereg,metric=CC,iter=10,shrink=1 -qc ${PATH_QC} -qc-subject ${SUBJECT} 
-# With type=seg
+# With type=seg : BEST
 sct_register_multimodal -i ${file_t1w}.nii.gz -d ${file_t2}.nii.gz -iseg ${file_t1w_seg}.nii.gz -dseg ${file_t2_seg}.nii.gz -param step=1,type=seg,algo=slicereg,metric=CC,iter=10,shrink=4:step=2,type=seg,algo=slicereg,metric=CC,iter=10,shrink=2 -qc ${PATH_QC} -qc-subject ${SUBJECT} 
 # wITH TYPE=SEG AND TYPE=IM
 #sct_register_multimodal -i ${file_t1w}.nii.gz -d ${file_t2}.nii.gz -iseg ${file_t1w_seg}.nii.gz -dseg ${file_t2_seg}.nii.gz -param step=1,type=im,algo=slicereg,metric=CC,iter=10,shrink=4:step=2,type=im,algo=slicereg,metric=CC,iter=10,shrink=2:step=3,type=seg,algo=slicereg,metric=CC,iter=10,shrink=1 -qc ${PATH_QC} -qc-subject ${SUBJECT} 
@@ -175,9 +175,9 @@ sct_register_multimodal -i ${file_mton}.nii.gz -d ${file_t2}.nii.gz -iseg ${file
 # Register dwi to T2w
 cd ..
 # With type=im --> maybe remove step 3
-sct_register_multimodal -i ./dwi/${file_dwi_mean}.nii.gz -d ./anat/${file_t2}.nii.gz -iseg ./dwi/${file_dwi_mean_seg}.nii.gz -dseg ./anat/${file_t2_seg}.nii.gz -param step=1,type=im,algo=slicereg,metric=CC,iter=10,shrink=4:step=2,type=im,algo=slicereg,metric=CC,iter=10,shrink=2:step=3,type=im,algo=slicereg,metric=CC,iter=5,shrink=1 -qc ${PATH_QC} -qc-subject ${SUBJECT} -o ./dwi/${file_dwi_mean}_reg.nii.gz
-# With type=seg
-#sct_register_multimodal -i ./dwi/${file_dwi_mean}.nii.gz -d ./anat/${file_t2}.nii.gz -iseg ./dwi/${file_dwi_mean_seg}.nii.gz -dseg ./anat/${file_t2_seg}.nii.gz -param step=1,type=seg,algo=slicereg,metric=CC,iter=10,shrink=4:step=2,type=seg,algo=slicereg,metric=CC,iter=10,shrink=2 -qc ${PATH_QC} -qc-subject ${SUBJECT} -o ./dwi/${file_dwi_mean}_reg.nii.gz
+#sct_register_multimodal -i ./dwi/${file_dwi_mean}.nii.gz -d ./anat/${file_t2}.nii.gz -iseg ./dwi/${file_dwi_mean_seg}.nii.gz -dseg ./anat/${file_t2_seg}.nii.gz -param step=1,type=im,algo=slicereg,metric=CC,iter=10,shrink=4:step=2,type=im,algo=slicereg,metric=CC,iter=10,shrink=2:step=3,type=im,algo=slicereg,metric=CC,iter=5,shrink=1 -qc ${PATH_QC} -qc-subject ${SUBJECT} -o ./dwi/${file_dwi_mean}_reg.nii.gz
+# With type=seg : BEST
+sct_register_multimodal -i ./dwi/${file_dwi_mean}.nii.gz -d ./anat/${file_t2}.nii.gz -iseg ./dwi/${file_dwi_mean_seg}.nii.gz -dseg ./anat/${file_t2_seg}.nii.gz -param step=1,type=seg,algo=slicereg,metric=CC,iter=10,shrink=4:step=2,type=seg,algo=slicereg,metric=CC,iter=10,shrink=2 -qc ${PATH_QC} -qc-subject ${SUBJECT} -o ./dwi/${file_dwi_mean}_reg.nii.gz
 # wITH TYPE=SEG AND TYPE=IM
 #sct_register_multimodal -i ./dwi/${file_dwi_mean}.nii.gz -d ./anat/${file_t2}.nii.gz -iseg ./dwi/${file_dwi_mean_seg}.nii.gz -dseg ./anat/${file_t2_seg}.nii.gz -param step=1,type=im,algo=slicereg,metric=CC,iter=10,shrink=4:step=2,type=im,algo=slicereg,metric=CC,iter=10,shrink=2:step=3,type=seg,algo=slicereg,metric=CC,iter=10,shrink=1 -qc ${PATH_QC} -qc-subject ${SUBJECT} -o ./dwi/${file_dwi_mean}_reg.nii.gz
 
