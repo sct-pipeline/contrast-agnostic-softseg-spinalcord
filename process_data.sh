@@ -48,8 +48,6 @@ if [[ ! -f $PATH_RESULTS/"participants.tsv" ]]; then
 fi
 # Copy source images
 rsync -avzh $PATH_DATA/$SUBJECT .
-# Go to anat folder where all structural data are located
-cd ${SUBJECT}/anat/
 
 # FUNCTIONS
 # ==============================================================================
@@ -80,10 +78,41 @@ segment_if_does_not_exist(){
   fi
 }
 
+find_contrast(){
+  local file="$1"
+  local dwi="dwi"
+  if echo "$file" | grep -q "$dwi"; then
+    echo  "./$dwi/"
+  else
+    echo "./anat/"
+  fi
+}
+
+# Initialize filenames
+file_t1="${SUBJECT}_T1w"
+file_t2="${SUBJECT}_T2w"
+file_t2s="${SUBJECT}_T2star"
+file_t1w="${SUBJECT}_acq-T1w_MTS"
+file_mton="${SUBJECT}_acq-MTon_MTS"
+file_dwi_mean="${SUBJECT}_rec-average_dwi"
+contrasts=($file_t1 $file_t2 $file_t2s $file_t1w $file_mton $file_dwi_mean)
+inc_contrasts=()
+# Check available contrast
+
+for contrast "${contrasts[@]}"; do
+  type=$(find_contrast $contrast)
+  echo $type
+  if [[-e "${type}${contrast}.nii.gz"]]; then
+    inc_contrasts+=$contrast
+  else
+    echo "$contrast not found, excluding it."
+  fi
+echo $inc_contrasts
+# Go to anat folder where all structural data are located
+cd ${SUBJECT}/anat/
 
 # T1w
 # ------------------------------------------------------------------------------
-file_t1="${SUBJECT}_T1w"
 
 # Segment spinal cord (only if it does not exist)
 segment_if_does_not_exist $file_t1 "t1"
@@ -91,7 +120,6 @@ file_t1_seg=$FILESEG
 
 # T2w
 # ------------------------------------------------------------------------------
-file_t2="${SUBJECT}_T2w"
 
 # Segment spinal cord (only if it does not exist)
 segment_if_does_not_exist $file_t2 "t2"
@@ -99,7 +127,6 @@ file_t2_seg=$FILESEG
 
 # T2s
 # ------------------------------------------------------------------------------
-file_t2s="${SUBJECT}_T2star"
 
 # Segment spinal cord (only if it does not exist)
 segment_if_does_not_exist $file_t2s "t2s" 
@@ -107,8 +134,6 @@ file_t2s_seg=$FILESEG
 
 # MTS
 # ------------------------------------------------------------------------------
-file_t1w="${SUBJECT}_acq-T1w_MTS"
-file_mton="${SUBJECT}_acq-MTon_MTS"
 
 # Segment spinal cord (only if it does not exist)
 segment_if_does_not_exist $file_t1w "t1" 
