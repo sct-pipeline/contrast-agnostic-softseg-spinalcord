@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Process data. Note. Input data are already resample and reoriented to RPI.
+# Process data. Note. Input data are already resampled and reoriented to RPI.
 #
 # Usage:
 #   ./process_data.sh <SUBJECT>
@@ -30,9 +30,6 @@ EXCLUDE_LIST=$2
 
 # get starting time:
 start=`date +%s`
-
-# Save script path
-PATH_SCRIPT=$PWD
 
 # Display useful info for the log, such as SCT version, RAM and CPU cores available
 sct_check_dependencies -short
@@ -105,10 +102,18 @@ file_mton="${SUBJECT}_acq-MTon_MTS"
 file_dwi_mean="${SUBJECT}_rec-average_dwi"
 contrasts=($file_t1 $file_t2 $file_t2s $file_t1w $file_mton $file_dwi_mean)
 inc_contrasts=()
+
 # Check available contrasts
+# ------------------------------------------------------------------------------
+
 cd ${SUBJECT}
 
-EXCLUDE=$(yaml ${EXCLUDE_LIST} "['FILES_SEG']")
+# Check if a list of images to exclude was passed.
+if [ -z "$EXCLUDE_LIST" ]; then
+  EXCLUDE=""
+else
+  EXCLUDE=$(yaml ${EXCLUDE_LIST} "['FILES_SEG']")
+fi
 
 for contrast in "${contrasts[@]}"; do
   type=$(find_contrast $contrast)
@@ -127,6 +132,7 @@ echo "Contrasts are" ${inc_contrasts[@]}
 # Go to anat folder where all structural data are located
 cd ./anat/
 
+# TODO: put find seg-manual in the loop when all segmentations are in the derivatives
 # T1w
 # ------------------------------------------------------------------------------
 
@@ -176,7 +182,7 @@ sct_create_mask -i ./anat/${file_t2}.nii.gz -p centerline,./anat/${file_t2_seg}.
 # Loop through available contrasts
 for file_path in "${inc_contrasts[@]}";do
   type=$(find_contrast $file_path)
-  if [[ $file_path!=$file_t2 ]];then
+  if [[ $file_path != ./anat/${file_t2} ]];then
     # Registration
     # ------------------------------------------------------------------------------
     # Method 1
@@ -197,18 +203,18 @@ for file_path in "${inc_contrasts[@]}";do
   fi
 done
 
-# Create coverage map for T2w
+# Create coverage mask for T2w
 sct_create_mask -i ./anat/${file_t2}.nii.gz -o ./anat/${file_t2}_ones.nii.gz -size 500 -p centerline,./anat/${file_t2_seg}.nii.gz
 
 # Create soft SC segmentation
 # ------------------------------------------------------------------------------
 # Sum all coverage images
 contrasts_coverage=${inc_contrasts[@]/%/"_ones_reg.nii.gz"}
-sct_maths -i ./anat/${file_t2}_ones.nii.gz -add "${contrasts_coverage[@]}" -o sum_coverage.nii.gz
+sct_maths -i ./anat/${file_t2}_ones.nii.gz -add $(eval echo ${contrasts_coverage[@]}) -o sum_coverage.nii.gz
 
 # Sum all segmentations
 contrasts_seg=${inc_contrasts[@]/%/"_seg_reg.nii.gz"}
-sct_maths -i ./anat/${file_t2_seg}.nii.gz -add "${contrasts_seg[@]}" -o sum_sc_seg.nii.gz
+sct_maths -i ./anat/${file_t2_seg}.nii.gz -add $(eval echo ${contrasts_seg[@]}) -o sum_sc_seg.nii.gz
 
 # Divide sum_sc_seg by sum_coverage
 sct_maths -i sum_sc_seg.nii.gz -div sum_coverage.nii.gz -o ./anat/${file_t2}_seg_soft.nii.gz
@@ -222,7 +228,7 @@ sct_qc -i ./anat/${file_t2}.nii.gz -s ${file_softseg}.nii.gz -p sct_deepseg_sc -
 # ------------------------------------------------------------------------------
 for file_path in "${inc_contrasts[@]}";do
   type=$(find_contrast $file_path)
-  if [[ file!=$file_t2 ]];then
+  if [[ file_path != ./anat/${file_t2} ]];then
     file=${file_path/#"$type"}
     fileseg=${file_path}_seg
     warping_field_inv=${type}warp_${file_t2}2${file}
@@ -234,177 +240,6 @@ for file_path in "${inc_contrasts[@]}";do
 
   fi
 done
-
-
-
-
-# Go back to parent folder
-cd ../anat
-
-# Registration
-# ------------------------------------------------------------------------------
-
-
-# Register T1w to T2w
-# With type=im
-#sct_register_multimodal -i ${file_t1}.nii.gz -d ${file_t2}.nii.gz -iseg ${file_t1_seg}.nii.gz -dseg ${file_t2_seg}.nii.gz -m ${file_t2_mask}.nii.gz -param step=1,type=im,algo=slicereg,metric=CC,iter=10,shrink=4,poly=2:step=2,type=im,algo=slicereg,metric=CC,iter=10,shrink=2 -qc ${PATH_QC} -qc-subject ${SUBJECT} 
-# With type=seg : BEST 
-#sct_register_multimodal -i ${file_t1}.nii.gz -d ${file_t2}.nii.gz -iseg ${file_t1_seg}.nii.gz -dseg ${file_t2_seg}.nii.gz -param step=1,type=seg,algo=slicereg,metric=CC,iter=10,shrink=4,poly=2:step=2,type=seg,algo=slicereg,metric=CC,iter=10,shrink=2 -qc ${PATH_QC} -qc-subject ${SUBJECT} 
-# wITH TYPE=SEG AND TYPE=IM
-#sct_register_multimodal -i ${file_t1}.nii.gz -d ${file_t2}.nii.gz -iseg ${file_t1_seg}.nii.gz -dseg ${file_t2_seg}.nii.gz -param step=1,type=im,algo=slicereg,metric=CC,iter=10,shrink=4,poly=2:step=2,type=im,algo=slicereg,metric=CC,iter=10,shrink=2:step=3,type=seg,algo=slicereg,metric=CC,iter=10,shrink=1 -qc ${PATH_QC} -qc-subject ${SUBJECT} 
-
-
-# Regeister T2s to T2
-# With type=im : BEST
-#sct_register_multimodal -i ${file_t2s}.nii.gz -d ${file_t2}.nii.gz -iseg ${file_t2s_seg}.nii.gz -dseg ${file_t2_seg}.nii.gz -m ${file_t2_mask}.nii.gz -param step=1,type=im,algo=slicereg,metric=CC,iter=10,shrink=4:step=2,type=im,algo=slicereg,metric=CC,iter=10,shrink=2 -qc ${PATH_QC} -qc-subject ${SUBJECT} 
-# With type=seg
-#sct_register_multimodal -i ${file_t2s}.nii.gz -d ${file_t2}.nii.gz -iseg ${file_t2s_seg}.nii.gz -dseg ${file_t2_seg}.nii.gz -param step=1,type=seg,algo=slicereg,metric=CC,iter=10,shrink=4:step=2,type=seg,algo=slicereg,metric=CC,iter=10,shrink=2 -qc ${PATH_QC} -qc-subject ${SUBJECT} 
-# wITH TYPE=SEG AND TYPE=IM
-#sct_register_multimodal -i ${file_t2s}.nii.gz -d ${file_t2}.nii.gz -iseg ${file_t2s_seg}.nii.gz -dseg ${file_t2_seg}.nii.gz -param step=1,type=im,algo=slicereg,metric=CC,iter=10,shrink=4:step=2,type=im,algo=slicereg,metric=CC,iter=10,shrink=2:step=3,type=seg,algo=slicereg,metric=CC,iter=10,shrink=1 -qc ${PATH_QC} -qc-subject ${SUBJECT} 
-
-
-# Register T1w_MT to T2
-# With type=im 
-# sct_register_multimodal -i ${file_t1w}.nii.gz -d ${file_t2}.nii.gz -iseg ${file_t1w_seg}.nii.gz -dseg ${file_t2_seg}.nii.gz -m ${file_t2_mask}.nii.gz -param step=1,type=im,algo=slicereg,metric=CC,iter=10,shrink=4:step=2,type=im,algo=slicereg,metric=CC,iter=10,shrink=2:step=3,type=im,algo=slicereg,metric=CC,iter=10,shrink=1 -qc ${PATH_QC} -qc-subject ${SUBJECT} 
-# With type=seg : BEST
-#sct_register_multimodal -i ${file_t1w}.nii.gz -d ${file_t2}.nii.gz -iseg ${file_t1w_seg}.nii.gz -dseg ${file_t2_seg}.nii.gz -param step=1,type=seg,algo=slicereg,metric=CC,iter=10,shrink=4:step=2,type=seg,algo=slicereg,metric=CC,iter=10,shrink=2 -qc ${PATH_QC} -qc-subject ${SUBJECT} 
-# wITH TYPE=SEG AND TYPE=IM
-#sct_register_multimodal -i ${file_t1w}.nii.gz -d ${file_t2}.nii.gz -iseg ${file_t1w_seg}.nii.gz -dseg ${file_t2_seg}.nii.gz -param step=1,type=im,algo=slicereg,metric=CC,iter=10,shrink=4:step=2,type=im,algo=slicereg,metric=CC,iter=10,shrink=2:step=3,type=seg,algo=slicereg,metric=CC,iter=10,shrink=1 -qc ${PATH_QC} -qc-subject ${SUBJECT} 
-
-
-# Register MTon to T2
-# With type=im : BEST
-#sct_register_multimodal -i ${file_mton}.nii.gz -d ${file_t2}.nii.gz -iseg ${file_mton_seg}.nii.gz -dseg ${file_t2_seg}.nii.gz -m ${file_t2_mask}.nii.gz -param step=1,type=im,algo=slicereg,metric=CC,iter=10,shrink=4:step=2,type=im,algo=slicereg,metric=CC,iter=10,shrink=2:step=3,type=im,algo=slicereg,metric=CC,iter=5,shrink=1 -qc ${PATH_QC} -qc-subject ${SUBJECT} 
-# With type=seg
-#sct_register_multimodal -i ${file_mton}.nii.gz -d ${file_t2}.nii.gz -iseg ${file_mton_seg}.nii.gz -dseg ${file_t2_seg}.nii.gz -param step=1,type=seg,algo=slicereg,metric=CC,iter=10,shrink=4:step=2,type=seg,algo=slicereg,metric=CC,iter=10,shrink=2 -qc ${PATH_QC} -qc-subject ${SUBJECT} 
-# wITH TYPE=SEG AND TYPE=IM
-#sct_register_multimodal -i ${file_mton}.nii.gz -d ${file_t2}.nii.gz -iseg ${file_mton_seg}.nii.gz -dseg ${file_t2_seg}.nii.gz -param step=1,type=im,algo=slicereg,metric=CC,iter=10,shrink=4:step=2,type=im,algo=slicereg,metric=CC,iter=10,shrink=2:step=3,type=seg,algo=slicereg,metric=CC,iter=10,shrink=1 -qc ${PATH_QC} -qc-subject ${SUBJECT} 
-
-
-# Register dwi to T2w
-#cd ..
-# With type=im --> maybe remove step 3
-#sct_register_multimodal -i ./dwi/${file_dwi_mean}.nii.gz -d ./anat/${file_t2}.nii.gz -iseg ./dwi/${file_dwi_mean_seg}.nii.gz -dseg ./anat/${file_t2_seg}.nii.gz -param step=1,type=im,algo=slicereg,metric=CC,iter=10,shrink=4:step=2,type=im,algo=slicereg,metric=CC,iter=10,shrink=2:step=3,type=im,algo=slicereg,metric=CC,iter=5,shrink=1 -qc ${PATH_QC} -qc-subject ${SUBJECT} -o ./dwi/${file_dwi_mean}_reg.nii.gz
-# With type=seg : BEST
-#sct_register_multimodal -i ./dwi/${file_dwi_mean}.nii.gz -d ./anat/${file_t2}.nii.gz -iseg ./dwi/${file_dwi_mean_seg}.nii.gz -dseg ./anat/${file_t2_seg}.nii.gz -param step=1,type=seg,algo=slicereg,metric=CC,iter=10,shrink=4:step=2,type=seg,algo=slicereg,metric=CC,iter=10,shrink=2 -qc ${PATH_QC} -qc-subject ${SUBJECT} -o ./dwi/${file_dwi_mean}_reg.nii.gz
-# wITH TYPE=SEG AND TYPE=IM
-#sct_register_multimodal -i ./dwi/${file_dwi_mean}.nii.gz -d ./anat/${file_t2}.nii.gz -iseg ./dwi/${file_dwi_mean_seg}.nii.gz -dseg ./anat/${file_t2_seg}.nii.gz -param step=1,type=im,algo=slicereg,metric=CC,iter=10,shrink=4:step=2,type=im,algo=slicereg,metric=CC,iter=10,shrink=2:step=3,type=seg,algo=slicereg,metric=CC,iter=10,shrink=1 -qc ${PATH_QC} -qc-subject ${SUBJECT} -o ./dwi/${file_dwi_mean}_reg.nii.gz
-
-#cd ./anat
-
-
-# Generate SC segmentation coverage and register to T2w
-# ------------------------------------------------------------------------------
-# T1w
-sct_create_mask -i ${file_t1}.nii.gz -o ${file_t1}_ones.nii.gz -size 500 -p centerline,${file_t1_seg}.nii.gz
-sct_apply_transfo -i ${file_t1}_ones.nii.gz -d ${file_t2}.nii.gz -w warp_${file_t1}2${file_t2}.nii.gz -x linear
-
-# T2w
-sct_create_mask -i ${file_t2}.nii.gz -o ${file_t2}_ones.nii.gz -size 500 -p centerline,${file_t2_seg}.nii.gz
-
-# T2s
-sct_create_mask -i ${file_t2s}.nii.gz -o ${file_t2s}_ones.nii.gz -size 500 -p centerline,${file_t2s_seg}.nii.gz
-sct_apply_transfo -i ${file_t2s}_ones.nii.gz -d ${file_t2}.nii.gz -w warp_${file_t2s}2${file_t2}.nii.gz -x linear
-
-
-# T1w_MTS
-sct_create_mask -i ${file_t1w}.nii.gz -o ${file_t1w}_ones.nii.gz -size 500 -p centerline,${file_t1w_seg}.nii.gz
-sct_apply_transfo -i ${file_t1w}_ones.nii.gz -d ${file_t2}.nii.gz -w warp_${file_t1w}2${file_t2}.nii.gz -x linear
-
-# MTon_MTS
-sct_create_mask -i ${file_mton}.nii.gz -o ${file_mton}_ones.nii.gz -size 500 -p centerline,${file_mton_seg}.nii.gz
-sct_apply_transfo -i ${file_mton}_ones.nii.gz -d ${file_t2}.nii.gz -w warp_${file_mton}2${file_t2}.nii.gz -x linear
-
-# dwi
-# TODO
-cd ..
-sct_create_mask -i ./dwi/${file_dwi_mean}.nii.gz -o ./dwi/${file_dwi_mean}_ones.nii.gz -size 500 -p centerline,./dwi/${file_dwi_mean_seg}.nii.gz
-sct_apply_transfo -i ./dwi/${file_dwi_mean}_ones.nii.gz -d ./anat/${file_t2}.nii.gz -w ./dwi/warp_${file_dwi_mean}2${file_t2}.nii.gz -x linear -o ./dwi/${file_dwi_mean}_ones_reg.nii.gz
-cd ./anat
-
-# Bring SC segmentations to T2w space
-# ------------------------------------------------------------------------------
-
-# OPTION 1: With sct_deepseg_sc:
-# T1w segmentation
-#sct_deepseg_sc -i ${file_t1}_reg.nii.gz -c t1 -qc ${PATH_QC} -qc-subject ${SUBJECT}
-#file_t1_seg="${file_t1}_reg_seg"
-
-# T2s segmentation 
-#sct_deepseg_sc -i ${file_t2s}_reg.nii.gz -c t2s -qc ${PATH_QC} -qc-subject ${SUBJECT}
-#file_t2s_seg="${file_t2s}_reg_seg"
-
-# OPTION 2: With sct_apply_transfo -x linear
-#T1w segmentation
-sct_apply_transfo -i ${file_t1_seg}.nii.gz -d ${file_t2_seg}.nii.gz -w warp_${file_t1}2${file_t2}.nii.gz -x linear
-file_t1_seg="${file_t1_seg}_reg"
-
-# T2s segmentation
-sct_apply_transfo -i ${file_t2s_seg}.nii.gz -d ${file_t2_seg}.nii.gz -w warp_${file_t2s}2${file_t2}.nii.gz -x linear
-file_t2s_seg="${file_t2s_seg}_reg"
-
-# T1w_MTS segmentation
-sct_apply_transfo -i ${file_t1w_seg}.nii.gz -d ${file_t2_seg}.nii.gz -w warp_${file_t1w}2${file_t2}.nii.gz -x linear
-file_t1w_seg="${file_t1w_seg}_reg"
-
-# MTon_MTS segmentation
-sct_apply_transfo -i ${file_mton_seg}.nii.gz -d ${file_t2_seg}.nii.gz -w warp_${file_mton}2${file_t2}.nii.gz -x linear
-file_mton_seg="${file_mton_seg}_reg"
-
-# dwi segmentation
-cd ..
-sct_apply_transfo -i ./dwi/${file_dwi_mean_seg}.nii.gz -d ./anat/${file_t2_seg}.nii.gz -w ./dwi/warp_${file_dwi_mean}2${file_t2}.nii.gz -x linear -o ./dwi/${file_dwi_mean_seg}_reg.nii.gz
-file_dwi_mean_seg="${file_dwi_mean_seg}_reg"
-
-# Create soft SC segmentation
-# ------------------------------------------------------------------------------
-
-# Sum all coverage images
-sct_maths -i ./anat/${file_t1}_ones_reg.nii.gz -add ./anat/${file_t2}_ones.nii.gz ./anat/${file_t2s}_ones_reg.nii.gz ./anat/${file_t1w}_ones_reg.nii.gz ./anat/${file_mton}_ones_reg.nii.gz ./dwi/${file_dwi_mean}_ones_reg.nii.gz -o sum_coverage.nii.gz
-
-# Without T1w_MTS and MTon_MTS
-# sct_maths -i ./anat/${file_t1}_ones_reg.nii.gz -add ./anat/${file_t2}_ones.nii.gz ./anat/${file_t2s}_ones_reg.nii.gz -o sum_coverage.nii.gz
-
-# Sum all segmentations
-sct_maths -i ./anat/${file_t1_seg}.nii.gz -add ./anat/${file_t2_seg}.nii.gz ./anat/${file_t2s_seg}.nii.gz ./anat/${file_t1w_seg}.nii.gz ./anat/${file_mton_seg}.nii.gz ./dwi/${file_dwi_mean_seg}.nii.gz -o sum_sc_seg.nii.gz
-
-# Divide sum_sc_seg by sum_coverage
-sct_maths -i sum_sc_seg.nii.gz -div sum_coverage.nii.gz -o ./anat/${file_t2}_seg_soft.nii.gz
-
-file_softseg="${file_t2}_seg_soft"
-
-# Put softseg in images spaces --> TODO: apply mask of image not of seg
-# ------------------------------------------------------------------------------
-# Register softseg to T1w reg + QC
-cd ./anat
-sct_maths -i ${file_softseg}.nii.gz -mul ${file_t1}_ones_reg.nii.gz -o ${file_softseg}_masked_t1.nii.gz
-#sct_register_multimodal -i ${file_softseg}_masked.nii.gz -d ${file_t1}_seg_reg.nii.gz -identity 1 -x nn -o ${file_softseg}_reg_T1w.nii.gz
-sct_qc -i ${file_t1}_reg.nii.gz -s ${file_softseg}_masked_t1.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
-
-# QC for T2w
-sct_qc -i ${file_t2}.nii.gz -s ${file_softseg}.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
-
-# Register softseg to T2s_reg 
-#sct_register_multimodal -i ${file_softseg}.nii.gz -d ${file_t2s}_seg_reg.nii.gz -identity 1 -x nn -o ${file_softseg}_reg_t2s.nii.gz
-sct_maths -i ${file_softseg}.nii.gz -mul ${file_t2s}_ones_reg.nii.gz -o ${file_softseg}_masked_t2s.nii.gz
-sct_qc -i ${file_t2s}_reg.nii.gz -s ${file_softseg}_masked_t2s.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
-
-# Register softseg to T1w MTS 
-#sct_register_multimodal -i ${file_softseg}.nii.gz -d ${file_t1w}_seg_reg.nii.gz -identity 1 -x nn -o ${file_softseg}_reg_T1w_MTS.nii.gz
-sct_maths -i ${file_softseg}.nii.gz -mul ${file_t1w}_ones_reg.nii.gz -o ${file_softseg}_masked_T1w_MTS.nii.gz
-sct_qc -i ${file_t1w}_reg.nii.gz -s ${file_softseg}_masked_T1w_MTS.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
-
-# Register softseg to MT_on MTS 
-#sct_register_multimodal -i ${file_softseg}.nii.gz -d ${file_mton}_seg_reg.nii.gz -identity 1 -x nn -o ${file_softseg}_reg_MTon_MTS.nii.gz
-sct_maths -i ${file_softseg}.nii.gz -mul ${file_mton}_ones_reg.nii.gz -o ${file_softseg}_masked_MTon_MTS.nii.gz
-sct_qc -i ${file_mton}_reg.nii.gz -s ${file_softseg}_masked_MTon_MTS.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
-
-# Register softseg to dwi
-cd ..
-sct_maths -i ./anat/${file_softseg}.nii.gz -mul ./dwi/${file_dwi_mean}_ones_reg.nii.gz -o ./dwi/${file_softseg}_masked_dwi.nii.gz
-#sct_register_multimodal -i ./anat/${file_softseg}.nii.gz -d ./dwi/${file_dwi_mean}_seg_reg.nii.gz -identity 1 -x nn -o ./dwi/${file_softseg}_reg_dwi.nii.gz
-cd ./dwi
-sct_qc -i ${file_dwi_mean}_reg.nii.gz -s ${file_softseg}_masked_dwi.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
 
 
 # Display useful info for the log
