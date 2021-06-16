@@ -100,7 +100,7 @@ file_t2s="${SUBJECT}_T2star"
 file_t1w="${SUBJECT}_acq-T1w_MTS"
 file_mton="${SUBJECT}_acq-MTon_MTS"
 file_dwi_mean="${SUBJECT}_rec-average_dwi"
-contrasts=($file_t1 $file_t2 $file_t2s $file_t1w $file_mton $file_dwi_mean)
+contrasts=($file_t1 $file_t2s $file_t1w $file_mton $file_dwi_mean)
 inc_contrasts=()
 
 # Check available contrasts
@@ -182,7 +182,6 @@ sct_create_mask -i ./anat/${file_t2}.nii.gz -p centerline,./anat/${file_t2_seg}.
 # Loop through available contrasts
 for file_path in "${inc_contrasts[@]}";do
   type=$(find_contrast $file_path)
-  if [[ $file_path != ./anat/${file_t2} ]];then
     # Registration
     # ------------------------------------------------------------------------------
     # Method 1
@@ -200,7 +199,6 @@ for file_path in "${inc_contrasts[@]}";do
     sct_apply_transfo -i ${file_path}_ones.nii.gz -d ./anat/${file_t2}.nii.gz -w ${warping_field}.nii.gz -x linear -o ${file_path}_ones_reg.nii.gz
     # Bring SC segmentation to T2w space
     sct_apply_transfo -i ${fileseg}.nii.gz -d ./anat/${file_t2_seg}.nii.gz -w ${warping_field}.nii.gz -x linear -o ${fileseg}_reg.nii.gz
-  fi
 done
 
 # Create coverage mask for T2w
@@ -228,7 +226,6 @@ sct_qc -i ./anat/${file_t2}.nii.gz -s ${file_softseg}.nii.gz -p sct_deepseg_sc -
 # ------------------------------------------------------------------------------
 for file_path in "${inc_contrasts[@]}";do
   type=$(find_contrast $file_path)
-  if [[ file_path != ./anat/${file_t2} ]];then
     file=${file_path/#"$type"}
     fileseg=${file_path}_seg
     warping_field_inv=${type}warp_${file_t2}2${file}
@@ -237,8 +234,6 @@ for file_path in "${inc_contrasts[@]}";do
     sct_apply_transfo -i ${file_softseg}.nii.gz -d ${file_path}.nii.gz -w ${warping_field_inv}.nii.gz -x linear -o ${file_path}_softseg.nii.gz
     # Generate QC report
     sct_qc -i ${file_path}.nii.gz -s ${file_path}_softseg.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
-
-  fi
 done
 
 
