@@ -50,11 +50,11 @@ rsync -avzh $PATH_DATA/$SUBJECT .
 # FUNCTIONS
 # ==============================================================================
 
-segment_if_does_not_exist(){
+find_manual_seg(){
   local file="$1"
   local contrast="$2"
   # Find contrast
-  if [[ $contrast == "dwi" ]]; then
+  if [[ $contrast == "./dwi/" ]]; then
     folder_contrast="dwi"
   else
     folder_contrast="anat"
@@ -67,12 +67,10 @@ segment_if_does_not_exist(){
   echo "Looking for manual segmentation: $FILESEGMANUAL"
   if [[ -e $FILESEGMANUAL ]]; then
     echo "Found! Using manual segmentation."
-    rsync -avzh $FILESEGMANUAL ${FILESEG}.nii.gz
-    sct_qc -i ${file}.nii.gz -s ${FILESEG}.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
+    rsync -avzh $FILESEGMANUAL "${folder_contrast}/${FILESEG}.nii.gz"
+    sct_qc -i ${folder_contrast}/${file}.nii.gz -s ${folder_contrast}/${FILESEG}.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
   else
-    echo "Not found. Proceeding with automatic segmentation."
-    # Segment spinal cord
-    sct_deepseg_sc -i ${file}.nii.gz -c $contrast -qc ${PATH_QC} -qc-subject ${SUBJECT}
+    echo "Manual segmentation not found."
   fi
 }
 
@@ -129,73 +127,31 @@ for contrast in "${contrasts[@]}"; do
 
 done
 echo "Contrasts are" ${inc_contrasts[@]}
-# Go to anat folder where all structural data are located
-cd ./anat/
-
-# TODO: put find seg-manual in the loop when all segmentations are in the derivatives
-# T1w
-# ------------------------------------------------------------------------------
-
-# Segment spinal cord (only if it does not exist)
-segment_if_does_not_exist $file_t1 "t1"
-file_t1_seg=$FILESEG
-
-# T2w
-# ------------------------------------------------------------------------------
-
-# Segment spinal cord (only if it does not exist)
-segment_if_does_not_exist $file_t2 "t2"
-file_t2_seg=$FILESEG
-
-# T2s
-# ------------------------------------------------------------------------------
-
-# Segment spinal cord (only if it does not exist)
-segment_if_does_not_exist $file_t2s "t2s" 
-file_t2s_seg=$FILESEG
-
-# MTS
-# ------------------------------------------------------------------------------
-
-# Segment spinal cord (only if it does not exist)
-segment_if_does_not_exist $file_t1w "t1" 
-file_t1w_seg=$FILESEG
-segment_if_does_not_exist $file_mton "t2s"
-file_mton_seg=$FILESEG
-
-
-# DWI
-# ------------------------------------------------------------------------------
-cd ../dwi
-file_dwi_mean="${SUBJECT}_rec-average_dwi"
-
-# Segment spinal cord (only if it does not exist)
-segment_if_does_not_exist ${file_dwi_mean} "dwi"
-file_dwi_mean_seg=$FILESEG
-
-cd ..
 
 # Create mask for regsitration
+find_manual_seg ${file_t2}
+file_t2_seg="${file_t2}_seg"
 file_t2_mask="${file_t2_seg}_mask"
 sct_create_mask -i ./anat/${file_t2}.nii.gz -p centerline,./anat/${file_t2_seg}.nii.gz -size 55mm -o ./anat/${file_t2_mask}.nii.gz 
 
 # Loop through available contrasts
 for file_path in "${inc_contrasts[@]}";do
   type=$(find_contrast $file_path)
-    # Registration
-    # ------------------------------------------------------------------------------
-    file=${file_path/#"$type"}
-    fileseg=${file_path}_seg
-    sct_register_multimodal -i ${file_path}.nii.gz -d ./anat/${file_t2}.nii.gz -iseg ${fileseg}.nii.gz -dseg ./anat/${file_t2_seg}.nii.gz -param step=1,type=seg,algo=slicereg,metric=MeanSquares,iter=10,poly=2 -qc ${PATH_QC} -qc-subject ${SUBJECT} -o ${file_path}_reg.nii.gz
-    warping_field=${type}warp_${file}2${file_t2}
+  file=${file_path/#"$type"}
+  fileseg=${file_path}_seg
+  find_manual_seg $file $type
+  # Registration
+  # ------------------------------------------------------------------------------
+  sct_register_multimodal -i ${file_path}.nii.gz -d ./anat/${file_t2}.nii.gz -iseg ${fileseg}.nii.gz -dseg ./anat/${file_t2_seg}.nii.gz -param step=1,type=seg,algo=slicereg,metric=MeanSquares,iter=10,poly=2 -qc ${PATH_QC} -qc-subject ${SUBJECT} -o ${file_path}_reg.nii.gz
+  warping_field=${type}warp_${file}2${file_t2}
 
-    # Generate SC segmentation coverage and register to T2w
-    # ------------------------------------------------------------------------------
-    sct_create_mask -i ${file_path}.nii.gz -o ${file_path}_ones.nii.gz -size 500 -p centerline,${fileseg}.nii.gz
-    # Bring coverage mask to T2w space
-    sct_apply_transfo -i ${file_path}_ones.nii.gz -d ./anat/${file_t2}.nii.gz -w ${warping_field}.nii.gz -x linear -o ${file_path}_ones_reg.nii.gz
-    # Bring SC segmentation to T2w space
-    sct_apply_transfo -i ${fileseg}.nii.gz -d ./anat/${file_t2_seg}.nii.gz -w ${warping_field}.nii.gz -x linear -o ${fileseg}_reg.nii.gz
+  # Generate SC segmentation coverage and register to T2w
+  # ------------------------------------------------------------------------------
+  sct_create_mask -i ${file_path}.nii.gz -o ${file_path}_ones.nii.gz -size 500 -p centerline,${fileseg}.nii.gz
+  # Bring coverage mask to T2w space
+  sct_apply_transfo -i ${file_path}_ones.nii.gz -d ./anat/${file_t2}.nii.gz -w ${warping_field}.nii.gz -x linear -o ${file_path}_ones_reg.nii.gz
+  # Bring SC segmentation to T2w space
+  sct_apply_transfo -i ${fileseg}.nii.gz -d ./anat/${file_t2_seg}.nii.gz -w ${warping_field}.nii.gz -x linear -o ${fileseg}_reg.nii.gz
 done
 
 # Create coverage mask for T2w
@@ -223,14 +179,14 @@ sct_qc -i ./anat/${file_t2}.nii.gz -s ${file_softseg}.nii.gz -p sct_deepseg_sc -
 # ------------------------------------------------------------------------------
 for file_path in "${inc_contrasts[@]}";do
   type=$(find_contrast $file_path)
-    file=${file_path/#"$type"}
-    fileseg=${file_path}_seg
-    warping_field_inv=${type}warp_${file_t2}2${file}
+  file=${file_path/#"$type"}
+  fileseg=${file_path}_seg
+  warping_field_inv=${type}warp_${file_t2}2${file}
 
-    # Bring softseg to native space
-    sct_apply_transfo -i ${file_softseg}.nii.gz -d ${file_path}.nii.gz -w ${warping_field_inv}.nii.gz -x linear -o ${file_path}_softseg.nii.gz
-    # Generate QC report
-    sct_qc -i ${file_path}.nii.gz -s ${file_path}_softseg.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
+  # Bring softseg to native space
+  sct_apply_transfo -i ${file_softseg}.nii.gz -d ${file_path}.nii.gz -w ${warping_field_inv}.nii.gz -x linear -o ${file_path}_softseg.nii.gz
+  # Generate QC report
+  sct_qc -i ${file_path}.nii.gz -s ${file_path}_softseg.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
 done
 
 
