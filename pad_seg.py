@@ -40,11 +40,9 @@ def main():
     # Get max and min index of the segmentation with pmj
     X, Y, Z = (image_np > NEAR_ZERO_THRESHOLD).nonzero()
     min_z_index, max_z_index = min(Z), max(Z)
-    image_np[:,:, min_z_index-1] = image_np[:,:, min_z_index]
-    image_np[:,:, max_z_index + 1] = image_np[:,:, max_z_index]
-    #image_flipped = image_np[:,:,::-1]
-    #image_np[:,:,0:min_z_index] = image_flipped[:,:, (max_z_index - min_z_index +1):max_z_index +1]
-    #image_np[:,:, max_z_index + 1 :image_np.shape[-1]] = image_flipped[:,:, min_z_index:(image_np.shape[-1] - max_z_index + min_z_index -1)]
+    image_flipped = image_np[:,:,::-1]
+    image_np[:,:,0:min_z_index] = image_flipped[:,:, (max_z_index - min_z_index +1):max_z_index +1]
+    image_np[:,:, max_z_index + 1 :image_np.shape[-1]] = image_flipped[:,:, min_z_index:(image_np.shape[-1] - max_z_index + min_z_index -1)]
 
     save_Nifti1(image_np, image, args.o)
 
