@@ -24,6 +24,9 @@ set -e -o pipefail
 # Exit if user presses CTRL+C (Linux) or CMD+C (OSX)
 trap "echo Caught Keyboard Interrupt within script. Exiting now.; exit" INT
 
+# Save script path
+PATH_SCRIPT=$PWD
+
 # Retrieve input params
 SUBJECT=$1
 EXCLUDE_LIST=$2
@@ -140,9 +143,11 @@ for file_path in "${inc_contrasts[@]}";do
   file=${file_path/#"$type"}
   fileseg=${file_path}_seg
   find_manual_seg $file $type
+  # Add padding to seg to overcome edge effect
+  python ${PATH_SCRIPT}/pad_seg.py -i ${fileseg}.nii.gz -o ${fileseg}_pad.nii.gz
   # Registration
   # ------------------------------------------------------------------------------
-  sct_register_multimodal -i ${file_path}.nii.gz -d ./anat/${file_t2}.nii.gz -iseg ${fileseg}.nii.gz -dseg ./anat/${file_t2_seg}.nii.gz -param step=1,type=seg,algo=slicereg,metric=MeanSquares,iter=10,poly=2 -qc ${PATH_QC} -qc-subject ${SUBJECT} -o ${file_path}_reg.nii.gz
+  sct_register_multimodal -i ${file_path}.nii.gz -d ./anat/${file_t2}.nii.gz -iseg ${fileseg}_pad.nii.gz -dseg ./anat/${file_t2_seg}.nii.gz -param step=1,type=seg,algo=slicereg,metric=MeanSquares,iter=10,poly=2 -qc ${PATH_QC} -qc-subject ${SUBJECT} -o ${file_path}_reg.nii.gz
   warping_field=${type}warp_${file}2${file_t2}
 
   # Generate SC segmentation coverage and register to T2w
