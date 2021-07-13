@@ -15,7 +15,7 @@ NEAR_ZERO_THRESHOLD = 1e-6
 
 def get_parser():
     parser = argparse.ArgumentParser(
-        description="Add padding to an segmentation by mirroring it| Orientation needs to be RPI" )
+        description="Add padding to a segmentation by 1 slice on both extremities| Orientation needs to be RPI" )
     parser.add_argument('-i', required=True, type=str,
                         help="Input image.")
     parser.add_argument('-o', required=True, type=str,
@@ -43,10 +43,8 @@ def main():
 
     if min_z_index > 0:
         image_np[:,:, min_z_index - 1] = image_np[:,:, min_z_index]
-    if max_z_index < image_np.shape[-1] - 1:
+    if max_z_index < (image_np.shape[-1] - 1):
         image_np[:,:, max_z_index + 1] = image_np[:,:, max_z_index]
-    #image_np[:,:,0:min_z_index] = image_np[:,:,min_z_index:2*min_z_index][:,:,::-1]
-    #image_np[:,:, max_z_index + 1 :image_np.shape[-1]] = image_np[:,:,max_z_index- image_np.shape[-1] + max_z_index +1:max_z_index][:,:,::-1]
 
     save_Nifti1(image_np, image, args.o)
 
