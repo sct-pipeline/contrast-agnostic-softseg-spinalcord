@@ -249,3 +249,7 @@ FILES_REG:
     - /mnt/extrassd1/sebeda/contrast-agnostic-results-20210725/data_processed/sub-ubc05/sub-ubc05_acq-T1w_MTS_reg.nii.gz
     - /mnt/extrassd1/sebeda/contrast-agnostic-results-20210725/data_processed/sub-ucdavis02/sub-ucdavis02_acq-T1w_MTS_reg.nii.gz
     - /mnt/extrassd1/sebeda/contrast-agnostic-results-20210725/data_processed/sub-vallHebron06/sub-vallHebron06_acq-T1w_MTS_reg.nii.gz
+    - sub-brnoUhb01_T1w_reg.nii.gz
+    - sub-brnoUhb06_acq-MTon_MTS_reg.nii.gz
+    - sub-queensland04_rec-average_dwi_reg.nii.gz
+    - sub-vuiisIngenia04_rec-average_dwi_reg.nii.gz
