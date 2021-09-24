@@ -30,6 +30,16 @@ Problems with this approach:
     iv. The ivadomed model needs to be tested 
 ## Processing pipeline to generate softseg ground truth
 
+The internal datset `spine-generic-processed` is used for the processng pipeline.
+
+Briefly, the spinal cord is segmented for each contrats, all images are registered to T2w and the transformation is applied on the spinal cord segmentations. 
+The segmentations are averaged following their coverage/feild of view. All segmentations are brought back to their native space.
+### Dependencies
+
+- [SCT 5.3.0](https://github.com/neuropoly/spinalcordtoolbox/releases/tag/5.3.0)
+- Python 3.7.
+
+### Processing
 Specify the path of preprocessed dataset with the flag `-path-data`.
 
 Launch processing:
