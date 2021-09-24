@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
-# Add padding to an image by mirring the image
+# Add padding to an image by mirroring the image
 #
 # For usage, type: python pad_seg -h
 
