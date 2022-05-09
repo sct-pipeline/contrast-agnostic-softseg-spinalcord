@@ -3,13 +3,43 @@ Contrast-agnostic spinal cord segmentation project with softseg
 
 This repo creates a series of preparations for comparing the newly trained ivadomed models (Pytorch based), with the old models that are currently implemented in spinal cord toolbox [SCT] (tensorflow based).
 
+## Dependencies
 
-## create_training_joblib.py
+- [SCT 5.3.0](https://github.com/neuropoly/spinalcordtoolbox/releases/tag/5.3.0)
+- Python 3.7.
+
+## Dataset and preprocessing
+
+The original data are from the [spine-generic multi-subject](https://github.com/spine-generic/data-multi-subject/releases/tag/r20220125)
+
+These data were preprocessed to segment the spinal cord, as described in [this PR](https://github.com/spine-generic/spine-generic/pull/249).
+The output of these data are stored internally at NeuroPoly's git-annex `data` server under `spine-generic-processed`.
+
+These processed dataset then need to be input into [another processing scripts](https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord/blob/main/process_data.sh) that:
+- creates a mask around the T2 spinal cord
+- co-register all contrasts to the T2 spinal cord 
+- average all segmentations from each contrast within the same space (the T2)
+- bring back the segmentations to the original image space of each contrast (except for the T2)
+
+The output of this script is a new 'derivatives/labels_softseg/' folder that contains the soft labels to be used in this contrast-agnostic segmentation project. 
+
+Specify the path of preprocessed dataset with the flag `-path-data`.
+
+Launch processing:
+
+```
+sct_run_batch -jobs -1 -path-data <PATH_DATA> -path-output <PATH-OUTPUT> -script process_data.sh
+```
+
+
+## Training
+
+### create_training_joblib.py
 The function creates a joblib that allocates data from the testing set of the SCT model to the testing set of the ivadomed model. The output (new_splits.joblib) needs to be assigned on the config.json in the field "split_dataset": {"fname_split": new_splits.joblib"}. 
 Multiple datasets (BIDS folders) can be used as input for the creation of the joblib. The same list should be assigned on the config.json file in the path_data field.
 
 
-## compare_with_sct_model.py
+### compare_with_sct_model.py
 The comparison is being done by running `sct_deepseg_sc` on every subject/contrast that was used in the testing set on ivadomed.
 
 One thing to note, is that the SCT scores have been marked after the usage of the function `sct_get_centerline` and cropping around this prior.
@@ -28,22 +58,3 @@ Problems with this approach:
     ii. The ivadomed model needs to be trained
     iii. compare_with_sct_model script needs to run
     iv. The ivadomed model needs to be tested 
-## Processing pipeline to generate softseg ground truth
-
-The internal datset `spine-generic-processed` is used for the processng pipeline.
-
-Briefly, the spinal cord is segmented for each contrats, all images are registered to T2w and the transformation is applied on the spinal cord segmentations. 
-The segmentations are averaged following their coverage/feild of view. All segmentations are brought back to their native space.
-### Dependencies
-
-- [SCT 5.3.0](https://github.com/neuropoly/spinalcordtoolbox/releases/tag/5.3.0)
-- Python 3.7.
-
-### Processing
-Specify the path of preprocessed dataset with the flag `-path-data`.
-
-Launch processing:
-
-```
-sct_run_batch -jobs -1 -path-data <PATH_DATA> -path-output <PATH-OUTPUT> -script process_data.sh
-```
