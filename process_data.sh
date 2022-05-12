@@ -56,6 +56,7 @@ rsync -avzh $PATH_DATA/$SUBJECT .
 find_manual_seg(){
   local file="$1"
   local contrast="$2"
+  local constrat_for_seg="3"
   # Find contrast
   if [[ $contrast == "./dwi/" ]]; then
     folder_contrast="dwi"
@@ -74,6 +75,9 @@ find_manual_seg(){
     sct_qc -i ${folder_contrast}/${file}.nii.gz -s ${folder_contrast}/${FILESEG}.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
   else
     echo "Manual segmentation not found."
+    # Segment spinal cord
+    sct_deepseg_sc -i ${file}.nii.gz -c $constrat_for_seg -qc ${PATH_QC} -qc-subject ${SUBJECT}
+    
   fi
 }
 
@@ -132,17 +136,31 @@ done
 echo "Contrasts are" ${inc_contrasts[@]}
 
 # Create mask for regsitration
-find_manual_seg ${file_t2}
+find_manual_seg ${file_t2} 'anat' 't2'
 file_t2_seg="${file_t2}_seg"
 file_t2_mask="${file_t2_seg}_mask"
 sct_create_mask -i ./anat/${file_t2}.nii.gz -p centerline,./anat/${file_t2_seg}.nii.gz -size 55mm -o ./anat/${file_t2_mask}.nii.gz 
 
 # Loop through available contrasts
 for file_path in "${inc_contrasts[@]}";do
+# Find contrast to do segmentation
+
+  if [[ $file_path == *"T1w"* ]];then
+    contrast_seg="t1"
+  elif [[ $file_path == *"T2star"* ]];then
+    contrast_seg="t2s"
+  elif [[ $file_path == *"T1w_MTS"* ]];then
+    contrast_seg="t1"
+  elif [[ $file_path == *"MTon_MTS"* ]];then
+    contrast_seg="t2s"
+  elif [[ $file_path == *"dwi"* ]];then
+    contrast_seg="dwi"
+  done
+  
   type=$(find_contrast $file_path)
   file=${file_path/#"$type"}
   fileseg=${file_path}_seg
-  find_manual_seg $file $type
+  find_manual_seg $file $type $contrast_seg
   # Add padding to seg to overcome edge effect
   python ${PATH_SCRIPT}/pad_seg.py -i ${fileseg}.nii.gz -o ${fileseg}_pad.nii.gz
   # Registration
