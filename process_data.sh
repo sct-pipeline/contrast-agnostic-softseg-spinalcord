@@ -155,8 +155,8 @@ for file_path in "${inc_contrasts[@]}";do
     contrast_seg="t2s"
   elif [[ $file_path == *"dwi"* ]];then
     contrast_seg="dwi"
-  done
-  
+  fi
+
   type=$(find_contrast $file_path)
   file=${file_path/#"$type"}
   fileseg=${file_path}_seg
