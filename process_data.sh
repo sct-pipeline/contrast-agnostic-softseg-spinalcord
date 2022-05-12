@@ -56,7 +56,7 @@ rsync -avzh $PATH_DATA/$SUBJECT .
 find_manual_seg(){
   local file="$1"
   local contrast="$2"
-  local constrat_for_seg="3"
+  local constrat_for_seg="$3"
   # Find contrast
   if [[ $contrast == "./dwi/" ]]; then
     folder_contrast="dwi"
