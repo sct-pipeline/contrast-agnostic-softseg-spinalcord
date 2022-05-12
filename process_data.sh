@@ -76,7 +76,7 @@ find_manual_seg(){
   else
     echo "Manual segmentation not found."
     # Segment spinal cord
-    sct_deepseg_sc -i ${file}.nii.gz -c $constrat_for_seg -qc ${PATH_QC} -qc-subject ${SUBJECT}
+    sct_deepseg_sc -i ${folder_contrast}/${file}.nii.gz -c $constrat_for_seg -qc ${PATH_QC} -qc-subject ${SUBJECT} -o ${folder_contrast}/${FILESEG}.nii.gz
     
   fi
 }
