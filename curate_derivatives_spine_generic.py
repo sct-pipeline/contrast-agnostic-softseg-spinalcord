@@ -10,11 +10,8 @@ import glob
 import os
 import shutil
 import yaml
+import json
 
-import spinegeneric as sg
-import spinegeneric.cli.manual_correction
-import spinegeneric.utils
-import spinegeneric.bids
 
 FOLDER_DERIVATIVES = os.path.join('derivatives', 'labels')
 
@@ -27,6 +24,19 @@ def get_parser():
     parser.add_argument('-path-out', required=True, type=str,
                         help="Output curated derivatives folder.")
     return parser
+
+
+def create_json(fname_nifti, name_rater):
+    """
+    Create json sidecar with meta information
+    :param fname_nifti: str: File name of the nifti image to associate with the json sidecar
+    :param name_rater: str: Name of the expert rater
+    :return:
+    """
+    metadata = {'Author': name_rater, 'Date': time.strftime('%Y-%m-%d %H:%M:%S')}
+    fname_json = fname_nifti.rstrip('.nii').rstrip('.nii.gz') + '.json'
+    with open(fname_json, 'w') as outfile:
+        json.dump(metadata, outfile, indent=4)
 
 
 def get_contrast(file):
@@ -75,22 +85,76 @@ def remove_suffix(fname, suffix):
     return os.path.join(stem.replace(suffix, '') + ext)
 
 
+def add_suffix(fname, suffix):
+    """
+    Add suffix between end of file name and extension.
+    :param fname: absolute or relative file name. Example: t2.nii
+    :param suffix: suffix. Example: _mean
+    :return: file name with suffix. Example: t2_mean.nii
+    Examples:
+    - add_suffix(t2.nii, _mean) -> t2_mean.nii
+    - add_suffix(t2.nii.gz, a) -> t2a.nii.gz
+    """
+
+    def _splitext(fname):
+        """
+        Split a fname (folder/file + ext) into a folder/file and extension.
+        Note: for .nii.gz the extension is understandably .nii.gz, not .gz
+        (``os.path.splitext()`` would want to do the latter, hence the special case).
+        """
+        dir, filename = os.path.split(fname)
+        for special_ext in ['.nii.gz', '.tar.gz']:
+            if filename.endswith(special_ext):
+                stem, ext = filename[:-len(special_ext)], special_ext
+                return os.path.join(dir, stem), ext
+        # If no special case, behaves like the regular splitext
+        stem, ext = os.path.splitext(filename)
+        return os.path.join(dir, stem), ext
+
+    stem, ext = _splitext(fname)
+    return os.path.join(stem + suffix + ext)
+
+
+def check_output_folder(path_bids, folder_derivatives):
+    """
+    Make sure path exists, has writing permissions, and create derivatives folder if it does not exist.
+    :param path_bids:
+    :return: path_bids_derivatives
+    """
+    if path_bids is None:
+        logging.error("-path-out should be provided.")
+    if not os.path.exists(path_bids):
+        logging.error("Output path does not exist: {}".format(path_bids))
+    path_bids_derivatives = os.path.join(path_bids, folder_derivatives)
+    os.makedirs(path_bids_derivatives, exist_ok=True)
+    return path_bids_derivatives
+
+
+def get_subject(file):
+    """
+    Get subject from BIDS file name
+    :param file:
+    :return: subject
+    """
+    return file.split('_')[0]
+
+
 def curate_csgseg(fname):
     """
     Reorient to RPI and resample _csg_seg-manual.nii.gz images.
     :param fname: absolute or relative file to curate.
     :return:
     """
-    os.system('sct_image -i {} -setorient RPI -o {}'.format(fname, sg.utils.add_suffix(fname, '_RPI')))
-    os.system('sct_resample -i {} -mm 0.8x0.8x0.8 -o {}'.format(sg.utils.add_suffix(fname, '_RPI'), sg.utils.add_suffix(fname, '_RPI_r')))
+    os.system('sct_image -i {} -setorient RPI -o {}'.format(fname, add_suffix(fname, '_RPI')))
+    os.system('sct_resample -i {} -mm 0.8x0.8x0.8 -o {}'.format(add_suffix(fname, '_RPI'), add_suffix(fname, '_RPI_r')))
 
     try:
         os.remove(fname)
-        os.remove(sg.utils.add_suffix(fname, '_RPI'))
+        os.remove(add_suffix(fname, '_RPI'))
     except OSError as e:  ## if failed, report it back to the user ##
         print ("Error: %s - %s." % (e.filename, e.strerror))
 
-    shutil.move(sg.utils.add_suffix(fname, '_RPI_r'), fname)
+    shutil.move(add_suffix(fname, '_RPI_r'), fname)
 
 
 def main():
@@ -98,7 +162,7 @@ def main():
     args = parser.parse_args()
 
     # check that output folder exists and has write permission
-    path_out_deriv = sg.utils.check_output_folder(args.path_out, FOLDER_DERIVATIVES)
+    path_out_deriv = check_output_folder(args.path_out, FOLDER_DERIVATIVES)
 
     name_rater = input("Enter your name (Firstname Lastname). It will be used to generate a json sidecar with each "
                            "corrected file: ")
@@ -112,7 +176,7 @@ def main():
 
     for file in file_list:
         # build file names
-        subject = sg.bids.get_subject(file)
+        subject = get_subject(file)
         contrast = get_contrast(file)
         if contrast=='dwi':
             file_curated = subject + '_rec-average_dwi_seg-manual.nii.gz' # Rename 
@@ -134,7 +198,7 @@ def main():
         # create json sidecar with the name of the expert rater if it doesn't exist.
         fname_json = fname.rstrip('.nii').rstrip('.nii.gz') + '.json'
         if not os.path.isfile(fname_json):
-            sg.cli.manual_correction.create_json(fname_label, name_rater)
+            create_json(fname_label, name_rater)
         else:
             fname_json_curated = fname_label.rstrip('.nii').rstrip('.nii.gz') + '.json'
             shutil.copy(fname_json, fname_json_curated)
