@@ -11,6 +11,7 @@ import os
 import shutil
 import yaml
 import json
+import time
 
 
 FOLDER_DERIVATIVES = os.path.join('derivatives', 'labels')
@@ -18,7 +19,7 @@ FOLDER_DERIVATIVES = os.path.join('derivatives', 'labels')
 
 def get_parser():
     parser = argparse.ArgumentParser(
-        description="Gets derivatives with label _seg-manual, removes suffix _RPI_r or _rms, creates json sidecar if it does not exist and creates a new curated derivatives folder. Ouptuts a .yml list with all manually corrected files." )
+        description="Gets derivatives with label _seg-manual, removes suffix _RPI_r or _rms, creates json sidecar if it does not exist and creates a new curated derivatives folder. Ouptuts a .yml list with all manually corrected files.")
     parser.add_argument('-path-in', required=True, type=str,
                         help="Input path to derivatives folder to curate. Example: /derivatives/labels/")
     parser.add_argument('-path-out', required=True, type=str,
@@ -151,8 +152,8 @@ def curate_csgseg(fname):
     try:
         os.remove(fname)
         os.remove(add_suffix(fname, '_RPI'))
-    except OSError as e:  ## if failed, report it back to the user ##
-        print ("Error: %s - %s." % (e.filename, e.strerror))
+    except OSError as e:  # if failed, report it back to the user ##
+        print("Error: %s - %s." % (e.filename, e.strerror))
 
     shutil.move(add_suffix(fname, '_RPI_r'), fname)
 
@@ -165,32 +166,32 @@ def main():
     path_out_deriv = check_output_folder(args.path_out, FOLDER_DERIVATIVES)
 
     name_rater = input("Enter your name (Firstname Lastname). It will be used to generate a json sidecar with each "
-                           "corrected file: ")
+                       "corrected file: ")
 
-    path_list = glob.glob(args.path_in + "/**/*seg-manual.nii.gz", recursive=True) # TODO: add other extension
+    path_list = glob.glob(args.path_in + "/**/*seg-manual.nii.gz", recursive=True)  # TODO: add other extension
     # Get only filenames without absolute path
     file_list = [os.path.split(path)[-1] for path in path_list]
 
     # Initialize empty dict to create a list of all corrected files.
-    manual_correction_list = {'FILES_SEG':[]}
+    manual_correction_list = {'FILES_SEG': []}
 
     for file in file_list:
         # build file names
         subject = get_subject(file)
         contrast = get_contrast(file)
-        if contrast=='dwi':
-            file_curated = subject + '_rec-average_dwi_seg-manual.nii.gz' # Rename 
+        if contrast == 'dwi':
+            file_curated = subject + '_rec-average_dwi_seg-manual.nii.gz'  # Rename
         else:
-            file_curated = remove_suffix(file, '_RPI_r') # Remove suffix on T1w and T2w images
-            file_curated = remove_suffix(file_curated, '_rms') # Remove suffix on T2star images
-        # Append file to list.    
+            file_curated = remove_suffix(file, '_RPI_r')  # Remove suffix on T1w and T2w images
+            file_curated = remove_suffix(file_curated, '_rms')  # Remove suffix on T2star images
+        # Append file to list.
         manual_correction_list['FILES_SEG'].append(remove_suffix(file_curated, '_seg-manual'))
         fname = os.path.join(args.path_in, subject, contrast, file)
         fname_label = os.path.join(
             path_out_deriv, subject, contrast, file_curated)
         os.makedirs(os.path.join(path_out_deriv, subject, contrast), exist_ok=True)
         shutil.copy(fname, fname_label)
-        
+    
         # Reorient and resample csfseg
         if 'csfseg-manual.nii.gz' in fname_label.split('_'):
             curate_csgseg(fname_label)
@@ -205,6 +206,7 @@ def main():
     # Create a yml list with the name of the derivatives.
     with open(os.path.join(args.path_out, 'manual_seg.yml'), 'w') as file:
         yaml.dump(manual_correction_list, file)
+
 
 if __name__ == '__main__':
     main()
