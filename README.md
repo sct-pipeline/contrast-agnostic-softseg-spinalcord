@@ -26,7 +26,7 @@ Mainly, it does:
 
 To use the script, run the following command:
 ~~~
-python curate_derivatives_spine_generic.py -path-in <PATH-DATA> -path-out ~/curated_derivatives
+python curate_derivatives_spine_generic.py -path-in /data-multi-subject/derivatives/labels -path-out ~/curated_derivatives
 ~~~
 
 ### Preprocessing
@@ -61,9 +61,9 @@ These processed dataset then need to be input into [another processing scripts](
 - average all segmentations from each contrast within the same space (the T2)
 - bring back the segmentations to the original image space of each contrast (except for the T2)
 
-The output of this script is a new 'derivatives/labels_softseg/' folder that contains the soft labels to be used in this contrast-agnostic segmentation project. 
+The output of this script is a new 'derivatives/labels_softseg/' folder that contains the soft labels to be used in this contrast-agnostic segmentation project. All the registration were manually QC-ed and the bad registrations were listed in [exclude_reg.yml](https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord/blob/main/exclude_reg.yml). The processing was run again to generate the soft segmentations. 
 
-Specify the path of preprocessed dataset with the flag `-path-data`.
+Specify the path of preprocessed dataset with the flag `-path-data`. 
 
 #### Launch processing
 
