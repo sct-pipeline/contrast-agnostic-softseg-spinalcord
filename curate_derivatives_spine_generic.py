@@ -122,9 +122,9 @@ def check_output_folder(path_bids, folder_derivatives):
     :return: path_bids_derivatives
     """
     if path_bids is None:
-        logging.error("-path-out should be provided.")
+        print("-path-out should be provided.")
     if not os.path.exists(path_bids):
-        logging.error("Output path does not exist: {}".format(path_bids))
+        print("Output path does not exist: {}".format(path_bids))
     path_bids_derivatives = os.path.join(path_bids, folder_derivatives)
     os.makedirs(path_bids_derivatives, exist_ok=True)
     return path_bids_derivatives
