@@ -117,7 +117,7 @@ cd ${SUBJECT}
 if [ -z "$EXCLUDE_LIST" ]; then
   EXCLUDE=""
 else
-  EXCLUDE=$(yaml $PWD/${EXCLUDE_LIST} "['FILES_REG']")
+  EXCLUDE=$(yaml $PATH_SCRIPT/${EXCLUDE_LIST} "['FILES_REG']")
 fi
 
 for contrast in "${contrasts[@]}"; do
