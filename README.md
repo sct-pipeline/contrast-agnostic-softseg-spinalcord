@@ -22,7 +22,7 @@ Mainly, it does:
 * Gets derivatives with suffix `_seg-manual`
 * Removes suffix `_RPI_r` or `_rms`
 * Creates a json sidecar if it does not exist
-* Reorient and resamples `_csgseg-manual.nii.gz` images
+* Reorients and resamples `_csgseg-manual.nii.gz` images
 
 To use the script, run the following command:
 ~~~
@@ -68,7 +68,7 @@ Specify the path of preprocessed dataset with the flag `-path-data`.
 #### Launch processing
 
 ```
-sct_run_batch -jobs -1 -path-data <PATH_DATA> -path-output <PATH-OUTPUT> -script process_data.sh
+sct_run_batch -jobs -1 -path-data <PATH_DATA> -path-output <PATH-OUTPUT> -script process_data.sh -script-args exclude_reg.yml
 ```
 
 
