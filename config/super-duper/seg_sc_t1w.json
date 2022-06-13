@@ -1,8 +1,8 @@
 {
     "command": "train",
     "gpu_ids": [0],
-    "path_output": "seg_sc_t1w_output",
-    "model_name": "seg_sc_t1w_model",
+    "path_output": "super_duper_seg_sc_t1w_output",
+    "model_name": "super_duper_seg_sc_t1w_model",
     "debugging": true,
     "object_detection_params": {
         "object_detection_path": null,
@@ -26,8 +26,8 @@
             "testing": ["T1w"],
             "balance": {}
         },
-        "slice_filter_params": {
-            "filter_empty_mask": false,
+        "patch_filter_params": {
+            "filter_empty_mask": true,
             "filter_empty_input": true
         },
         "slice_axis": "axial",
@@ -44,7 +44,7 @@
         "test_fraction": 0.2
     },
     "training_parameters": {
-        "batch_size": 4,
+        "batch_size": 2,
         "loss": {
             "name": "DiceLoss"
         },
@@ -82,8 +82,8 @@
     },
     "Modified3DUNet": {
         "applied": true,
-        "length_3D": [128, 128, 16],
-        "stride_3D": [128, 128, 16],
+        "length_3D": [224, 256, 320],
+        "stride_3D": [224, 256, 320],
         "attention": false,
         "n_filters": 8
     },
@@ -99,12 +99,12 @@
     "transformation": {
         "Resample":
         {
-            "hspace": 0.75,
-            "wspace": 0.75,
+            "hspace": 1,
+            "wspace": 1,
             "dspace": 1
         },
         "CenterCrop": {
-            "size": [128, 128, 16]
+            "size": [224, 256, 320]
         },
         "RandomAffine": {
             "degrees": 10,
@@ -114,28 +114,28 @@
             "dataset_type": ["training"]
         },
         "ElasticTransform": {
-			"alpha_range": [25.0, 35.0],
-			"sigma_range":  [3.5, 5.5],
-			"p": 0.0,
+            "alpha_range": [25.0, 35.0],
+            "sigma_range":  [3.5, 5.5],
+            "p": 0.5,
             "applied_to": ["im", "gt"],
             "dataset_type": ["training"]
         },
         "RandomGamma": {
             "log_gamma_range": [-1.0, 1.0],
-            "p": 0.0,
+            "p": 0.5,
             "applied_to": ["im"],
             "dataset_type": ["training"]
         },
         "RandomBiasField": {
             "coefficients": 0.5,
             "order": 3,
-            "p": 0.0,
+            "p": 0.3,
             "applied_to": ["im"],
             "dataset_type": ["training"]
         },
         "RandomBlur": {
             "sigma_range": [0.0, 2.0],
-            "p": 0.0,
+            "p": 0.3,
             "applied_to": ["im"],
             "dataset_type": ["training"]
         },
