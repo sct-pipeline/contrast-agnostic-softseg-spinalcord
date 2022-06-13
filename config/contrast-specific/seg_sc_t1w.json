@@ -1,8 +1,8 @@
 {
     "command": "train",
     "gpu_ids": [0],
-    "path_output": "seg_sc_t1w_output",
-    "model_name": "seg_sc_t1w_model",
+    "path_output": "contrast_specific_seg_sc_t1w_output",
+    "model_name": "contrast_specific_seg_sc_t1w_model",
     "debugging": true,
     "object_detection_params": {
         "object_detection_path": null,
@@ -26,16 +26,16 @@
             "testing": ["T1w"],
             "balance": {}
         },
-        "slice_filter_params": {
-            "filter_empty_mask": false,
+        "patch_filter_params": {
+            "filter_empty_mask": true,
             "filter_empty_input": true
         },
         "slice_axis": "axial",
         "multichannel": false,
-        "soft_gt": true
+        "soft_gt": false
     },
     "split_dataset": {
-        "fname_split": null,
+        "fname_split": "super_duper_seg_sc_t1w_output/split_datasets.joblib",
         "random_seed": 42,
         "center_test": [],
         "method": "per_patient",
@@ -44,7 +44,7 @@
         "test_fraction": 0.2
     },
     "training_parameters": {
-        "batch_size": 4,
+        "batch_size": 2,
         "loss": {
             "name": "DiceLoss"
         },
@@ -78,12 +78,12 @@
         "bn_momentum": 0.1,
         "depth": 4,
         "is_2d": false,
-        "final_activation": "relu"
+        "final_activation": "sigmoid"
     },
     "Modified3DUNet": {
         "applied": true,
-        "length_3D": [128, 128, 16],
-        "stride_3D": [128, 128, 16],
+        "length_3D": [224, 256, 320],
+        "stride_3D": [224, 256, 320],
         "attention": false,
         "n_filters": 8
     },
@@ -93,18 +93,18 @@
         "n_it": 0
     },
     "postprocessing": {
-        "binarize_prediction": {"thr": -1}
+        "binarize_prediction": {"thr": 0.5}
     },
     "evaluation_parameters": {},
     "transformation": {
         "Resample":
         {
-            "hspace": 0.75,
-            "wspace": 0.75,
+            "hspace": 1,
+            "wspace": 1,
             "dspace": 1
         },
         "CenterCrop": {
-            "size": [128, 128, 16]
+            "size": [224, 256, 320]
         },
         "RandomAffine": {
             "degrees": 10,
@@ -114,28 +114,28 @@
             "dataset_type": ["training"]
         },
         "ElasticTransform": {
-			"alpha_range": [25.0, 35.0],
-			"sigma_range":  [3.5, 5.5],
-			"p": 0.0,
+            "alpha_range": [25.0, 35.0],
+            "sigma_range":  [3.5, 5.5],
+            "p": 0.5,
             "applied_to": ["im", "gt"],
             "dataset_type": ["training"]
         },
         "RandomGamma": {
             "log_gamma_range": [-1.0, 1.0],
-            "p": 0.0,
+            "p": 0.5,
             "applied_to": ["im"],
             "dataset_type": ["training"]
         },
         "RandomBiasField": {
             "coefficients": 0.5,
             "order": 3,
-            "p": 0.0,
+            "p": 0.3,
             "applied_to": ["im"],
             "dataset_type": ["training"]
         },
         "RandomBlur": {
             "sigma_range": [0.0, 2.0],
-            "p": 0.0,
+            "p": 0.3,
             "applied_to": ["im"],
             "dataset_type": ["training"]
         },
