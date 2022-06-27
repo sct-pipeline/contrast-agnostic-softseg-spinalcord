@@ -69,7 +69,7 @@ rsync -avzh $PATH_DATA/derivatives/labels_softseg/$SUBJECT derivatives/labels_so
 # (1) Go to subject folder for source images
 cd ${SUBJECT}
 
-# Define paths for all contrasts
+# Define paths for images and spinal cord GTs for all contrasts
 file_t1w_onlyfile="${SUBJECT}_T1w"
 file_t1w="anat/${SUBJECT}_T1w"
 file_t2w_onlyfile="${SUBJECT}_T2w"
@@ -77,32 +77,34 @@ file_t2w="anat/${SUBJECT}_T2w"
 file_t2star_onlyfile="${SUBJECT}_T2star"
 file_t2star="anat/${SUBJECT}_T2star"
 
-# Get spinal cord centerline for all contrasts
-sct_get_centerline -i ${file_t1w}.nii.gz -c "t1" -method "optic" -o ${file_t1w_onlyfile}_centerline
-sct_get_centerline -i ${file_t2w}.nii.gz -c "t2" -method "optic" -o ${file_t2w_onlyfile}_centerline
-sct_get_centerline -i ${file_t2star}.nii.gz -c "t2s" -method "optic" -o ${file_t2star_onlyfile}_centerline
+file_t1w_gt_onlyfile="${SUBJECT}_T1w_seg-manual"
+file_t1w_gt="anat/${SUBJECT}_T1w_seg-manual"
+file_t2w_gt_onlyfile="${SUBJECT}_T2w_seg-manual"
+file_t2w_gt="anat/${SUBJECT}_T2w_seg-manual"
+file_t2star_gt_onlyfile="${SUBJECT}_T2star_seg-manual"
+file_t2star_gt="anat/${SUBJECT}_T2star_seg-manual"
 
-# Get spinal cord ROI for all contrasts
-sct_create_mask -i ${file_t1w}.nii.gz -p centerline,${file_t1w_onlyfile}_centerline.nii.gz -o ${file_t1w_onlyfile}_roi.nii.gz
-sct_create_mask -i ${file_t2w}.nii.gz -p centerline,${file_t2w_onlyfile}_centerline.nii.gz -o ${file_t2w_onlyfile}_roi.nii.gz
-sct_create_mask -i ${file_t2star}.nii.gz -p centerline,${file_t2star_onlyfile}_centerline.nii.gz -o ${file_t2star_onlyfile}_roi.nii.gz
-# TODO: Maybe some dilation?
+file_t1w_soft_gt_onlyfile="${SUBJECT}_T1w_softseg"
+file_t1w_soft_gt="anat/${SUBJECT}_T1w_softseg"
+file_t2w_soft_gt_onlyfile="${SUBJECT}_T2w_softseg"
+file_t2w_soft_gt="anat/${SUBJECT}_T2w_softseg"
+file_t2star_soft_gt_onlyfile="${SUBJECT}_T2star_softseg"
+file_t2star_soft_gt="anat/${SUBJECT}_T2star_softseg"
 
-# Compute the bounding box coordinates of spinal cord ROI mask for cropping for all contrasts
-# NOTE: `fslstats -w returns the smallest ROI <xmin> <xsize> <ymin> <ysize> <zmin> <zsize> <tmin> <tsize> containing nonzero voxels
-t1w_roi_bbox_coords=$(fslstats ${file_t1w_onlyfile}_roi.nii.gz -w)
-t2w_roi_bbox_coords=$(fslstats ${file_t2w_onlyfile}_roi.nii.gz -w)
-t2star_roi_bbox_coords=$(fslstats ${file_t2star_onlyfile}_roi.nii.gz -w)
+# Dilate spinal cord mask
+sct_maths -i $PATH_DATA_PROCESSED/derivatives/labels/$SUBJECT/${file_t1w_gt}.nii.gz -dilate 7 -shape ball -o ${file_t1w_gt_onlyfile}_dilate.nii.gz
+sct_maths -i $PATH_DATA_PROCESSED/derivatives/labels/$SUBJECT/${file_t2w_gt}.nii.gz -dilate 7 -shape ball -o ${file_t2w_gt_onlyfile}_dilate.nii.gz
+sct_maths -i $PATH_DATA_PROCESSED/derivatives/labels/$SUBJECT/${file_t2star_gt}.nii.gz -dilate 7 -shape ball -o ${file_t2star_gt_onlyfile}_dilate.nii.gz
 
 # Apply spinal cord mask to all contrasts
-fslmaths ${file_t1w}.nii.gz -mas ${file_t1w_onlyfile}_roi.nii.gz ${file_t1w_onlyfile}.nii.gz
-fslmaths ${file_t2w}.nii.gz -mas ${file_t2w_onlyfile}_roi.nii.gz ${file_t2w_onlyfile}.nii.gz
-fslmaths ${file_t2star}.nii.gz -mas ${file_t2star_onlyfile}_roi.nii.gz ${file_t2star_onlyfile}.nii.gz
+# sct_maths -i ${file_t1w}.nii.gz -mul ${file_t1w_gt_onlyfile}_dilate.nii.gz -o ${file_t1w_onlyfile}.nii.gz
+# sct_maths -i ${file_t2w}.nii.gz -mul ${file_t2w_gt_onlyfile}_dilate.nii.gz -o ${file_t2w_onlyfile}.nii.gz
+# sct_maths -i ${file_t2star}.nii.gz -mul ${file_t2star_gt_onlyfile}_dilate.nii.gz -o ${file_t2star_onlyfile}.nii.gz
 
 # Crop the ROI based on spinal cord mask to minimize the input image size
-fslroi ${file_t1w_onlyfile}.nii.gz ${file_t1w_onlyfile}.nii.gz $t1w_roi_bbox_coords
-fslroi ${file_t2w_onlyfile}.nii.gz ${file_t2w_onlyfile}.nii.gz $t2w_roi_bbox_coords
-fslroi ${file_t2star_onlyfile}.nii.gz ${file_t2star_onlyfile}.nii.gz $t2star_roi_bbox_coords
+sct_crop_image -i ${file_t1w}.nii.gz -m ${file_t1w_gt_onlyfile}_dilate.nii.gz -o ${file_t1w_onlyfile}.nii.gz
+sct_crop_image -i ${file_t2w}.nii.gz -m ${file_t2w_gt_onlyfile}_dilate.nii.gz -o ${file_t2w_onlyfile}.nii.gz
+sct_crop_image -i ${file_t2star}.nii.gz -m ${file_t2star_gt_onlyfile}_dilate.nii.gz -o ${file_t2star_onlyfile}.nii.gz
 
 # The following files are the final images for the contrasts, which will be inputted to the model
 # t1w -> ${file_t1w_onlyfile}.nii.gz
@@ -112,22 +114,15 @@ fslroi ${file_t2star_onlyfile}.nii.gz ${file_t2star_onlyfile}.nii.gz $t2star_roi
 # (2) Go to subject folder for original segmentation GTs
 cd $PATH_DATA_PROCESSED/derivatives/labels/$SUBJECT
 
-file_t1w_gt_onlyfile="${SUBJECT}_T1w_seg-manual"
-file_t1w_gt="anat/${SUBJECT}_T1w_seg-manual"
-file_t2w_gt_onlyfile="${SUBJECT}_T2w_seg-manual"
-file_t2w_gt="anat/${SUBJECT}_T2w_seg-manual"
-file_t2star_gt_onlyfile="${SUBJECT}_T2star_seg-manual"
-file_t2star_gt="anat/${SUBJECT}_T2star_seg-manual"
-
 # Apply the spinal cord mask to all GTs for all contrasts
-fslmaths ${file_t1w_gt}.nii.gz -mas $PATH_DATA_PROCESSED/$SUBJECT/${file_t1w_onlyfile}_roi ${file_t1w_gt_onlyfile}.nii.gz
-fslmaths ${file_t2w_gt}.nii.gz -mas $PATH_DATA_PROCESSED/$SUBJECT/${file_t2w_onlyfile}_roi ${file_t2w_gt_onlyfile}.nii.gz
-fslmaths ${file_t2star_gt}.nii.gz -mas $PATH_DATA_PROCESSED/$SUBJECT/${file_t2star_onlyfile}_roi ${file_t2star_gt_onlyfile}.nii.gz
+# sct_maths -i ${file_t1w_gt}.nii.gz -mul $PATH_DATA_PROCESSED/$SUBJECT/${file_t1w_gt_onlyfile}_dilate.nii.gz -o ${file_t1w_gt_onlyfile}.nii.gz
+# sct_maths -i ${file_t2w_gt}.nii.gz -mul $PATH_DATA_PROCESSED/$SUBJECT/${file_t2w_gt_onlyfile}_dilate.nii.gz -o ${file_t2w_gt_onlyfile}.nii.gz
+# sct_maths -i ${file_t2star_gt}.nii.gz -mul $PATH_DATA_PROCESSED/$SUBJECT/${file_t2star_gt_onlyfile}_dilate.nii.gz -o ${file_t2star_gt_onlyfile}.nii.gz
 
 # Crop the ROI based on spinal cord mask to minimize the GT image size
-fslroi ${file_t1w_gt_onlyfile}.nii.gz ${file_t1w_gt_onlyfile}.nii.gz $t1w_roi_bbox_coords
-fslroi ${file_t2w_gt_onlyfile}.nii.gz ${file_t2w_gt_onlyfile}.nii.gz $t2w_roi_bbox_coords
-fslroi ${file_t2star_gt_onlyfile}.nii.gz ${file_t2star_gt_onlyfile}.nii.gz $t2star_roi_bbox_coords
+sct_crop_image -i ${file_t1w_gt}.nii.gz -m $PATH_DATA_PROCESSED/$SUBJECT/${file_t1w_gt_onlyfile}_dilate.nii.gz -o ${file_t1w_gt_onlyfile}.nii.gz
+sct_crop_image -i ${file_t2w_gt}.nii.gz -m $PATH_DATA_PROCESSED/$SUBJECT/${file_t2w_gt_onlyfile}_dilate.nii.gz -o ${file_t2w_gt_onlyfile}.nii.gz
+sct_crop_image -i ${file_t2star_gt}.nii.gz -m $PATH_DATA_PROCESSED/$SUBJECT/${file_t2star_gt_onlyfile}_dilate.nii.gz -o ${file_t2star_gt_onlyfile}.nii.gz
 
 # The following files are the final GTs for all contrasts, which will be inputted to the model
 # t1w -> ${file_t1w_gt_onlyfile}.nii.gz
@@ -137,22 +132,15 @@ fslroi ${file_t2star_gt_onlyfile}.nii.gz ${file_t2star_gt_onlyfile}.nii.gz $t2st
 # (3) Go to subject folder for soft, super-duper segmentation GTs
 cd $PATH_DATA_PROCESSED/derivatives/labels_softseg/$SUBJECT
 
-file_t1w_soft_gt_onlyfile="${SUBJECT}_T1w_softseg"
-file_t1w_soft_gt="anat/${SUBJECT}_T1w_softseg"
-file_t2w_soft_gt_onlyfile="${SUBJECT}_T2w_softseg"
-file_t2w_soft_gt="anat/${SUBJECT}_T2w_softseg"
-file_t2star_soft_gt_onlyfile="${SUBJECT}_T2star_softseg"
-file_t2star_soft_gt="anat/${SUBJECT}_T2star_softseg"
-
 # Apply the spinal cord mask to all GTs for all contrasts
-fslmaths ${file_t1w_soft_gt}.nii.gz -mas $PATH_DATA_PROCESSED/$SUBJECT/${file_t1w_onlyfile}_roi ${file_t1w_soft_gt_onlyfile}.nii.gz
-fslmaths ${file_t2w_soft_gt}.nii.gz -mas $PATH_DATA_PROCESSED/$SUBJECT/${file_t2w_onlyfile}_roi ${file_t2w_soft_gt_onlyfile}.nii.gz
-fslmaths ${file_t2star_soft_gt}.nii.gz -mas $PATH_DATA_PROCESSED/$SUBJECT/${file_t2star_onlyfile}_roi ${file_t2star_soft_gt_onlyfile}.nii.gz
+# sct_maths -i ${file_t1w_soft_gt}.nii.gz -mul $PATH_DATA_PROCESSED/$SUBJECT/${file_t1w_gt_onlyfile}_dilate.nii.gz -o ${file_t1w_soft_gt_onlyfile}.nii.gz
+# sct_maths -i ${file_t2w_soft_gt}.nii.gz -mul $PATH_DATA_PROCESSED/$SUBJECT/${file_t2w_gt_onlyfile}_dilate.nii.gz -o ${file_t2w_soft_gt_onlyfile}.nii.gz
+# sct_maths -i ${file_t2star_soft_gt}.nii.gz -mul $PATH_DATA_PROCESSED/$SUBJECT/${file_t2star_gt_onlyfile}_dilate.nii.gz -o ${file_t2star_soft_gt_onlyfile}.nii.gz
 
 # Crop the ROI based on spinal cord mask to minimize the GT image size
-fslroi ${file_t1w_soft_gt_onlyfile}.nii.gz ${file_t1w_soft_gt_onlyfile}.nii.gz $t1w_roi_bbox_coords
-fslroi ${file_t2w_soft_gt_onlyfile}.nii.gz ${file_t2w_soft_gt_onlyfile}.nii.gz $t2w_roi_bbox_coords
-fslroi ${file_t2star_soft_gt_onlyfile}.nii.gz ${file_t2star_soft_gt_onlyfile}.nii.gz $t2star_roi_bbox_coords
+sct_crop_image -i ${file_t1w_soft_gt}.nii.gz -m $PATH_DATA_PROCESSED/$SUBJECT/${file_t1w_gt_onlyfile}_dilate.nii.gz -o ${file_t1w_soft_gt_onlyfile}.nii.gz
+sct_crop_image -i ${file_t2w_soft_gt}.nii.gz -m $PATH_DATA_PROCESSED/$SUBJECT/${file_t2w_gt_onlyfile}_dilate.nii.gz -o ${file_t2w_soft_gt_onlyfile}.nii.gz
+sct_crop_image -i ${file_t2star_soft_gt}.nii.gz -m $PATH_DATA_PROCESSED/$SUBJECT/${file_t2star_gt_onlyfile}_dilate.nii.gz -o ${file_t2star_soft_gt_onlyfile}.nii.gz
 
 # The following files are the final soft GTs for all contrasts, which will be inputted to the model
 # t1w -> ${file_t1w_soft_gt_onlyfile}.nii.gz
