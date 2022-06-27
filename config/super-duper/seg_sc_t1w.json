@@ -9,7 +9,7 @@
         "safety_factor": [1.0, 1.0, 1.0]
     },
     "loader_parameters": {
-        "path_data": ["spine-generic-processed"],
+        "path_data": ["spine-generic-processed-cropped/data_processed_clean"],
         "subject_selection": {
             "n": [],
             "metadata": [],
@@ -44,7 +44,7 @@
         "test_fraction": 0.2
     },
     "training_parameters": {
-        "batch_size": 2,
+        "batch_size": 4,
         "loss": {
             "name": "DiceLoss"
         },
@@ -82,8 +82,8 @@
     },
     "Modified3DUNet": {
         "applied": true,
-        "length_3D": [224, 256, 320],
-        "stride_3D": [224, 256, 320],
+        "length_3D": [48, 176, 288],
+        "stride_3D": [48, 176, 288],
         "attention": false,
         "n_filters": 8
     },
@@ -104,7 +104,7 @@
             "dspace": 1
         },
         "CenterCrop": {
-            "size": [224, 256, 320]
+            "size": [48, 176, 288]
         },
         "RandomAffine": {
             "degrees": 10,
