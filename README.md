@@ -22,7 +22,7 @@ Mainly, it does:
 * Gets derivatives with suffix `_seg-manual`
 * Removes suffix `_RPI_r` or `_rms`
 * Creates a json sidecar if it does not exist
-* Reorients and resamples `_csgseg-manual.nii.gz` images
+* Reorients and resamples `_csfseg-manual.nii.gz` images
 
 To use the script, run the following command:
 ~~~
