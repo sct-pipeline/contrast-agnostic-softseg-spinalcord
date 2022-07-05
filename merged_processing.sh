@@ -265,7 +265,7 @@ if [[ -e $FILESOFTSEGMANUAL_T2 ]]; then
   rsync -avzh $FILESSEGMANUAL ./anat/ # Transfer segmentations too
 
   dwi_soft="${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/dwi/${SUBJECT}_rec-average_dwi_mean_softseg.nii.gz"
-  dwi_seg="${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/dwi/${SUBJECT}_rec-average_dwi_seg-manual.nii.gz"
+  dwi_seg="${PATH_DATA}/derivatives/labels/${SUBJECT}/dwi/${SUBJECT}_rec-average_dwi_seg-manual.nii.gz"
   if [[ -e $dwi_soft ]];then
     rsync -avzh $dwi_soft ./dwi/
   fi
@@ -387,11 +387,11 @@ for file_path in "${inc_contrasts[@]}";do
   rsync -avzh $PATH_DATA_PROCESSED/${SUBJECT}/${file_path}.json $PATH_DATA_PROCESSED_CLEAN/${SUBJECT}/${file_path}.json
 
   # Derivatives (soft and seg)
-  rsync -avzh $PATH_DATA_PROCESSED/${SUBJECT}/${fileseg}_crop.nii.gz $PATH_DATA_PROCESSED_CLEAN/derivatives/labels/${SUBJECT}/$type/${fileseg}.nii.gz
-  rsync -avzh $PATH_DATA_PROCESSED/${SUBJECT}/${filesoftseg}_crop.nii.gz $PATH_DATA_PROCESSED_CLEAN/derivatives/labels_softseg/${SUBJECT}/$type/${filesoftseg}.nii.gz
+  rsync -avzh $PATH_DATA_PROCESSED/${SUBJECT}/${fileseg}_crop.nii.gz $PATH_DATA_PROCESSED_CLEAN/derivatives/labels/${SUBJECT}/$type${fileseg}.nii.gz
+  rsync -avzh $PATH_DATA_PROCESSED/${SUBJECT}/${filesoftseg}_crop.nii.gz $PATH_DATA_PROCESSED_CLEAN/derivatives/labels_softseg/${SUBJECT}/$type${filesoftseg}.nii.gz
   # Move json files of derivatives
-  rsync -avzh "${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/$type/${filesoftseg}.json"
-  rsync -avzh "${PATH_DATA}/derivatives/labels/${SUBJECT}/$type/${fileseg}.json"
+  rsync -avzh "${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/$type${filesoftseg}.json"
+  rsync -avzh "${PATH_DATA}/derivatives/labels/${SUBJECT}/$type${fileseg}.json"
 
 done
 
