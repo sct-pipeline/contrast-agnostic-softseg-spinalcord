@@ -378,20 +378,27 @@ for file_path in "${inc_contrasts[@]}";do
   sct_crop_image -i ${file_path}.nii.gz -m ${fileseg}_dilate.nii.gz -o ${file_path}_crop.nii.gz
   # Crop softseg
   sct_crop_image -i ${filesoftseg}.nii.gz -m ${fileseg}_dilate.nii.gz -o ${filesoftseg}_crop.nii.gz
-  
+  # Crop seg
+  sct_crop_image -i ${fileseg}.nii.gz -m ${fileseg}_dilate.nii.gz -o ${fileseg}_crop.nii.gz
+
+
   mkdir -p $PATH_DATA_PROCESSED_CLEAN $PATH_DATA_PROCESSED_CLEAN/${SUBJECT}/$type $PATH_DATA_PROCESSED_CLEAN/derivatives/labels/${SUBJECT}/$type
   mkdir -p $PATH_DATA_PROCESSED_CLEAN/derivatives/labels_softseg/${SUBJECT}/$type
+
+  # Remove ./ in front of anat or dwi
+  #fileseg
+  #filesoftseg
 
   # Put cropped image in cleaned dataset
   rsync -avzh $PATH_DATA_PROCESSED/${SUBJECT}/${file_path}_crop.nii.gz $PATH_DATA_PROCESSED_CLEAN/${SUBJECT}/${file_path}.nii.gz
   rsync -avzh $PATH_DATA_PROCESSED/${SUBJECT}/${file_path}.json $PATH_DATA_PROCESSED_CLEAN/${SUBJECT}/${file_path}.json
 
   # Derivatives (soft and seg)
-  rsync -avzh $PATH_DATA_PROCESSED/${SUBJECT}/${fileseg}_crop.nii.gz $PATH_DATA_PROCESSED_CLEAN/derivatives/labels/${SUBJECT}/${fileseg/#"./"}.nii.gz
-  rsync -avzh $PATH_DATA_PROCESSED/${SUBJECT}/${filesoftseg}_crop.nii.gz $PATH_DATA_PROCESSED_CLEAN/derivatives/labels_softseg/${SUBJECT}/${filesoftseg/#"./"}.nii.gz
+  rsync -avzh $PATH_DATA_PROCESSED/${SUBJECT}/${fileseg}_crop.nii.gz $PATH_DATA_PROCESSED_CLEAN/derivatives/labels/${SUBJECT}/${fileseg}.nii.gz
+  rsync -avzh $PATH_DATA_PROCESSED/${SUBJECT}/${filesoftseg}_crop.nii.gz $PATH_DATA_PROCESSED_CLEAN/derivatives/labels_softseg/${SUBJECT}/${filesoftseg}.nii.gz
   # Move json files of derivatives
-  rsync -avzh "${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/${filesoftseg/#"./"}.json"
-  rsync -avzh "${PATH_DATA}/derivatives/labels/${SUBJECT}/${fileseg/#"./"}.json"
+  rsync -avzh "${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/${filesoftseg}.json"
+  rsync -avzh "${PATH_DATA}/derivatives/labels/${SUBJECT}/${fileseg}.json"
 
 done
 
