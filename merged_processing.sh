@@ -389,7 +389,7 @@ for file_path in "${inc_contrasts[@]}";do
   rsync -avzh $PATH_DATA_PROCESSED/${SUBJECT}/${file_path}_crop.nii.gz $PATH_DATA_PROCESSED_CLEAN/${SUBJECT}/${file_path}.nii.gz
 
   # Don't copy .json file 
-  if echo "$file" | grep -q "$dwi"; then
+  if echo "$file_path" | grep -q "./dwi"; then
     echo "No .json file for dwi."
   else  
     rsync -avzh $PATH_DATA_PROCESSED/${SUBJECT}/${file_path}.json $PATH_DATA_PROCESSED_CLEAN/${SUBJECT}/${file_path}.json
