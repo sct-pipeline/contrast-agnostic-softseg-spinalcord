@@ -264,13 +264,14 @@ if [[ -e $FILESOFTSEGMANUAL_T2 ]]; then
   rsync -avzh $FILESOFTSEGMANUAL ./anat/
   rsync -avzh $FILESSEGMANUAL ./anat/ # Transfer segmentations too
 
-  dwi_soft="${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/dwi/*_dwi_softseg.nii.gz"
+  dwi_soft="${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/dwi/*_dwi_mean_softseg.nii.gz"
   dwi_seg="${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/dwi/*_dwi_seg-manual.nii.gz"
   if [[ -f $dwi_soft ]];then
     mv $dwi_soft ./dwi/
-    mv $dwi_soft ./dwi/
   fi
-
+  if [[ -f $dwi_seg ]];then
+    mv $dwi_seg ./dwi/
+  fi
 else
   echo "Manual soft segmentation not found."
   # Generate softsegs
@@ -362,7 +363,7 @@ PATH_DATA_PROCESSED_CLEAN="${PATH_DATA_PROCESSED}_clean"
 rsync -avzh $PATH_DATA_PROCESSED/dataset_description.json $PATH_DATA_PROCESSED_CLEAN/
 rsync -avzh $PATH_DATA_PROCESSED/participants.* $PATH_DATA_PROCESSED_CLEAN/
 rsync -avzh $PATH_DATA_PROCESSED/README.md $PATH_DATA_PROCESSED_CLEAN/
-rsync -avzh $PATH_DATA_PROCESSED/dataset_description.json $PATH_DATA_PROCESSED_CLEAN/derivatives/
+rsync -avzh $PATH_DATA_PROCESSED/dataset_description.json $PATH_DATA_PROCESSED_CLEAN/
 
 for file_path in "${inc_contrasts[@]}";do
   type=$(find_contrast $file_path)
@@ -384,8 +385,12 @@ for file_path in "${inc_contrasts[@]}";do
   rsync -avzh $PATH_DATA_PROCESSED/${SUBJECT}/${file_path}_crop.nii.gz $PATH_DATA_PROCESSED_CLEAN/${SUBJECT}/${file_path}.nii.gz
   rsync -avzh $PATH_DATA_PROCESSED/${SUBJECT}/${file_path}.json $PATH_DATA_PROCESSED_CLEAN/${SUBJECT}/${file_path}.json
 
-    # TODO rsync cropped derivatives (soft and seg)
-  mkdir -p $PATH_DATA_PROCESSED_CLEAN $PATH_DATA_PROCESSED_CLEAN/${SUBJECT}/$type
+  # Derivatives (soft and seg)
+  rsync -avzh $PATH_DATA_PROCESSED/${SUBJECT}/${fileseg}_crop.nii.gz $PATH_DATA_PROCESSED_CLEAN/derivatives/labels/${SUBJECT}/$type/${fileseg}.nii.gz
+  rsync -avzh $PATH_DATA_PROCESSED/${SUBJECT}/${filesoftseg}_crop.nii.gz $PATH_DATA_PROCESSED_CLEAN/derivatives/labels_softseg/${SUBJECT}/$type/${filesoftseg}.nii.gz
+  # Move json files of derivatives
+  rsync -avzh "${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/$type/${filesoftseg}.json"
+  rsync -avzh "${PATH_DATA}/derivatives/labels/${SUBJECT}/$type/${fileseg}.json"
 
 done
 
