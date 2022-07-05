@@ -264,13 +264,13 @@ if [[ -e $FILESOFTSEGMANUAL_T2 ]]; then
   rsync -avzh $FILESOFTSEGMANUAL ./anat/
   rsync -avzh $FILESSEGMANUAL ./anat/ # Transfer segmentations too
 
-  dwi_soft="${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/dwi/*_dwi_mean_softseg.nii.gz"
-  dwi_seg="${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/dwi/*_dwi_seg-manual.nii.gz"
-  if [[ -f $dwi_soft ]];then
-    mv $dwi_soft ./dwi/
+  dwi_soft="${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/dwi/${SUBJECT}_rec-average_dwi_mean_softseg.nii.gz"
+  dwi_seg="${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/dwi/${SUBJECT}_rec-average_dwi_seg-manual.nii.gz"
+  if [[ -e $dwi_soft ]];then
+    rsync -avzh $dwi_soft ./dwi/
   fi
-  if [[ -f $dwi_seg ]];then
-    mv $dwi_seg ./dwi/
+  if [[ -e $dwi_seg ]];then
+    rsync -avzh $dwi_seg ./dwi/
   fi
 else
   echo "Manual soft segmentation not found."
