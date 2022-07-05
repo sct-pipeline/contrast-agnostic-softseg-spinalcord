@@ -370,6 +370,7 @@ for file_path in "${inc_contrasts[@]}";do
   file=${file_path/#"$type"}
   fileseg=${file_path}_seg-manual
   filesoftseg=${file_path}_softseg
+  type=${type//'./'/}
   cd $PATH_DATA_PROCESSED/$SUBJECT 
   # Dilate spinal cord segmentation
   sct_maths -i ${fileseg}.nii.gz -dilate 7 -shape ball -o ${fileseg}_dilate.nii.gz
