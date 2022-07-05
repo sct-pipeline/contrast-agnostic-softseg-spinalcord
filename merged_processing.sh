@@ -365,6 +365,7 @@ rsync -avzh $PATH_DATA_PROCESSED/participants.* $PATH_DATA_PROCESSED_CLEAN/
 rsync -avzh $PATH_DATA_PROCESSED/README.md $PATH_DATA_PROCESSED_CLEAN/
 rsync -avzh $PATH_DATA_PROCESSED/dataset_description.json $PATH_DATA_PROCESSED_CLEAN/
 
+inc_contrasts+=("./anat/${file_t2}")
 for file_path in "${inc_contrasts[@]}";do
   type=$(find_contrast $file_path)
   file=${file_path/#"$type"}
