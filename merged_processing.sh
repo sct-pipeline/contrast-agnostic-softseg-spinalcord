@@ -57,7 +57,7 @@ if [[ ! -f "dataset_description.json" ]]; then
   rsync -avzh $PATH_DATA/dataset_description.json .
 fi
 if [[ ! -f "README.md" ]]; then
-  rsync -avzh $PATH_DATA/README .
+  rsync -avzh $PATH_DATA/README.md .
 fi
 # Copy list of participants in results folder (used by spine-generic scripts)
 if [[ ! -f $PATH_RESULTS/"participants.tsv" ]]; then
