@@ -218,7 +218,6 @@ fi
 
 # Go back to parent folder
 cd ..
-echo "$PWD"
 
 # Initialize filenames
 file_t1="${SUBJECT}_T1w"
@@ -229,8 +228,6 @@ file_mton="${SUBJECT}_acq-MTon_MTS"
 file_dwi_mean="${SUBJECT}_rec-average_dwi"
 contrasts=($file_t1 $file_t2s $file_t1w $file_mton $file_dwi_mean)
 inc_contrasts=()
-
-cd ${SUBJECT}
 
 # Check if a list of images to exclude was passed.
 if [ -z "$EXCLUDE_LIST" ]; then
