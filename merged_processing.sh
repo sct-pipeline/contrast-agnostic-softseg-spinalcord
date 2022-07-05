@@ -385,13 +385,15 @@ for file_path in "${inc_contrasts[@]}";do
   mkdir -p $PATH_DATA_PROCESSED_CLEAN $PATH_DATA_PROCESSED_CLEAN/${SUBJECT}/$type $PATH_DATA_PROCESSED_CLEAN/derivatives/labels/${SUBJECT}/$type
   mkdir -p $PATH_DATA_PROCESSED_CLEAN/derivatives/labels_softseg/${SUBJECT}/$type
 
-  # Remove ./ in front of anat or dwi
-  #fileseg
-  #filesoftseg
-
   # Put cropped image in cleaned dataset
   rsync -avzh $PATH_DATA_PROCESSED/${SUBJECT}/${file_path}_crop.nii.gz $PATH_DATA_PROCESSED_CLEAN/${SUBJECT}/${file_path}.nii.gz
-  rsync -avzh $PATH_DATA_PROCESSED/${SUBJECT}/${file_path}.json $PATH_DATA_PROCESSED_CLEAN/${SUBJECT}/${file_path}.json
+
+  # Don't copy .json file 
+  if echo "$file" | grep -q "$dwi"; then
+    echo "No .json file for dwi."
+  else  
+    rsync -avzh $PATH_DATA_PROCESSED/${SUBJECT}/${file_path}.json $PATH_DATA_PROCESSED_CLEAN/${SUBJECT}/${file_path}.json
+  fi
 
   # Derivatives (soft and seg)
   rsync -avzh $PATH_DATA_PROCESSED/${SUBJECT}/${fileseg}_crop.nii.gz $PATH_DATA_PROCESSED_CLEAN/derivatives/labels/${SUBJECT}/${fileseg}.nii.gz
