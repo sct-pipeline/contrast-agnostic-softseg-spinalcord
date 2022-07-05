@@ -218,6 +218,7 @@ fi
 
 # Go back to parent folder
 cd ..
+echo "$PWD"
 
 # Initialize filenames
 file_t1="${SUBJECT}_T1w"
