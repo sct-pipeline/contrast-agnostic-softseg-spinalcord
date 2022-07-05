@@ -253,13 +253,24 @@ echo "Contrasts are" ${inc_contrasts[@]}
 
 # Check if softsegs exists, if not, generate softsegs:
 FILESOFTSEGMANUAL="${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/*/*softseg.nii.gz"
+FILESSEGMANUAL="${PATH_DATA}/derivatives/labels/${SUBJECT}/*/*seg-manual.nii.gz"
 FILESOFTSEGMANUAL_T2="${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/anat/${SUBJECT}_T2w_softseg.nii.gz"
 
 
 echo "Looking for T2w soft segmentation: $FILESOFTSEGMANUAL_T2"
 if [[ -e $FILESOFTSEGMANUAL_T2 ]]; then
   echo "Found! Using manual soft segmentations."
-  rsync -avzh $FILESOFTSEGMANUAL . # todo, validate
+  # Move all softsegs to data_processed
+  rsync -avzh $FILESOFTSEGMANUAL ./anat/
+  rsync -avzh $FILESSEGMANUAL ./anat/ # Transfer segmentations too
+
+  dwi_soft="${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/dwi/*_dwi_softseg.nii.gz"
+  dwi_seg="${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/dwi/*_dwi_seg-manual.nii.gz"
+  if [[ -f $dwi_soft ]];then
+    mv $dwi_soft ./dwi/
+    mv $dwi_soft ./dwi/
+  fi
+
 else
   echo "Manual soft segmentation not found."
   # Generate softsegs
@@ -337,7 +348,8 @@ else
     sct_maths -i ${file_path}_softseg.nii.gz -o ${file_path}_softseg.nii.gz -mul ${file_path}_ones.nii.gz
     # Generate QC report
     sct_qc -i ${file_path}.nii.gz -s ${file_path}_softseg.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
-
+    # Rename segmentation to seg-manual
+    mv ${fileseg}.nii.nii.gz ${file_path}_seg-manual.nii.gz
   done
 
 fi
@@ -355,14 +367,14 @@ rsync -avzh $PATH_DATA_PROCESSED/dataset_description.json $PATH_DATA_PROCESSED_C
 for file_path in "${inc_contrasts[@]}";do
   type=$(find_contrast $file_path)
   file=${file_path/#"$type"}
-  fileseg=${file_path}_seg
+  fileseg=${file_path}_seg-manual
   filesoftseg=${file_path}_softseg
   cd $PATH_DATA_PROCESSED/$SUBJECT 
   # Dilate spinal cord segmentation
   sct_maths -i ${fileseg}.nii.gz -dilate 7 -shape ball -o ${fileseg}_dilate.nii.gz
   # Crop image 
   sct_crop_image -i ${file_path}.nii.gz -m ${fileseg}_dilate.nii.gz -o ${file_path}_crop.nii.gz
-  # Crop softseg , modify banes
+  # Crop softseg
   sct_crop_image -i ${filesoftseg}.nii.gz -m ${fileseg}_dilate.nii.gz -o ${filesoftseg}_crop.nii.gz
   
   mkdir -p $PATH_DATA_PROCESSED_CLEAN $PATH_DATA_PROCESSED_CLEAN/${SUBJECT}/$type $PATH_DATA_PROCESSED_CLEAN/derivatives/labels/${SUBJECT}/$type
