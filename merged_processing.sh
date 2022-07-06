@@ -350,7 +350,7 @@ else
     # Generate QC report
     sct_qc -i ${file_path}.nii.gz -s ${file_path}_softseg.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
     # Rename segmentation to seg-manual
-    mv ${fileseg}.nii.nii.gz ${file_path}_seg-manual.nii.gz
+    mv ${fileseg}.nii.gz ${file_path}_seg-manual.nii.gz
   done
 
 fi
