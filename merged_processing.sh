@@ -375,7 +375,7 @@ for file_path in "${inc_contrasts[@]}";do
   type=$(find_contrast $file_path)
   file=${file_path/#"$type"}
   fileseg=${file_path}_seg-manual
-  filesoftseg=/${file_path}_softseg
+  filesoftseg=${file_path}_softseg
 
   cd $PATH_DATA_PROCESSED/$SUBJECT 
 
