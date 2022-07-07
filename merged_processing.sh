@@ -375,17 +375,19 @@ for file_path in "${inc_contrasts[@]}";do
   type=$(find_contrast $file_path)
   file=${file_path/#"$type"}
   fileseg=${file_path}_seg-manual
-  filesoftseg=${file_path}_softseg
+  filesoftseg=/${file_path}_softseg
 
   cd $PATH_DATA_PROCESSED/$SUBJECT 
+
+  # Onlu use segmentations and softsegmentations in the derivatives.
   # Dilate spinal cord segmentation
-  sct_maths -i ${fileseg}.nii.gz -dilate 7 -shape ball -o ${fileseg}_dilate.nii.gz
+  sct_maths -i ${PATH_DATA}/derivatives/labels/${SUBJECT}/${fileseg}.nii.gz -dilate 7 -shape ball -o ${fileseg}_dilate.nii.gz
   # Crop image 
   sct_crop_image -i ${file_path}.nii.gz -m ${fileseg}_dilate.nii.gz -o ${file_path}_crop.nii.gz
   # Crop softseg
-  sct_crop_image -i ${filesoftseg}.nii.gz -m ${fileseg}_dilate.nii.gz -o ${filesoftseg}_crop.nii.gz
+  sct_crop_image -i ${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/${filesoftseg}.nii.gz -m ${fileseg}_dilate.nii.gz -o ${filesoftseg}_crop.nii.gz
   # Crop seg
-  sct_crop_image -i ${fileseg}.nii.gz -m ${fileseg}_dilate.nii.gz -o ${fileseg}_crop.nii.gz
+  sct_crop_image -i ${PATH_DATA}/derivatives/labels/${SUBJECT}/${fileseg}.nii.gz -m ${fileseg}_dilate.nii.gz -o ${fileseg}_crop.nii.gz
 
 
   mkdir -p $PATH_DATA_PROCESSED_CLEAN $PATH_DATA_PROCESSED_CLEAN/${SUBJECT}/$type $PATH_DATA_PROCESSED_CLEAN/derivatives/labels/${SUBJECT}/$type
@@ -401,12 +403,12 @@ for file_path in "${inc_contrasts[@]}";do
     rsync -avzh $PATH_DATA_PROCESSED/${SUBJECT}/${file_path}.json $PATH_DATA_PROCESSED_CLEAN/${SUBJECT}/${file_path}.json
   fi
 
-  # Derivatives (soft and seg)
+  # Move segmentation and soft segmentation to the cleanded derivatives
   rsync -avzh $PATH_DATA_PROCESSED/${SUBJECT}/${fileseg}_crop.nii.gz $PATH_DATA_PROCESSED_CLEAN/derivatives/labels/${SUBJECT}/${fileseg}.nii.gz
   rsync -avzh $PATH_DATA_PROCESSED/${SUBJECT}/${filesoftseg}_crop.nii.gz $PATH_DATA_PROCESSED_CLEAN/derivatives/labels_softseg/${SUBJECT}/${filesoftseg}.nii.gz
   # Move json files of derivatives
-  rsync -avzh "${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/${filesoftseg}.json" $PATH_DATA_PROCESSED_CLEAN/derivatives/labels_softseg/${SUBJECT}/${filesoftseg}.json
   rsync -avzh "${PATH_DATA}/derivatives/labels/${SUBJECT}/${fileseg}.json" $PATH_DATA_PROCESSED_CLEAN/derivatives/labels/${SUBJECT}/${fileseg}.json
+  rsync -avzh "${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/${filesoftseg}.json" $PATH_DATA_PROCESSED_CLEAN/derivatives/labels_softseg/${SUBJECT}/${filesoftseg}.json
 
 done
 
