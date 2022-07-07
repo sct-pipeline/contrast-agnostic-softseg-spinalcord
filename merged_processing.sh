@@ -135,87 +135,94 @@ cd ${SUBJECT}/anat/
 # ------------------------------------------------------------------------------
 
 file_t1="${SUBJECT}_T1w"
-# Rename the raw image
-mv ${file_t1}.nii.gz ${file_t1}_raw.nii.gz
-file_t1="${file_t1}_raw"
+if [[ -e $file_t1 ]];then
 
-# Reorient to RPI and resample to 1mm iso (supposed to be the effective resolution)
-sct_image -i ${file_t1}.nii.gz -setorient RPI -o ${file_t1}_RPI.nii.gz
-sct_resample -i ${file_t1}_RPI.nii.gz -mm 1x1x1 -o ${file_t1}_RPI_r.nii.gz
-file_t1="${file_t1}_RPI_r"
+  # Rename the raw image
+  mv ${file_t1}.nii.gz ${file_t1}_raw.nii.gz
+  file_t1="${file_t1}_raw"
 
-# Rename _RPI_r file
-mv ${file_t1}.nii.gz ${SUBJECT}_T1w.nii.gz
+  # Reorient to RPI and resample to 1mm iso (supposed to be the effective resolution)
+  sct_image -i ${file_t1}.nii.gz -setorient RPI -o ${file_t1}_RPI.nii.gz
+  sct_resample -i ${file_t1}_RPI.nii.gz -mm 1x1x1 -o ${file_t1}_RPI_r.nii.gz
+  file_t1="${file_t1}_RPI_r"
 
-# Delete raw and reoriented to RPI images
-rm -f ${SUBJECT}_T1w_raw.nii.gz ${SUBJECT}_T1w_raw_RPI.nii.gz
+  # Rename _RPI_r file
+  mv ${file_t1}.nii.gz ${SUBJECT}_T1w.nii.gz
+
+  # Delete raw and reoriented to RPI images
+  rm -f ${SUBJECT}_T1w_raw.nii.gz ${SUBJECT}_T1w_raw_RPI.nii.gz
 
 
 # T2
 # ------------------------------------------------------------------------------
 file_t2="${SUBJECT}_T2w"
-# Rename raw file
-mv ${file_t2}.nii.gz ${file_t2}_raw.nii.gz
-file_t2="${file_t2}_raw"
 
-# Reorient to RPI and resample to 0.8mm iso (supposed to be the effective resolution)
-sct_image -i ${file_t2}.nii.gz -setorient RPI -o ${file_t2}_RPI.nii.gz
-sct_resample -i ${file_t2}_RPI.nii.gz -mm 0.8x0.8x0.8 -o ${file_t2}_RPI_r.nii.gz
-file_t2="${file_t2}_RPI_r"
+elif [[ -e $file_t2 ]];then
+  # Rename raw file
+  mv ${file_t2}.nii.gz ${file_t2}_raw.nii.gz
+  file_t2="${file_t2}_raw"
 
-# Rename _RPI_r file
-mv ${file_t2}.nii.gz ${SUBJECT}_T2w.nii.gz
+  # Reorient to RPI and resample to 0.8mm iso (supposed to be the effective resolution)
+  sct_image -i ${file_t2}.nii.gz -setorient RPI -o ${file_t2}_RPI.nii.gz
+  sct_resample -i ${file_t2}_RPI.nii.gz -mm 0.8x0.8x0.8 -o ${file_t2}_RPI_r.nii.gz
+  file_t2="${file_t2}_RPI_r"
 
-# Delete raw, reoriented to RPI images
-rm -f ${SUBJECT}_T2w_raw.nii.gz ${SUBJECT}_T2w_raw_RPI.nii.gz
+  # Rename _RPI_r file
+  mv ${file_t2}.nii.gz ${SUBJECT}_T2w.nii.gz
+
+  # Delete raw, reoriented to RPI images
+  rm -f ${SUBJECT}_T2w_raw.nii.gz ${SUBJECT}_T2w_raw_RPI.nii.gz
 
 
 # T2s
 # ------------------------------------------------------------------------------
 file_t2s="${SUBJECT}_T2star"
-# Rename raw file
-mv ${file_t2s}.nii.gz ${file_t2s}_raw.nii.gz
-file_t2s="${file_t2s}_raw"
+elif [[ -e $file_t2s ]];then
+  # Rename raw file
+  mv ${file_t2s}.nii.gz ${file_t2s}_raw.nii.gz
+  file_t2s="${file_t2s}_raw"
 
-# Compute root-mean square across 4th dimension (if it exists), corresponding to all echoes in Philips scans.
-sct_maths -i ${file_t2s}.nii.gz -rms t -o ${file_t2s}_rms.nii.gz
-file_t2s="${file_t2s}_rms"
+  # Compute root-mean square across 4th dimension (if it exists), corresponding to all echoes in Philips scans.
+  sct_maths -i ${file_t2s}.nii.gz -rms t -o ${file_t2s}_rms.nii.gz
+  file_t2s="${file_t2s}_rms"
 
-# Rename _rms file
-mv ${file_t2s}.nii.gz ${SUBJECT}_T2star.nii.gz
+  # Rename _rms file
+  mv ${file_t2s}.nii.gz ${SUBJECT}_T2star.nii.gz
 
-# Delete raw images
-rm -f ${SUBJECT}_T2star_raw.nii.gz
+  # Delete raw images
+  rm -f ${SUBJECT}_T2star_raw.nii.gz
 
 
 # DWI
 # ------------------------------------------------------------------------------
 file_dwi="${SUBJECT}_dwi"
-cd ../dwi
-# If there is an additional b=0 scan, add it to the main DWI data
-concatenate_b0_and_dwi "${SUBJECT}_acq-b0_dwi" $file_dwi
-file_dwi=$FILE_DWI
-file_bval=${file_dwi}.bval
-file_bvec=${file_dwi}.bvec
-# Separate b=0 and DW images
-sct_dmri_separate_b0_and_dwi -i ${file_dwi}.nii.gz -bvec ${file_bvec}
-# Get centerline
-sct_get_centerline -i ${file_dwi}_dwi_mean.nii.gz -c dwi -qc ${PATH_QC} -qc-subject ${SUBJECT}
-# Create mask to help motion correction and for faster processing
-sct_create_mask -i ${file_dwi}_dwi_mean.nii.gz -p centerline,${file_dwi}_dwi_mean_centerline.nii.gz -size 30mm
-# Motion correction
-sct_dmri_moco -i ${file_dwi}.nii.gz -bvec ${file_dwi}.bvec -m mask_${file_dwi}_dwi_mean.nii.gz -x spline
+elif [[ -e $file_dwi ]];then
 
-# Rename _moco_dwi_mean file
-mv ${FILE_DWI}_moco_dwi_mean.nii.gz ${SUBJECT}_rec-average_dwi.nii.gz
+  cd ../dwi
+  # If there is an additional b=0 scan, add it to the main DWI data
+  concatenate_b0_and_dwi "${SUBJECT}_acq-b0_dwi" $file_dwi
+  file_dwi=$FILE_DWI
+  file_bval=${file_dwi}.bval
+  file_bvec=${file_dwi}.bvec
+  # Separate b=0 and DW images
+  sct_dmri_separate_b0_and_dwi -i ${file_dwi}.nii.gz -bvec ${file_bvec}
+  # Get centerline
+  sct_get_centerline -i ${file_dwi}_dwi_mean.nii.gz -c dwi -qc ${PATH_QC} -qc-subject ${SUBJECT}
+  # Create mask to help motion correction and for faster processing
+  sct_create_mask -i ${file_dwi}_dwi_mean.nii.gz -p centerline,${file_dwi}_dwi_mean_centerline.nii.gz -size 30mm
+  # Motion correction
+  sct_dmri_moco -i ${file_dwi}.nii.gz -bvec ${file_dwi}.bvec -m mask_${file_dwi}_dwi_mean.nii.gz -x spline
 
-# Remove intermediate files
-if [[ -e ${SUBJECT}_acq-b0_dwi.nii.gz ]]; then
+  # Rename _moco_dwi_mean file
+  mv ${FILE_DWI}_moco_dwi_mean.nii.gz ${SUBJECT}_rec-average_dwi.nii.gz
+
+  # Remove intermediate files
+  if [[ -e ${SUBJECT}_acq-b0_dwi.nii.gz ]]; then
     rm -f mask_${FILE_DWI}_dwi_mean.nii.gz moco_params.tsv moco_params_x.nii.gz moco_params_y.nii.gz ${FILE_DWI}.bval ${FILE_DWI}.bvec ${FILE_DWI}.nii.gz ${FILE_DWI}_b0.nii.gz ${FILE_DWI}_b0_mean.nii.gz ${FILE_DWI}_dwi.nii.gz ${FILE_DWI}_dwi_mean.nii.gz ${FILE_DWI}_dwi_mean_centerline.nii.gz ${FILE_DWI}_moco.nii.gz ${FILE_DWI}_moco_b0_mean.nii.gz ${FILE_DWI}_dwi_mean_centerline.csv
-else
+  else
     rm -f mask_${FILE_DWI}_dwi_mean.nii.gz moco_params.tsv moco_params_x.nii.gz moco_params_y.nii.gz ${FILE_DWI}_b0.nii.gz ${FILE_DWI}_b0_mean.nii.gz ${FILE_DWI}_dwi.nii.gz ${FILE_DWI}_dwi_mean.nii.gz ${FILE_DWI}_dwi_mean_centerline.nii.gz ${FILE_DWI}_moco.nii.gz ${FILE_DWI}_moco_b0_mean.nii.gz ${FILE_DWI}_dwi_mean_centerline.csv
+  fi
 fi
-
 # Go back to parent folder
 cd ..
 
@@ -349,8 +356,6 @@ else
     sct_maths -i ${file_path}_softseg.nii.gz -o ${file_path}_softseg.nii.gz -mul ${file_path}_ones.nii.gz
     # Generate QC report
     sct_qc -i ${file_path}.nii.gz -s ${file_path}_softseg.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
-    # Rename segmentation to seg-manual
-    mv ${fileseg}.nii.gz ${file_path}_seg-manual.nii.gz
   done
 
 fi
