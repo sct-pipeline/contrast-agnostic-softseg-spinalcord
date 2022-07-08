@@ -151,13 +151,13 @@ if [[ -e $file_t1 ]];then
 
   # Delete raw and reoriented to RPI images
   rm -f ${SUBJECT}_T1w_raw.nii.gz ${SUBJECT}_T1w_raw_RPI.nii.gz
-
+fi
 
 # T2
 # ------------------------------------------------------------------------------
 file_t2="${SUBJECT}_T2w"
 
-elif [[ -e $file_t2 ]];then
+if [[ -e $file_t2 ]];then
   # Rename raw file
   mv ${file_t2}.nii.gz ${file_t2}_raw.nii.gz
   file_t2="${file_t2}_raw"
@@ -172,12 +172,12 @@ elif [[ -e $file_t2 ]];then
 
   # Delete raw, reoriented to RPI images
   rm -f ${SUBJECT}_T2w_raw.nii.gz ${SUBJECT}_T2w_raw_RPI.nii.gz
-
+fi
 
 # T2s
 # ------------------------------------------------------------------------------
 file_t2s="${SUBJECT}_T2star"
-elif [[ -e $file_t2s ]];then
+if [[ -e $file_t2s ]];then
   # Rename raw file
   mv ${file_t2s}.nii.gz ${file_t2s}_raw.nii.gz
   file_t2s="${file_t2s}_raw"
@@ -191,13 +191,12 @@ elif [[ -e $file_t2s ]];then
 
   # Delete raw images
   rm -f ${SUBJECT}_T2star_raw.nii.gz
-
+fi
 
 # DWI
 # ------------------------------------------------------------------------------
 file_dwi="${SUBJECT}_dwi"
-elif [[ -e $file_dwi ]];then
-
+if [[ -e $file_dwi ]];then
   cd ../dwi
   # If there is an additional b=0 scan, add it to the main DWI data
   concatenate_b0_and_dwi "${SUBJECT}_acq-b0_dwi" $file_dwi
@@ -385,7 +384,7 @@ for file_path in "${inc_contrasts[@]}";do
   # Crop image 
   sct_crop_image -i ${file_path}.nii.gz -m ${fileseg}_dilate.nii.gz -o ${file_path}_crop.nii.gz
   # Crop softseg
-  sct_crop_image -i ${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/${filesoftseg}.nii.gz -m ${fileseg}_dilate.nii.gz -o ${filesoftseg}_crop.nii.gz
+  sct_crop_image -i ${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/${filecd ..softseg}.nii.gz -m ${fileseg}_dilate.nii.gz -o ${filesoftseg}_crop.nii.gz
   # Crop seg
   sct_crop_image -i ${PATH_DATA}/derivatives/labels/${SUBJECT}/${fileseg}.nii.gz -m ${fileseg}_dilate.nii.gz -o ${fileseg}_crop.nii.gz
 
