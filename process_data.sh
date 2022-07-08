@@ -157,7 +157,7 @@ fi
 # ------------------------------------------------------------------------------
 file_t2="${SUBJECT}_T2w"
 
-if [[ -f $file_t2 ]];then
+if [[ -f ${file_t2}.nii.gz ]];then
   # Rename raw file
   mv ${file_t2}.nii.gz ${file_t2}_raw.nii.gz
   file_t2="${file_t2}_raw"
@@ -177,7 +177,7 @@ fi
 # T2s
 # ------------------------------------------------------------------------------
 file_t2s="${SUBJECT}_T2star"
-if [[ -f $file_t2s ]];then
+if [[ -f ${file_t2s}.nii.gz ]];then
   # Rename raw file
   mv ${file_t2s}.nii.gz ${file_t2s}_raw.nii.gz
   file_t2s="${file_t2s}_raw"
@@ -196,7 +196,7 @@ fi
 # DWI
 # ------------------------------------------------------------------------------
 file_dwi="${SUBJECT}_dwi"
-if [[ -f $file_dwi ]];then
+if [[ -f ${file_dwi}.nii.gz ]];then
   cd ../dwi
   # If there is an additional b=0 scan, add it to the main DWI data
   concatenate_b0_and_dwi "${SUBJECT}_acq-b0_dwi" $file_dwi
