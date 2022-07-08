@@ -135,7 +135,7 @@ cd ${SUBJECT}/anat/
 # ------------------------------------------------------------------------------
 
 file_t1="${SUBJECT}_T1w"
-if [[ -e $file_t1 ]];then
+if [[ -f $file_t1 ]];then
 
   # Rename the raw image
   mv ${file_t1}.nii.gz ${file_t1}_raw.nii.gz
@@ -157,7 +157,7 @@ fi
 # ------------------------------------------------------------------------------
 file_t2="${SUBJECT}_T2w"
 
-if [[ -e $file_t2 ]];then
+if [[ -f $file_t2 ]];then
   # Rename raw file
   mv ${file_t2}.nii.gz ${file_t2}_raw.nii.gz
   file_t2="${file_t2}_raw"
@@ -177,7 +177,7 @@ fi
 # T2s
 # ------------------------------------------------------------------------------
 file_t2s="${SUBJECT}_T2star"
-if [[ -e $file_t2s ]];then
+if [[ -f $file_t2s ]];then
   # Rename raw file
   mv ${file_t2s}.nii.gz ${file_t2s}_raw.nii.gz
   file_t2s="${file_t2s}_raw"
@@ -196,7 +196,7 @@ fi
 # DWI
 # ------------------------------------------------------------------------------
 file_dwi="${SUBJECT}_dwi"
-if [[ -e $file_dwi ]];then
+if [[ -f $file_dwi ]];then
   cd ../dwi
   # If there is an additional b=0 scan, add it to the main DWI data
   concatenate_b0_and_dwi "${SUBJECT}_acq-b0_dwi" $file_dwi
