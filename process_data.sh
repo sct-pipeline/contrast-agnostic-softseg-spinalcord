@@ -192,12 +192,12 @@ if [[ -f ${file_t2s}.nii.gz ]];then
   # Delete raw images
   rm -f ${SUBJECT}_T2star_raw.nii.gz
 fi
-
+cd ..
 # DWI
 # ------------------------------------------------------------------------------
 file_dwi="${SUBJECT}_dwi"
-if [[ -f ${file_dwi}.nii.gz ]];then
-  cd ../dwi
+if [[ -f ./dwi/${file_dwi}.nii.gz ]];then
+  cd ./dwi
   # If there is an additional b=0 scan, add it to the main DWI data
   concatenate_b0_and_dwi "${SUBJECT}_acq-b0_dwi" $file_dwi
   file_dwi=$FILE_DWI
