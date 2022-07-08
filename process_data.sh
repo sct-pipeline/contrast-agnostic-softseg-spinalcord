@@ -225,10 +225,7 @@ fi
 # Go back to parent folder
 cd ..
 
-# Initialize filenames
-file_t1="${SUBJECT}_T1w"
-file_t2="${SUBJECT}_T2w"
-file_t2s="${SUBJECT}_T2star"
+# Initialize filenames (for MTR)
 file_t1w="${SUBJECT}_acq-T1w_MTS"
 file_mton="${SUBJECT}_acq-MTon_MTS"
 file_dwi_mean="${SUBJECT}_rec-average_dwi"
