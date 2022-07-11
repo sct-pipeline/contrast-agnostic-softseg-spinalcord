@@ -5,7 +5,7 @@
 #     For T2s : Compute root-mean square across 4th dimension (if it exists)
 #     For dwi : Generate mean image after motion correction.
 #     
-#     Crops all images to???
+#     Crop all images.
 #     Generates soft segmentations.
 # Usage:
 #   ./process_data.sh <SUBJECT>
@@ -59,7 +59,7 @@ fi
 if [[ ! -f "README.md" ]]; then
   rsync -avzh $PATH_DATA/README.md .
 fi
-# Copy list of participants in results folder (used by spine-generic scripts)
+# Copy list of participants in results folder
 if [[ ! -f $PATH_RESULTS/"participants.tsv" ]]; then
   rsync -avzh $PATH_DATA/participants.tsv $PATH_RESULTS/"participants.tsv"
 fi
@@ -135,13 +135,14 @@ cd ${SUBJECT}/anat/
 # ------------------------------------------------------------------------------
 
 file_t1="${SUBJECT}_T1w"
+# Check if T1w image exists
 if [[ -f $file_t1 ]];then
 
   # Rename the raw image
   mv ${file_t1}.nii.gz ${file_t1}_raw.nii.gz
   file_t1="${file_t1}_raw"
 
-  # Reorient to RPI and resample to 1mm iso (supposed to be the effective resolution)
+  # Reorient to RPI and resample to 1 mm iso (supposed to be the effective resolution)
   sct_image -i ${file_t1}.nii.gz -setorient RPI -o ${file_t1}_RPI.nii.gz
   sct_resample -i ${file_t1}_RPI.nii.gz -mm 1x1x1 -o ${file_t1}_RPI_r.nii.gz
   file_t1="${file_t1}_RPI_r"
@@ -156,7 +157,7 @@ fi
 # T2
 # ------------------------------------------------------------------------------
 file_t2="${SUBJECT}_T2w"
-
+# Check if T2w image exists
 if [[ -f ${file_t2}.nii.gz ]];then
   # Rename raw file
   mv ${file_t2}.nii.gz ${file_t2}_raw.nii.gz
@@ -177,6 +178,7 @@ fi
 # T2s
 # ------------------------------------------------------------------------------
 file_t2s="${SUBJECT}_T2star"
+# Check if T2star image exists
 if [[ -f ${file_t2s}.nii.gz ]];then
   # Rename raw file
   mv ${file_t2s}.nii.gz ${file_t2s}_raw.nii.gz
@@ -196,6 +198,7 @@ cd ..
 # DWI
 # ------------------------------------------------------------------------------
 file_dwi="${SUBJECT}_dwi"
+# Check if dwi images exists
 if [[ -f ./dwi/${file_dwi}.nii.gz ]];then
   cd ./dwi
   # If there is an additional b=0 scan, add it to the main DWI data
@@ -262,7 +265,7 @@ FILESOFTSEGMANUAL="${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/*/*softseg
 FILESSEGMANUAL="${PATH_DATA}/derivatives/labels/${SUBJECT}/*/*seg-manual.nii.gz"
 FILESOFTSEGMANUAL_T2="${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/anat/${SUBJECT}_T2w_softseg.nii.gz"
 
-
+# Only check for T2w softseg
 echo "Looking for T2w soft segmentation: $FILESOFTSEGMANUAL_T2"
 if [[ -e $FILESOFTSEGMANUAL_T2 ]]; then
   echo "Found! Using manual soft segmentations."
@@ -378,7 +381,7 @@ for file_path in "${inc_contrasts[@]}";do
 
   cd $PATH_DATA_PROCESSED/$SUBJECT 
 
-  # Onlu use segmentations and softsegmentations in the derivatives.
+  # Onlu use segmentations and soft segmentations in the derivatives.
   # Dilate spinal cord segmentation
   sct_maths -i ${PATH_DATA}/derivatives/labels/${SUBJECT}/${fileseg}.nii.gz -dilate 7 -shape ball -o ${fileseg}_dilate.nii.gz
   # Crop image 
