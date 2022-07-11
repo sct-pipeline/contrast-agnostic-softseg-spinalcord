@@ -11,7 +11,7 @@ This repo creates a series of preparations for comparing the newly trained ivado
 ## Dataset
 The data are from the [spine-generic multi-subject](https://github.com/spine-generic/data-multi-subject/)
 
-### Processing
+## Processing
 Main processing steps include:
 
 For T1w and T2w :
@@ -39,7 +39,7 @@ The output of this script is a new 'derivatives/labels_softseg/' folder that con
 
 Specify the path of preprocessed dataset with the flag `-path-data`. 
 
-#### Launch processing
+### Launch processing
 
 ```
 sct_run_batch -jobs -1 -path-data <PATH_DATA> -path-output <PATH-OUTPUT> -script process_data.sh -script-args exclude_reg.yml
@@ -47,7 +47,7 @@ sct_run_batch -jobs -1 -path-data <PATH_DATA> -path-output <PATH-OUTPUT> -script
 
 A `process_data_clean` folder is created in <PATH-OUTPUT> where the cropped data and derivatives are included. Here, only the images that have a manual segmentation and soft segmentation are transfered.
 
-#### Quality control
+### Quality control
 
 After running the analysis, check your Quality Control (qc) report by opening the file <PATH-OUTPUT>/qc/index.html. Use the "search" feature of the QC report to quickly jump to segmentations or labeling issues.
 
@@ -58,7 +58,7 @@ If segmentation issues are noticed while checking the quality report, proceed to
 * In QC report, search for "deepseg" to only display results of spinal cord segmentation
 * Review segmentation and spinal cord.
 * Click on the F key to indicate if the segmentation is OK ✅, needs manual correction ❌ or if the data is not usable ⚠️ (artifact). Two .yml lists, one for manual corrections and one for the unusable data, will automatically be generated.
-* Download the lists by clicking on Download QC Fails and on Download Qc Artifacts.
+* Download the lists by clicking on **Download QC Fails*** and on **Download Qc Artifacts**.
 
 Proceed to manual correction using FSLeyes or ITK snap. Uplaod the manual segmentations (_seg-manual.nii.gz) with json sidecar in the derivatives.
 Re-run the analysis: [Launch processing](#launch-processing)
