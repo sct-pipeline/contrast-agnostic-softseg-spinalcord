@@ -11,21 +11,6 @@ This repo creates a series of preparations for comparing the newly trained ivado
 ## Dataset
 The data are from the [spine-generic multi-subject](https://github.com/spine-generic/data-multi-subject/)
 
-### Derivatives curation
-
-Since some derivatives and manual correction are present in the [spine-generic multi-subject](https://github.com/spine-generic/data-multi-subject/releases/tag/r20220125), they were curated and added to `spine-generic-processed/derivatives` using the script [curate_derivatives_spine_generic.py](https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord/blob/main/curate_derivatives_spine_generic.py).
-
-Mainly, it does:
-* Gets derivatives with suffix `_seg-manual`
-* Removes suffix `_RPI_r` or `_rms`
-* Creates a json sidecar if it does not exist
-* Reorients and resamples `_csfseg-manual.nii.gz` images
-
-To use the script, run the following command:
-~~~
-python curate_derivatives_spine_generic.py -path-in /data-multi-subject/derivatives/labels -path-out ~/curated_derivatives
-~~~
-
 ### Processing
 Main processing steps include:
 
