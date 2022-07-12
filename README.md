@@ -75,7 +75,7 @@ Re-run the analysis: [Launch processing](#launch-processing)
 * In QC report, search for "softseg" to only display results of spinal cord soft segmentation
 * Click on the F key to indicate if the soft segmentation is OK ✅, needs manual correction ❌ or if the data is not usable ⚠️ (artifact). Two .yml lists, one for manual corrections and one for the unusable data, will automatically be generated.
 * Download the list by clicking on **Download QC Fails**.
-* Uplaod the soft segmentations under `data-multi-subject/darivatives/labels_softseg`.
+* Upload the soft segmentations under `data-multi-subject/darivatives/labels_softseg`.
 * Re-run the analysis: [Launch processing](#launch-processing)
 
 ## Training
