@@ -58,7 +58,7 @@ If segmentation issues are noticed while checking the quality report, proceed to
 * In QC report, search for "deepseg" to only display results of spinal cord segmentation
 * Review segmentation and spinal cord.
 * Click on the F key to indicate if the segmentation is OK ✅, needs manual correction ❌ or if the data is not usable ⚠️ (artifact). Two .yml lists, one for manual corrections and one for the unusable data, will automatically be generated.
-* Download the lists by clicking on **Download QC Fails*** and on **Download Qc Artifacts**.
+* Download the lists by clicking on **Download QC Fails*** and on **Download QC Artifacts**.
 
 Proceed to manual correction using FSLeyes or ITK snap. Uplaod the manual segmentations (_seg-manual.nii.gz) with json sidecar in the derivatives.
 Re-run the analysis: [Launch processing](#launch-processing)
