@@ -89,7 +89,7 @@ concatenate_b0_and_dwi(){
 find_manual_seg(){
   local file="$1"
   local contrast="$2"
-  local constrat_for_seg="$3"
+  local contrast_for_seg="$3"
   # Find contrast
   if [[ $contrast == "./dwi/" ]]; then
     folder_contrast="dwi"
@@ -109,7 +109,7 @@ find_manual_seg(){
   else
     echo "Manual segmentation not found."
     # Segment spinal cord
-    sct_deepseg_sc -i ${folder_contrast}/${file}.nii.gz -c $constrat_for_seg -qc ${PATH_QC} -qc-subject ${SUBJECT} -o ${folder_contrast}/${FILESEG}.nii.gz
+    sct_deepseg_sc -i ${folder_contrast}/${file}.nii.gz -c $contrast_for_seg -qc ${PATH_QC} -qc-subject ${SUBJECT} -o ${folder_contrast}/${FILESEG}.nii.gz
     
   fi
 }
