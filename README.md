@@ -67,7 +67,7 @@ Re-run the analysis: [Launch processing](#launch-processing)
 
 * In QC report, search for "sct_register_multimodal" to only display results of registration.
 * Click on the F key to indicate if the registration is OK ✅, needs to be excluded ❌ or if the data is not usable ⚠️ (artifact). Two .yml lists, will automatically be generated.
-* Downlaod the list by clicking on **Download QC Fails** and add the file names under `FILES_REG` to https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord/blob/main/exclude_reg.yml
+* Download the list by clicking on **Download QC Fails** and add the file names under `FILES_REG` to https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord/blob/main/exclude_reg.yml
 * Re-run the analysis: [Launch processing](#launch-processing)
 
 **3. Soft segmentations**
