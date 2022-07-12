@@ -27,7 +27,7 @@ For DWI:
 * Generate mean image after motion correction
 * Remove intermidiate files
 
-Next steps are to generate a constrast-agnostic soft segmentation: 
+Next steps are to generate a contrast-agnostic soft segmentation: 
 - creates spinal cord segmentation (if it doesn't exist yet)
 - creates a mask around the T2 spinal cord
 - co-register all contrasts to the T2 spinal cord 
