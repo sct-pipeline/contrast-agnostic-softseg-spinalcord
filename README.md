@@ -33,7 +33,7 @@ Next steps are to generate a contrast-agnostic soft segmentation:
 - co-register all contrasts to the T2 spinal cord 
 - average all segmentations from each contrast within the same space (the T2)
 - bring back the segmentations to the original image space of each contrast (except for the T2)
-- Crop images, segmentations and soft segmentation arround the spinal cord
+- Crop images, segmentations and soft segmentation around the spinal cord
 
 The output of this script is a new 'derivatives/labels_softseg/' folder that contains the soft labels to be used in this contrast-agnostic segmentation project. All the registration were manually QC-ed and the problematic registrations were listed in [exclude_reg.yml](https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord/blob/main/exclude_reg.yml). The processing was run again to generate the soft segmentations. 
 
