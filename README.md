@@ -35,7 +35,7 @@ Next steps are to generate a contrast-agnostic soft segmentation:
 - bring back the segmentations to the original image space of each contrast (except for the T2)
 - Crop images, segmentations and soft segmentation around the spinal cord
 
-The output of this script is a new 'derivatives/labels_softseg/' folder that contains the soft labels to be used in this contrast-agnostic segmentation project. All the registration were manually QC-ed and the problematic registrations were listed in [exclude_reg.yml](https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord/blob/main/exclude_reg.yml). The processing was run again to generate the soft segmentations. 
+The output of this script is a new `derivatives/labels_softseg/` folder that contains the soft labels to be used in this contrast-agnostic segmentation project. All the registration were manually QC-ed (see [Quality Control](#quality-control)) and the problematic registrations were listed in [exclude_reg.yml](https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord/blob/main/exclude_reg.yml). The processing was run again to generate the soft segmentations. 
 
 Specify the path of preprocessed dataset with the flag `-path-data`. 
 
