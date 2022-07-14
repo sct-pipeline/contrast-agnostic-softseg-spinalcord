@@ -58,7 +58,7 @@ label_if_does_not_exist(){
   local file_seg="$2"
   # Update global variable with segmentation file name
   FILELABEL="${file}_labels-disc"
-  FILELABELMANUAL="${PATH_DATA}/derivatives/labels/${SUBJECT}/anat/${FILELABEL}-manual.nii.gz"
+  FILELABELMANUAL="${PATH_DATA}/derivatives/labels/${SUBJECT}/${FILELABEL}-manual.nii.gz"
   echo "Looking for manual label: $FILELABELMANUAL"
   if [[ -e $FILELABELMANUAL ]]; then
     echo "Found! Using manual labels."
@@ -101,8 +101,6 @@ inc_contrasts=()
 # Check available contrasts
 # ------------------------------------------------------------------------------
 
-cd ${SUBJECT}
-
 # Check if a list of images to exclude was passed.
 if [ -z "$EXCLUDE_LIST" ]; then
   EXCLUDE=""
@@ -127,19 +125,22 @@ echo "Contrasts are" ${inc_contrasts[@]}
 
 
 # Copy predicted segmentation
-rsync -avzh =${PATH_PRED_SEG}/${SUBJECT}_T2w_pred.nii.gz ./anat/
-pred_seg_t2=./anat/${SUBJECT}_T2w_pred
+rsync -avzh ${PATH_PRED_SEG}/${SUBJECT}_T2w_pred.nii.gz ./anat/
+pred_seg_t2=${SUBJECT}_T2w_pred
 
+# Put pred mask in the original image space
+#sct_register_multimodal -i $pred_seg_t2 -d ./anat/$file_t2 -identity 1
+#pred_seg_t2=${pred_seg_t2}_reg
 # Create labeled segmentation of vertebral levels (only if it does not exist) 
-label_if_does_not_exist ./anat/$file_t2 $pred_seg_t2
+label_if_does_not_exist ./anat/$file_t2 ./anat/$pred_seg_t2
 
 # Generate QC report to assess vertebral labeling
-sct_qc -i ./anat/${file_t1}.nii.gz -s ./anat/${pred_seg_t2}.nii.gz -p sct_label_vertebrae -qc ${PATH_QC} -qc-subject ${SUBJECT}
+sct_qc -i ./anat/${file_t2}.nii.gz -s ./anat/${pred_seg_t2}.nii.gz -p sct_label_vertebrae -qc ${PATH_QC} -qc-subject ${SUBJECT}
 
 file_t2_seg_labeled="${pred_seg_t2}_labeled"
 file_t2_disc="${pred_seg_t2}_labeled_discs"
 # Compute average cord CSA between C2 and C3
-sct_process_segmentation -i ./anat/${pred_seg_t2}.nii.gz -vert 2:3 -vertfile ./anat/${file_t2_seg_labeled}.nii.gz -o ${PATH_RESULTS}/csa-SC_c2c3_${SUBJECT}.csv -append 1
+sct_process_segmentation -i ./anat/${pred_seg_t2}.nii.gz -vert 2:3 -vertfile ${file_t2_seg_labeled}.nii.gz -o ${PATH_RESULTS}/csa-SC_c2c3_${SUBJECT}.csv -append 1
 
 for file_path in "${inc_contrasts[@]}";do
 
@@ -160,14 +161,14 @@ for file_path in "${inc_contrasts[@]}";do
   type=$(find_contrast $file_path)
   file=${file_path/#"$type"}
   fileseg=${file_path}_seg
-  rsync -avzh =${PATH_PRED_SEG}/${SUBJECT}_${contrast_seg}_pred.nii.gz ${type}
+  # TODO: check if file exists (pred file)
+  rsync -avzh ${PATH_PRED_SEG}${file}_pred.nii.gz ${type}
   pred_seg=${SUBJECT}_${contrast_seg}_pred
   
 
   # Register contrast to T2w to get warping field 
 
-
-fi
+done
 
 
 
