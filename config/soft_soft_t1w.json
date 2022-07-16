@@ -1,15 +1,22 @@
 {
     "command": "train",
     "gpu_ids": [0],
-    "path_output": "super_duper_seg_sc_t1w_output",
-    "model_name": "super_duper_seg_sc_t1w_model",
+    "path_output": "soft_soft_t1w",
+    "model_name": "soft_soft_t1w",
     "debugging": true,
     "object_detection_params": {
         "object_detection_path": null,
         "safety_factor": [1.0, 1.0, 1.0]
     },
+    "wandb": {
+        "wandb_api_key": "18bbcc09542538f6d67167d2bb62b6415d3ce12b",
+        "project_name": "contrast-agnostic-softseg-sc-project",
+        "group_name": "group-3",
+        "run_name": "soft_soft_t1w",
+        "log_grads_every": 10
+    },
     "loader_parameters": {
-        "path_data": ["spine-generic-processed-cropped/data_processed_clean"],
+        "path_data": ["/home/GRAMES.POLYMTL.CA/uzmac/duke/projects/ivadomed/contrast-agnostic-seg/data-multi-subject-test13/data_processed_clean"],
         "subject_selection": {
             "n": [],
             "metadata": [],
@@ -44,20 +51,24 @@
         "test_fraction": 0.2
     },
     "training_parameters": {
-        "batch_size": 4,
+        "batch_size": 8,
         "loss": {
-            "name": "DiceLoss"
+            "name": "AdapWingLoss",
+            "epsilon": 1,
+            "theta": 0.5,
+            "omega": 8,
+            "alpha": 2.1
         },
         "training_time": {
-            "num_epochs": 100,
-            "early_stopping_patience": 25,
+            "num_epochs": 200,
+            "early_stopping_patience": 50,
             "early_stopping_epsilon": 0.001
         },
         "scheduler": {
             "initial_lr": 1e-3,
             "lr_scheduler": {
                 "name": "CosineAnnealingLR",
-                "base_lr": 1e-5,
+                "base_lr": 1e-4,
                 "max_lr": 1e-3
             }
         },
@@ -107,9 +118,9 @@
             "size": [48, 176, 288]
         },
         "RandomAffine": {
-            "degrees": 10,
+            "degrees": 20,
             "scale": [0.2, 0.2, 0.2],
-            "translate": [0.0, 0.0, 0.0],
+            "translate": [0.1, 0.1, 0.1],
             "applied_to": ["im", "gt"],
             "dataset_type": ["training"]
         },
