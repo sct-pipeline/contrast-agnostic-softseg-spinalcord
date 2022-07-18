@@ -59,6 +59,8 @@ label_if_does_not_exist(){
   # Update global variable with segmentation file name
   FILELABEL="${file}_labels-disc"
   FILELABELMANUAL="${PATH_DATA}/derivatives/labels/${SUBJECT}/${FILELABEL}-manual.nii.gz"
+  # Binarize softsegmentation to create labeled softseg
+  #sct_maths -i ${file_seg}.nii.gz -bin 0.5 -o ${file_seg}_bin.nii.gz
   echo "Looking for manual label: $FILELABELMANUAL"
   if [[ -e $FILELABELMANUAL ]]; then
     echo "Found! Using manual labels."
@@ -134,11 +136,11 @@ pred_seg_t2=${SUBJECT}_T2w_pred
 # Create labeled segmentation of vertebral levels (only if it does not exist) 
 label_if_does_not_exist ./anat/$file_t2 ./anat/$pred_seg_t2
 
-# Generate QC report to assess vertebral labeling
-sct_qc -i ./anat/${file_t2}.nii.gz -s ./anat/${pred_seg_t2}.nii.gz -p sct_label_vertebrae -qc ${PATH_QC} -qc-subject ${SUBJECT}
-
 file_t2_seg_labeled="${pred_seg_t2}_labeled"
 file_t2_disc="${pred_seg_t2}_labeled_discs"
+# Generate QC report to assess vertebral labeling
+sct_qc -i ./anat/${file_t2}.nii.gz -s ${file_t2_seg_labeled}.nii.gz -p sct_label_vertebrae -qc ${PATH_QC} -qc-subject ${SUBJECT}
+
 # Compute average cord CSA between C2 and C3
 sct_process_segmentation -i ./anat/${pred_seg_t2}.nii.gz -vert 2:3 -vertfile ${file_t2_seg_labeled}.nii.gz -o ${PATH_RESULTS}/csa-SC_c2c3_${SUBJECT}.csv -append 1
 
@@ -161,12 +163,19 @@ for file_path in "${inc_contrasts[@]}";do
   type=$(find_contrast $file_path)
   file=${file_path/#"$type"}
   fileseg=${file_path}_seg
-  # TODO: check if file exists (pred file)
-  rsync -avzh ${PATH_PRED_SEG}${file}_pred.nii.gz ${type}
-  pred_seg=${SUBJECT}_${contrast_seg}_pred
-  
+  # Check if file exists (pred file)
+  if [[ -f ${PATH_PRED_SEG}${file}_pred.nii.gz ]];then
+    rsync -avzh ${PATH_PRED_SEG}${file}_pred.nii.gz ${type}
+    pred_seg=${SUBJECT}_${contrast_seg}_pred
+  fi
 
   # Register contrast to T2w to get warping field 
+  # Registration
+  # ------------------------------------------------------------------------------
+  sct_register_multimodal -i ${file_path}.nii.gz -d ./anat/${file_t2}.nii.gz -iseg ${fileseg}_pad.nii.gz -dseg ./anat/${file_t2_seg}.nii.gz -param step=1,type=seg,algo=slicereg,metric=MeanSquares,iter=10,poly=2 -qc ${PATH_QC} -qc-subject ${SUBJECT} -o ${file_path}_reg.nii.gz
+  warping_field=${type}warp_${file_t2}2${file}
+  sct_apply_transfo -i ${file_t2_disc}.nii.gz -d ./anat/${pred_seg}.nii.gz -w ${warping_field}.nii.gz -x linear -o ${fileseg}_reg.nii.gz
+
 
 done
 
