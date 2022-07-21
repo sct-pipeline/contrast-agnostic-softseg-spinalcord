@@ -86,6 +86,31 @@ concatenate_b0_and_dwi(){
   fi
 }
 
+# Check if manual label already exists. If it does, copy it locally. If it does
+# not, perform labeling.
+# NOTE: manual disc labels should go from C1-C2 to C7-T1.
+label_if_does_not_exist(){
+  local file="$1"
+  local file_seg="$2"
+  # Update global variable with segmentation file name
+  FILELABEL="${file}_labels-disc"
+  FILELABELMANUAL="${PATH_DATA}/derivatives/labels/${SUBJECT}/${FILELABEL}-manual.nii.gz"
+  # Binarize softsegmentation to create labeled softseg
+  #sct_maths -i ${file_seg}.nii.gz -bin 0.5 -o ${file_seg}_bin.nii.gz
+  echo "Looking for manual label: $FILELABELMANUAL"
+  if [[ -e $FILELABELMANUAL ]]; then
+    echo "Found! Using manual labels."
+    rsync -avzh $FILELABELMANUAL ${FILELABEL}.nii.gz
+    # Generate labeled segmentation from manual disc labels
+    sct_label_vertebrae -i ${file}.nii.gz -s ${file_seg}.nii.gz -discfile ${FILELABEL}.nii.gz -c t2
+  else
+    echo "Not found. Proceeding with automatic labeling."
+    # Generate labeled segmentation
+    sct_label_vertebrae -i ${file}.nii.gz -s ${file_seg}.nii.gz -c t2
+  fi
+}
+
+
 find_manual_seg(){
   local file="$1"
   local contrast="$2"
