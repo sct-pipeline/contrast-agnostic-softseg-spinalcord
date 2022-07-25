@@ -136,7 +136,7 @@ cd ${SUBJECT}/anat/
 
 file_t1="${SUBJECT}_T1w"
 # Check if T1w image exists
-if [[ -f $file_t1 ]];then
+if [[ -f ${file_t1}.nii.gz ]];then
 
   # Rename the raw image
   mv ${file_t1}.nii.gz ${file_t1}_raw.nii.gz
