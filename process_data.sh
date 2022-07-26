@@ -224,9 +224,8 @@ if [[ -f ./dwi/${file_dwi}.nii.gz ]];then
   else
     rm -f mask_${FILE_DWI}_dwi_mean.nii.gz moco_params.tsv moco_params_x.nii.gz moco_params_y.nii.gz ${FILE_DWI}_b0.nii.gz ${FILE_DWI}_b0_mean.nii.gz ${FILE_DWI}_dwi.nii.gz ${FILE_DWI}_dwi_mean.nii.gz ${FILE_DWI}_dwi_mean_centerline.nii.gz ${FILE_DWI}_moco.nii.gz ${FILE_DWI}_moco_b0_mean.nii.gz ${FILE_DWI}_dwi_mean_centerline.csv
   fi
+  cd ..
 fi
-# Go back to parent folder
-cd ..
 
 # Initialize filenames
 file_t1="${SUBJECT}_T1w"
