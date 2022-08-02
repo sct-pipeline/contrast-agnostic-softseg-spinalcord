@@ -407,6 +407,8 @@ for file_path in "${inc_contrasts[@]}";do
   # Find contrast to name csa files
   if [[ $file_path == *"T1w"* ]];then
       contrast_seg="T1w"
+  elif [[ $file_path == *"T2w"* ]];then
+      contrast_seg="T2w"
   elif [[ $file_path == *"T2star"* ]];then
       contrast_seg="T2star"
   elif [[ $file_path == *"T1w_MTS"* ]];then
