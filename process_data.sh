@@ -421,9 +421,9 @@ for file_path in "${inc_contrasts[@]}";do
 
   # Compute CSA on hard GT and soft GT (only from the derivaives)
   # Soft segmentation
-  sct_process_segmentation -i ${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/${filesoftseg}.nii.gz -vert 2,3 -vertfile ${fileseg}_labeled.nii.gz -o ${PATH_RESULTS}/csa_soft_GT_${contrast_seg}.csv -append -1
+  sct_process_segmentation -i ${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/${filesoftseg}.nii.gz -vert 2,3 -vertfile ${fileseg}_labeled.nii.gz -o ${PATH_RESULTS}/csa_soft_GT_${contrast_seg}.csv -append 1
   # Hard segmentation
-  sct_process_segmentation -i ${PATH_DATA}/derivatives/labels/${SUBJECT}/${fileseg}.nii.gz -vert 2,3 -vertfile ${fileseg}_labeled.nii.gz -o ${PATH_RESULTS}/csa_hard_GT_${contrast_seg}.csv -append -1
+  sct_process_segmentation -i ${PATH_DATA}/derivatives/labels/${SUBJECT}/${fileseg}.nii.gz -vert 2,3 -vertfile ${fileseg}_labeled.nii.gz -o ${PATH_RESULTS}/csa_hard_GT_${contrast_seg}.csv -append 1
   
   # Only use segmentations and soft segmentations in the derivatives.
   # Dilate spinal cord segmentation
@@ -434,7 +434,8 @@ for file_path in "${inc_contrasts[@]}";do
   sct_crop_image -i ${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/${filesoftseg}.nii.gz -m ${fileseg}_dilate.nii.gz -o ${filesoftseg}_crop.nii.gz
   # Crop seg
   sct_crop_image -i ${PATH_DATA}/derivatives/labels/${SUBJECT}/${fileseg}.nii.gz -m ${fileseg}_dilate.nii.gz -o ${fileseg}_crop.nii.gz
-
+  
+  # TODO crop disc labelss
 
   mkdir -p $PATH_DATA_PROCESSED_CLEAN $PATH_DATA_PROCESSED_CLEAN/${SUBJECT}/$type $PATH_DATA_PROCESSED_CLEAN/derivatives/labels/${SUBJECT}/$type
   mkdir -p $PATH_DATA_PROCESSED_CLEAN/derivatives/labels_softseg/${SUBJECT}/$type
