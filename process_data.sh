@@ -401,7 +401,7 @@ for file_path in "${inc_contrasts[@]}";do
   file=${file_path/#"$type"}
   fileseg=${file_path}_seg-manual
   filesoftseg=${file_path}_softseg
-  filedisclabel=${fileseg}_labeled_discs
+  filedisclabel=${file_path}_seg_labeled_discs
   cd $PATH_DATA_PROCESSED/$SUBJECT 
 
   # Find contrast to name csa files
