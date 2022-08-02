@@ -375,7 +375,7 @@ for file_path in "${inc_contrasts[@]}";do
   sct_qc -i ${file_path}.nii.gz -s ${file_path}_softseg.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
   
   # Bring T2w disc labels to native space
-  sct_apply_transfo -i ${file_t2_discs}.nii.gz -d ${file_path}.nii.gz -w ${warping_field_inv}.nii.gz -x label -o ${file_path}_discs.nii.gz
+  sct_apply_transfo -i ./anat/${file_t2_discs}.nii.gz -d ${file_path}.nii.gz -w ${warping_field_inv}.nii.gz -x label -o ${file_path}_discs.nii.gz
   # Generate labeled segmentation from warp disc labels
   sct_label_vertebrae -i ${file_path}.nii.gz -s ${file_seg}.nii.gz -discfile ${file_path}_discs.nii.gz -c t2 -ofolder $type
   # Generate QC report to assess vertebral labeling
