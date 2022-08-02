@@ -423,7 +423,7 @@ for file_path in "${inc_contrasts[@]}";do
   # Soft segmentation
   sct_process_segmentation -i ${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/${filesoftseg}.nii.gz -vert 2,3 -vertfile ${fileseglabel}.nii.gz -o ${PATH_RESULTS}/csa_soft_GT_${contrast_seg}.csv -append 1
   # Hard segmentation
-  sct_process_segmentation -i ${PATH_DATA}/derivatives/labels/${SUBJECT}/${fileseg}.nii.gz -vert 2,3 -vertfile ${fileseg}.nii.gz -o ${PATH_RESULTS}/csa_hard_GT_${contrast_seg}.csv -append 1
+  sct_process_segmentation -i ${PATH_DATA}/derivatives/labels/${SUBJECT}/${fileseg}.nii.gz -vert 2,3 -vertfile ${fileseglabel}.nii.gz -o ${PATH_RESULTS}/csa_hard_GT_${contrast_seg}.csv -append 1
   
   # Only use segmentations and soft segmentations in the derivatives.
   # Dilate spinal cord segmentation
