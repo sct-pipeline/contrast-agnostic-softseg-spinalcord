@@ -405,14 +405,14 @@ for file_path in "${inc_contrasts[@]}";do
   cd $PATH_DATA_PROCESSED/$SUBJECT 
 
   # Find contrast to name csa files
-  if [[ $file_path == *"T1w"* ]];then
+  if [[ $file_path == *"T1w_MTS"* ]];then
+      contrast_seg="T1w_MTS"
+  elif [[ $file_path == *"T1w"* ]];then
       contrast_seg="T1w"
   elif [[ $file_path == *"T2w"* ]];then
       contrast_seg="T2w"
   elif [[ $file_path == *"T2star"* ]];then
       contrast_seg="T2star"
-  elif [[ $file_path == *"T1w_MTS"* ]];then
-      contrast_seg="T1w_MTS"
   elif [[ $file_path == *"MTon_MTS"* ]];then
       contrast_seg="MTon_MTS"
   elif [[ $file_path == *"dwi"* ]];then
@@ -436,8 +436,9 @@ for file_path in "${inc_contrasts[@]}";do
   sct_crop_image -i ${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/${filesoftseg}.nii.gz -m ${fileseg}_dilate.nii.gz -o ${filesoftseg}_crop.nii.gz
   # Crop seg
   sct_crop_image -i ${PATH_DATA}/derivatives/labels/${SUBJECT}/${fileseg}.nii.gz -m ${fileseg}_dilate.nii.gz -o ${fileseg}_crop.nii.gz
-  
-  # TODO crop disc labelss
+  # Crop disc labels
+  sct_crop_image -i ${fileseglabel}_discs.nii.gz -m ${fileseg}_dilate.nii.gz -o ${fileseglabel}_crop.nii.gz
+
 
   mkdir -p $PATH_DATA_PROCESSED_CLEAN $PATH_DATA_PROCESSED_CLEAN/${SUBJECT}/$type $PATH_DATA_PROCESSED_CLEAN/derivatives/labels/${SUBJECT}/$type
   mkdir -p $PATH_DATA_PROCESSED_CLEAN/derivatives/labels_softseg/${SUBJECT}/$type
@@ -458,6 +459,9 @@ for file_path in "${inc_contrasts[@]}";do
   # Move json files of derivatives
   rsync -avzh "${PATH_DATA}/derivatives/labels/${SUBJECT}/${fileseg}.json" $PATH_DATA_PROCESSED_CLEAN/derivatives/labels/${SUBJECT}/${fileseg}.json
   rsync -avzh "${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/${filesoftseg}.json" $PATH_DATA_PROCESSED_CLEAN/derivatives/labels_softseg/${SUBJECT}/${filesoftseg}.json
+  # Move cropped disc labels into cleaned derivatives
+  
+    rsync -avzh $PATH_DATA_PROCESSED/${SUBJECT}/${fileseglabel}_discs_crop.nii.gz $PATH_DATA_PROCESSED_CLEAN/derivatives/labels/${SUBJECT}/${fileseglabel}_discs.nii.gz
 
 done
 
