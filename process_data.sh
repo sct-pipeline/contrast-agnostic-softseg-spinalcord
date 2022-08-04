@@ -437,7 +437,7 @@ for file_path in "${inc_contrasts[@]}";do
   # Crop seg
   sct_crop_image -i ${PATH_DATA}/derivatives/labels/${SUBJECT}/${fileseg}.nii.gz -m ${fileseg}_dilate.nii.gz -o ${fileseg}_crop.nii.gz
   # Crop disc labels
-  sct_crop_image -i ${fileseglabel}_discs.nii.gz -m ${fileseg}_dilate.nii.gz -o ${fileseglabel}_crop.nii.gz
+  sct_crop_image -i ${fileseglabel}_discs.nii.gz -m ${fileseg}_dilate.nii.gz -o ${fileseglabel}_discs_crop.nii.gz
 
 
   mkdir -p $PATH_DATA_PROCESSED_CLEAN $PATH_DATA_PROCESSED_CLEAN/${SUBJECT}/$type $PATH_DATA_PROCESSED_CLEAN/derivatives/labels/${SUBJECT}/$type
