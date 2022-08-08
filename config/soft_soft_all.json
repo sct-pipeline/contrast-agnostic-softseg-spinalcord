@@ -11,12 +11,12 @@
     "wandb": {
         "wandb_api_key": "18bbcc09542538f6d67167d2bb62b6415d3ce12b",
         "project_name": "contrast-agnostic-softseg-sc-project",
-        "group_name": "group-3",
+        "group_name": "group-5",
         "run_name": "soft_soft_all",
         "log_grads_every": 10
     },
     "loader_parameters": {
-        "path_data": ["/home/GRAMES.POLYMTL.CA/uzmac/duke/projects/ivadomed/contrast-agnostic-seg/data-multi-subject-test13/data_processed_clean"],
+        "path_data": ["/home/GRAMES.POLYMTL.CA/uzmac/duke/projects/ivadomed/contrast-agnostic-seg/data-multi-subject-processed-2022-07-25-02/data_processed_clean"],
         "subject_selection": {
             "n": [],
             "metadata": [],
@@ -29,8 +29,8 @@
             "slice_filter_roi": null
         },
         "contrast_params": {
-            "training_validation": ["T1w", "T2w", "T2star"],
-            "testing": ["T1w", "T2w", "T2star"],
+            "training_validation": ["T1w", "T2w", "T2star", "dwi", "MTS"],
+            "testing": ["T1w", "T2w", "T2star", "dwi", "MTS"],
             "balance": {}
         },
         "patch_filter_params": {
@@ -104,7 +104,16 @@
         "n_it": 0
     },
     "postprocessing": {
-        "binarize_prediction": {"thr": -1}
+        "binarize_prediction": {"thr": -1},
+        "remove_noise": {
+            "thr": -1
+        },
+        "keep_largest": {},
+        "fill_holes": {},
+        "remove_small": {
+            "unit": "vox",
+            "thr": 3
+        }
     },
     "evaluation_parameters": {},
     "transformation": {
