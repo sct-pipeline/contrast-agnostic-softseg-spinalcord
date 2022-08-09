@@ -375,13 +375,13 @@ for file_path in "${inc_contrasts[@]}";do
   sct_qc -i ${file_path}.nii.gz -s ${file_path}_softseg.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
   
   # Bring T2w disc labels to native space
-  sct_apply_transfo -i ./anat/${file_t2_discs}.nii.gz -d ${file_path}.nii.gz -w ${warping_field_inv}.nii.gz -x label -o ${file_path}_discs.nii.gz
+  sct_apply_transfo -i ./anat/${file_t2_discs}.nii.gz -d ${file_path}.nii.gz -w ${warping_field_inv}.nii.gz -x label -o ${file_path}_seg_labeled_discs.nii.gz
   # Set sform to qform (there are disparencies)
-  sct_image -i ${file_path}_discs.nii.gz -set-sform-to-qform
+  sct_image -i ${file_path}_seg_labeled_discs.nii.gz -set-sform-to-qform
   sct_image -i ${fileseg}.nii.gz -set-sform-to-qform
   sct_image -i ${file_path}.nii.gz -set-sform-to-qform
   # Generate labeled segmentation from warp disc labels
-  sct_label_vertebrae -i ${file_path}.nii.gz -s ${fileseg}.nii.gz -discfile ${file_path}_discs.nii.gz -c t2 -ofolder $type
+  sct_label_vertebrae -i ${file_path}.nii.gz -s ${fileseg}.nii.gz -discfile ${file_path}_seg_labeled_discs.nii.gz -c t2 -ofolder $type
   # Generate QC report to assess vertebral labeling
   sct_qc -i ${file_path}.nii.gz -s ${fileseg}_labeled.nii.gz -p sct_label_vertebrae -qc ${PATH_QC} -qc-subject ${SUBJECT}
 
@@ -441,7 +441,7 @@ for file_path in "${inc_contrasts[@]}";do
   # Crop seg
   sct_crop_image -i ${PATH_DATA}/derivatives/labels/${SUBJECT}/${fileseg}.nii.gz -m ${fileseg}_dilate.nii.gz -o ${fileseg}_crop.nii.gz
   # Crop disc labels
-  sct_crop_image -i ${file_path}_discs.nii.gz -m ${fileseg}_dilate.nii.gz -o ${file_path}_discs_crop.nii.gz
+  sct_crop_image -i ${fileseglabel}_discs.nii.gz -m ${fileseg}_dilate.nii.gz -o ${file_path}_discs_crop.nii.gz
 
 
   mkdir -p $PATH_DATA_PROCESSED_CLEAN $PATH_DATA_PROCESSED_CLEAN/${SUBJECT}/$type $PATH_DATA_PROCESSED_CLEAN/derivatives/labels/${SUBJECT}/$type
@@ -464,7 +464,7 @@ for file_path in "${inc_contrasts[@]}";do
   rsync -avzh "${PATH_DATA}/derivatives/labels/${SUBJECT}/${fileseg}.json" $PATH_DATA_PROCESSED_CLEAN/derivatives/labels/${SUBJECT}/${fileseg}.json
   rsync -avzh "${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/${filesoftseg}.json" $PATH_DATA_PROCESSED_CLEAN/derivatives/labels_softseg/${SUBJECT}/${filesoftseg}.json
   # Move cropped disc labels into cleaned derivatives
-    rsync -avzh $PATH_DATA_PROCESSED/${SUBJECT}/${file_path}_discs_crop.nii.gz $PATH_DATA_PROCESSED_CLEAN/derivatives/labels/${SUBJECT}/${file_path}_discs.nii.gz
+  rsync -avzh $PATH_DATA_PROCESSED/${SUBJECT}/${file_path}_discs_crop.nii.gz $PATH_DATA_PROCESSED_CLEAN/derivatives/labels/${SUBJECT}/${fileseglabel}_discs.nii.gz
 
 done
 
