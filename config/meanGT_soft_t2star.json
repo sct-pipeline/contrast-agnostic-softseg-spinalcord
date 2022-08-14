@@ -1,8 +1,8 @@
 {
     "command": "train",
     "gpu_ids": [0],
-    "path_output": "soft_soft_t2star",
-    "model_name": "soft_soft_t2star",
+    "path_output": "meanGT_soft_t2star",
+    "model_name": "meanGT_soft_t2star",
     "debugging": true,
     "object_detection_params": {
         "object_detection_path": null,
@@ -12,7 +12,7 @@
         "wandb_api_key": "18bbcc09542538f6d67167d2bb62b6415d3ce12b",
         "project_name": "contrast-agnostic-softseg-sc-project",
         "group_name": "group-5",
-        "run_name": "soft_soft_t2star",
+        "run_name": "meanGT_soft_t2star",
         "log_grads_every": 10
     },
     "loader_parameters": {
