@@ -285,10 +285,8 @@ for contrast in "${contrasts[@]}"; do
 done
 echo "Contrasts are" ${inc_contrasts[@]}
 
-# Check if softsegs exists, if not, generate softsegs:
 FILESSEGMANUAL="${PATH_DATA}/derivatives/labels/${SUBJECT}/*/*seg-manual.nii.gz"
 
-echo "Manual soft segmentation not found."
 # Generate softsegs
 # Create mask for regsitration
 find_manual_seg ${file_t2} 'anat' 't2'
@@ -296,6 +294,7 @@ file_t2_seg="${file_t2}_seg"
 file_t2_mask="${file_t2_seg}_mask"
 sct_create_mask -i ./anat/${file_t2}.nii.gz -p centerline,./anat/${file_t2_seg}.nii.gz -size 55mm -o ./anat/${file_t2_mask}.nii.gz 
 
+# Label intervertebral discs of T2w
 label_if_does_not_exist ./anat/${file_t2} ./anat/${file_t2_seg}
 file_t2_seg_labeled="${file_t2_seg}_labeled"
 file_t2_discs="${file_t2_seg}_labeled_discs"
@@ -384,7 +383,6 @@ for file_path in "${inc_contrasts[@]}";do
   sct_label_vertebrae -i ${file_path}.nii.gz -s ${fileseg}.nii.gz -discfile ${file_path}_seg_labeled_discs.nii.gz -c t2 -ofolder $type
   # Generate QC report to assess vertebral labeling
   sct_qc -i ${file_path}.nii.gz -s ${fileseg}_labeled.nii.gz -p sct_label_vertebrae -qc ${PATH_QC} -qc-subject ${SUBJECT}
-
 
 done
 
