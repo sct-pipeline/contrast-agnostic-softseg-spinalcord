@@ -421,7 +421,7 @@ for file_path in "${inc_contrasts[@]}";do
       contrast_seg="dwi"
   fi
   # Clip softsegs
-  python ${PATH_SCRIPT}/clip_softseg.py -i ${filesoftseg}.nii.gz -o filesoftseg.nii.gz
+  python ${PATH_SCRIPT}/clip_softseg.py -i ${filesoftseg}.nii.gz -o ${filesoftseg}.nii.gz
 
   # Compute CSA on hard GT and soft GT (only from the derivaives)
   # Soft segmentation
