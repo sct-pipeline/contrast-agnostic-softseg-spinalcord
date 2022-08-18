@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Compute CSA on output segmentations. Input is spine-generic/data-multi-subject
+# Compute CSA on output segmentations. Input is data_processed_clean
 #
 # Usage:
 #   ./compute_csa.sh <SUBJECT>
@@ -50,27 +50,24 @@ rsync -avzh $PATH_DATA/$SUBJECT .
 # FUNCTIONS
 # ==============================================================================
 
-# Check if manual label already exists. If it does, copy it locally. If it does
-# not, perform labeling.
+# Check if manual label already exists. If it does, copy it locally.
 # NOTE: manual disc labels should go from C1-C2 to C7-T1.
 label_if_does_not_exist(){
   local file="$1"
   local file_seg="$2"
+  local ofolder="$3"
   # Update global variable with segmentation file name
-  FILELABEL="${file}_labels-disc"
-  FILELABELMANUAL="${PATH_DATA}/derivatives/labels/${SUBJECT}/${FILELABEL}-manual.nii.gz"
-  # Binarize softsegmentation to create labeled softseg
-  #sct_maths -i ${file_seg}.nii.gz -bin 0.5 -o ${file_seg}_bin.nii.gz
+  FILELABEL="${file}_discs"
+  FILELABELMANUAL="${PATH_DATA}/derivatives/labels/${SUBJECT}/${FILELABEL}.nii.gz"
+  
   echo "Looking for manual label: $FILELABELMANUAL"
   if [[ -e $FILELABELMANUAL ]]; then
     echo "Found! Using manual labels."
     rsync -avzh $FILELABELMANUAL ${FILELABEL}.nii.gz
     # Generate labeled segmentation from manual disc labels
-    sct_label_vertebrae -i ${file}.nii.gz -s ${file_seg}.nii.gz -discfile ${FILELABEL}.nii.gz -c t2
+    sct_label_vertebrae -i ${file}.nii.gz -s ${file_seg}.nii.gz -discfile ${FILELABEL}.nii.gz -c t2 -ofolder $ofolder
   else
-    echo "Not found. Proceeding with automatic labeling."
-    # Generate labeled segmentation
-    sct_label_vertebrae -i ${file}.nii.gz -s ${file_seg}.nii.gz -c t2
+    echo "Not found. cannot compute CSA."
   fi
 }
 
@@ -97,7 +94,7 @@ file_t2s="${SUBJECT}_T2star"
 file_t1w="${SUBJECT}_acq-T1w_MTS"
 file_mton="${SUBJECT}_acq-MTon_MTS"
 file_dwi_mean="${SUBJECT}_rec-average_dwi"
-contrasts=($file_t1 $file_t2s $file_t1w $file_mton $file_dwi_mean)
+contrasts=($file_t1 $file_t2 $file_t2s $file_t1w $file_mton $file_dwi_mean)
 inc_contrasts=()
 
 # Check available contrasts
@@ -123,39 +120,20 @@ for contrast in "${contrasts[@]}"; do
   fi
 
 done
-echo "Contrasts are" ${inc_contrasts[@]}
-
-
-# Copy predicted segmentation
-rsync -avzh ${PATH_PRED_SEG}/${SUBJECT}_T2w_pred.nii.gz ./anat/
-pred_seg_t2=${SUBJECT}_T2w_pred
-
-# Put pred mask in the original image space
-#sct_register_multimodal -i $pred_seg_t2 -d ./anat/$file_t2 -identity 1
-#pred_seg_t2=${pred_seg_t2}_reg
-# Create labeled segmentation of vertebral levels (only if it does not exist) 
-label_if_does_not_exist ./anat/$file_t2 ./anat/$pred_seg_t2
-
-file_t2_seg_labeled="${pred_seg_t2}_labeled"
-file_t2_disc="${pred_seg_t2}_labeled_discs"
-# Generate QC report to assess vertebral labeling
-sct_qc -i ./anat/${file_t2}.nii.gz -s ${file_t2_seg_labeled}.nii.gz -p sct_label_vertebrae -qc ${PATH_QC} -qc-subject ${SUBJECT}
-
-# Compute average cord CSA between C2 and C3
-sct_process_segmentation -i ./anat/${pred_seg_t2}.nii.gz -vert 2:3 -vertfile ${file_t2_seg_labeled}.nii.gz -o ${PATH_RESULTS}/csa-SC_c2c3_${SUBJECT}.csv -append 1
+echo "Contrasts are ${inc_contrasts[@]}"
 
 for file_path in "${inc_contrasts[@]}";do
-
-# Find contrast to do compute CSA
-
-  if [[ $file_path == *"T1w"* ]];then
-    contrast_seg="t1"
+  # Find contrast to do compute CSA
+  if [[ $file_path == *"T1w_MTS"* ]];then
+    contrast_seg="T1w_MTS"
   elif [[ $file_path == *"T2star"* ]];then
-    contrast_seg="t2s"
-  elif [[ $file_path == *"T1w_MTS"* ]];then
-    contrast_seg="t1"
+    contrast_seg="T2star"
+  elif [[ $file_path == *"T2w"* ]];then
+    contrast_seg="T2w"
+  elif [[ $file_path == *"T1w"* ]];then
+    contrast_seg="T1w"
   elif [[ $file_path == *"MTon_MTS"* ]];then
-    contrast_seg="t2s"
+    contrast_seg="MTon_MTS"
   elif [[ $file_path == *"dwi"* ]];then
     contrast_seg="dwi"
   fi
@@ -165,21 +143,33 @@ for file_path in "${inc_contrasts[@]}";do
   fileseg=${file_path}_seg
   # Check if file exists (pred file)
   if [[ -f ${PATH_PRED_SEG}${file}_pred.nii.gz ]];then
-    rsync -avzh ${PATH_PRED_SEG}${file}_pred.nii.gz ${type}
-    pred_seg=${SUBJECT}_${contrast_seg}_pred
+    rsync -avzh ${PATH_PRED_SEG}${file}_pred.nii.gz ${file_path}_pred.nii.gz
+    pred_seg=${file_path}_pred
   fi
 
-  # Register contrast to T2w to get warping field 
-  # Registration
-  # ------------------------------------------------------------------------------
-  sct_register_multimodal -i ${file_path}.nii.gz -d ./anat/${file_t2}.nii.gz -iseg ${fileseg}_pad.nii.gz -dseg ./anat/${file_t2_seg}.nii.gz -param step=1,type=seg,algo=slicereg,metric=MeanSquares,iter=10,poly=2 -qc ${PATH_QC} -qc-subject ${SUBJECT} -o ${file_path}_reg.nii.gz
-  warping_field=${type}warp_${file_t2}2${file}
-  sct_apply_transfo -i ${file_t2_disc}.nii.gz -d ./anat/${pred_seg}.nii.gz -w ${warping_field}.nii.gz -x linear -o ${fileseg}_reg.nii.gz
+  # Create QC for pred mask
+  sct_qc -i ${file_path}.nii.gz -s ${pred_seg}.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
 
+  # Get manual hard GT to get labeled segmentation
 
+  FILESEG="${file_path}_seg"
+  FILESEGMANUAL="${PATH_DATA}/derivatives/labels/${SUBJECT}/${FILESEG}-manual.nii.gz"
+  echo
+  echo "Looking for manual segmentation: $FILESEGMANUAL"
+  if [[ -e $FILESEGMANUAL ]]; then
+    echo "Found! Using manual segmentation."
+    rsync -avzh $FILESEGMANUAL "${FILESEG}.nii.gz"
+  fi
+  # Create labeled segmentation of vertebral levels (only if it does not exist) 
+  label_if_does_not_exist $file_path $FILESEG $type
+
+  file_seg_labeled="${FILESEG}_labeled"
+  # Generate QC report to assess vertebral labeling
+  sct_qc -i ${file_path}.nii.gz -s ${file_seg_labeled}.nii.gz -p sct_label_vertebrae -qc ${PATH_QC} -qc-subject ${SUBJECT}
+
+  # Compute average cord CSA between C2 and C3
+  sct_process_segmentation -i ${pred_seg}.nii.gz -vert 2:3 -vertfile ${file_seg_labeled}.nii.gz -o ${PATH_RESULTS}/csa_pred_${contrast_seg}.csv -append 1 -append 1
 done
-
-
 
 # Display useful info for the log
 end=`date +%s`
