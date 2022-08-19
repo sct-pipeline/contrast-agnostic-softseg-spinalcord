@@ -254,3 +254,7 @@ FILES_REG:
     - sub-queensland04_rec-average_dwi_reg.nii.gz
     - sub-vuiisIngenia04_rec-average_dwi_reg.nii.gz
     - sub-beijingGE04_T2star_reg.nii.gz
+    - sub-beijingVerio01_rec-average_dwi_reg.nii.gz
+    - sub-beijingVerio02_rec-average_dwi_reg.nii.gz
+    - sub-ucdavis06_rec-average_dwi_reg.nii.gz
+    - sub-ucdavis07_rec-average_dwi.nii.gz
