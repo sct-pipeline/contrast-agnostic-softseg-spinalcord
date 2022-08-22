@@ -10,7 +10,7 @@ Inputs:
     --seed: Seed for randomly distributing subjects into train, validation, and testing
 
 Example usage:
-python joblib_generator.py --datasets /home/GRAMES.POLYMTL.CA/uzmac/duke/projects/ivadomed/contrast-agnostic-seg/data-multi-subject-processed-2022-07-25-02/data_processed_clean --ofolder joblibs --contrasts T1w T2w T2star rec-average_dwi --seed 42
+python joblib_generator.py --datasets /home/GRAMES.POLYMTL.CA/uzmac/duke/projects/ivadomed/contrast-agnostic-seg/contrast-agnostic-preprocess-all-2022-08-19/data_processed_clean --ofolder joblibs --contrasts T1w T2w T2star rec-average_dwi --seed 42
 """
 
 import glob
@@ -87,7 +87,7 @@ for contrast in args.contrasts:
 
     jobdict = {"train": train_subs_cur, "valid": validation_subs_cur, "test": test_subs_cur}
     jobdicts.append(jobdict)
-    joblib.dump(jobdict, os.path.join(args.ofolder, "split_datasets_%s.joblib" % contrast))
+    joblib.dump(jobdict, os.path.join(args.ofolder, "split_datasets_%s_seed=%s.joblib" % (contrast, args.seed)))
 
 # Generate one final joblib for all contrast training
 jobdict_all = defaultdict(list)
@@ -95,4 +95,4 @@ for i in range(len(jobdicts)):
     jobdict = jobdicts[i]
     for key, value in jobdict.items():
         jobdict_all[key].append(value)
-joblib.dump(jobdict_all, os.path.join(args.ofolder, "split_datasets_all.joblib"))
+joblib.dump(jobdict_all, os.path.join(args.ofolder, "split_datasets_all_seed=%s.joblib" % args.seed))
