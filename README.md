@@ -104,3 +104,14 @@ Problems with this approach:
     ii. The ivadomed model needs to be trained
     iii. compare_with_sct_model script needs to run
     iv. The ivadomed model needs to be tested 
+
+## Compute CSA on prediction masks
+
+To compute CSA at C2-C3 vertebral levels on the prediction masks obtained from the trained models, the script `compute_csa.sh` is used. The input is the folder `data_processed_clean` (result from preprocessing) and the path of the prediction masks is added as an extra script argument `-script-args`.
+
+For every trained model, you can run:
+
+```
+sct_run_batch -jobs -1 -path-data /data_processed_clean/ -path-output <PATH_OUTPUT> -script compute_csa.sh -script-args <PATH_PRED_MASKS>
+```
+The CSA results will be under `<PATH_OUTPUT>/results`.
