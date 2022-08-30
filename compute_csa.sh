@@ -151,7 +151,6 @@ for file_path in "${inc_contrasts[@]}";do
   sct_qc -i ${file_path}.nii.gz -s ${pred_seg}.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
 
   # Get manual hard GT to get labeled segmentation
-
   FILESEG="${file_path}_seg"
   FILESEGMANUAL="${PATH_DATA}/derivatives/labels/${SUBJECT}/${FILESEG}-manual.nii.gz"
   echo
