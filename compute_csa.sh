@@ -168,7 +168,7 @@ for file_path in "${inc_contrasts[@]}";do
   sct_qc -i ${file_path}.nii.gz -s ${file_seg_labeled}.nii.gz -p sct_label_vertebrae -qc ${PATH_QC} -qc-subject ${SUBJECT}
 
   # Compute average cord CSA between C2 and C3
-  sct_process_segmentation -i ${pred_seg}.nii.gz -vert 2:3 -vertfile ${file_seg_labeled}.nii.gz -o ${PATH_RESULTS}/csa_pred_${contrast_seg}.csv -append 1 -append 1
+  sct_process_segmentation -i ${pred_seg}.nii.gz -vert 2:3 -vertfile ${file_seg_labeled}.nii.gz -o ${PATH_RESULTS}/csa_pred_${contrast_seg}.csv -append 1
 done
 
 # Display useful info for the log
