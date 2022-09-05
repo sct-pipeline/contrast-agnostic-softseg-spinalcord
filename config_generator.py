@@ -106,11 +106,12 @@ for seed in args.seeds:
         joblib.dump(jobdict, os.path.join(args.ofolder, "split_datasets_%s_seed=%s.joblib" % (contrast, seed)))
 
     # Generate one final joblib for all contrast training
-    jobdict_all = defaultdict(list)
+    jobdict_all = {"train": [], "valid": [], "test": []}
     for i in range(len(jobdicts)):
         jobdict = jobdicts[i]
-        for key, value in jobdict.items():
-            jobdict_all[key].append(value)
+        for key, values in jobdict.items():
+            for value in values:
+                jobdict_all[key].append(value)
     joblib.dump(jobdict_all, os.path.join(args.ofolder, "split_datasets_all_seed=%s.joblib" % seed))
 
 # Read config
@@ -155,6 +156,11 @@ for seed in args.seeds:
 
     # Get config back with replacements
     config_filled = json.loads(config_str)
+
+    # Write combined contrasts in a list format
+    for key in ["training_validation", "testing"]:
+        config_filled["loader_parameters"]["contrast_params"][key] = config_filled["loader_parameters"]["contrast_params"][key][0].split(',')
+
     config_filled_path = os.path.join(
         config_dir,
         '%s_%s_seed=%s.json' % (os.path.splitext(config_fname)[0], 'all', seed)
