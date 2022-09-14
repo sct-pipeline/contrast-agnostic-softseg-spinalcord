@@ -145,31 +145,31 @@ for file_path in "${inc_contrasts[@]}";do
   if [[ -f ${PATH_PRED_SEG}${file}_pred_painted.nii.gz ]];then
     rsync -avzh ${PATH_PRED_SEG}${file}_pred_painted.nii.gz ${file_path}_pred.nii.gz
     pred_seg=${file_path}_pred
+
+    # Create QC for pred mask
+    sct_qc -i ${file_path}.nii.gz -s ${pred_seg}.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
+
+    # Get manual hard GT to get labeled segmentation
+    FILESEG="${file_path}_seg"
+    FILESEGMANUAL="${PATH_DATA}/derivatives/labels/${SUBJECT}/${FILESEG}-manual.nii.gz"
+    echo
+    echo "Looking for manual segmentation: $FILESEGMANUAL"
+    if [[ -e $FILESEGMANUAL ]]; then
+      echo "Found! Using manual segmentation."
+      rsync -avzh $FILESEGMANUAL "${FILESEG}.nii.gz"
+    fi
+    # Create labeled segmentation of vertebral levels (only if it does not exist) 
+    label_if_does_not_exist $file_path $FILESEG $type
+
+    file_seg_labeled="${FILESEG}_labeled"
+    # Generate QC report to assess vertebral labeling
+    sct_qc -i ${file_path}.nii.gz -s ${file_seg_labeled}.nii.gz -p sct_label_vertebrae -qc ${PATH_QC} -qc-subject ${SUBJECT}
+
+    # Compute average cord CSA between C2 and C3
+    sct_process_segmentation -i ${pred_seg}.nii.gz -vert 2:3 -vertfile ${file_seg_labeled}.nii.gz -o ${PATH_RESULTS}/csa_pred_${contrast_seg}.csv -append 1
   else
     echo "Pred mask not found"
   fi
-
-  # Create QC for pred mask
-  sct_qc -i ${file_path}.nii.gz -s ${pred_seg}.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
-
-  # Get manual hard GT to get labeled segmentation
-  FILESEG="${file_path}_seg"
-  FILESEGMANUAL="${PATH_DATA}/derivatives/labels/${SUBJECT}/${FILESEG}-manual.nii.gz"
-  echo
-  echo "Looking for manual segmentation: $FILESEGMANUAL"
-  if [[ -e $FILESEGMANUAL ]]; then
-    echo "Found! Using manual segmentation."
-    rsync -avzh $FILESEGMANUAL "${FILESEG}.nii.gz"
-  fi
-  # Create labeled segmentation of vertebral levels (only if it does not exist) 
-  label_if_does_not_exist $file_path $FILESEG $type
-
-  file_seg_labeled="${FILESEG}_labeled"
-  # Generate QC report to assess vertebral labeling
-  sct_qc -i ${file_path}.nii.gz -s ${file_seg_labeled}.nii.gz -p sct_label_vertebrae -qc ${PATH_QC} -qc-subject ${SUBJECT}
-
-  # Compute average cord CSA between C2 and C3
-  sct_process_segmentation -i ${pred_seg}.nii.gz -vert 2:3 -vertfile ${file_seg_labeled}.nii.gz -o ${PATH_RESULTS}/csa_pred_${contrast_seg}.csv -append 1
 done
 
 # Display useful info for the log
