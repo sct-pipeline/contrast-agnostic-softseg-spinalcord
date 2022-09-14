@@ -147,7 +147,6 @@ for file_path in "${inc_contrasts[@]}";do
     pred_seg=${file_path}_pred
   else
     echo "Pred mask not found"
-    exit 0
   fi
 
   # Create QC for pred mask
