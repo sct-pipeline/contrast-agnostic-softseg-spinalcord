@@ -20,6 +20,10 @@ def get_parser():
                         help="Input segmentation in T2w space.")
     parser.add_argument('-coverage-map', required=True, type=str,
                         help="Coverage map in T2w space.")
+    parser.add_argument('-o', required=True, type=str,
+                        help="Output name of crop segmentation")
+    parser.add_argument('-o-coverage-map', required=True, type=str,
+                        help="Output name of crop coverage map")
     parser.add_argument('-c', required=True, type=str,
                         help="Contrast.")
 
@@ -67,8 +71,8 @@ def main():
     # Find index of top and low slice
     # remove n slices of segmentation and coverage map
     # save new nifti for both
-    filename_seg_crop = (args.i).split('.')[0] + "_crop" + ".nii.gz"
-    filename_coverage_crop = (args.coverage_map).split('.')[0] + "_crop" + ".nii.gz"
+    filename_seg_crop = args.o
+    filename_coverage_crop = args.o_coverage_map
     save_Nifti1(image_np_crop, image, filename_seg_crop)
     save_Nifti1(coverage_map_np_crop, coverage_map, filename_coverage_crop)
 

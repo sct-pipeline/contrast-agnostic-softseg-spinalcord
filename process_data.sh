@@ -343,11 +343,9 @@ for file_path in "${inc_contrasts[@]}";do
   sct_apply_transfo -i ${fileseg}.nii.gz -d ./anat/${file_t2_seg}.nii.gz -w ${warping_field}.nii.gz -x linear -o ${fileseg}_reg.nii.gz
   # Remove 8 to 10 slices before adding all segmentation because of partial slices (except for T1w)
   if [[ $contrast != "t1w" ]];then
-        python ${PATH_SCRIPT}/remove_slices_seg.py -i ${fileseg}_reg.nii.gz -c contrast -coverage-map ${file_path}_ones_reg.nii.gz
         mv ${fileseg}_reg.nii.gz ${fileseg}_reg_no_crop.nii.gz
-        mv ${fileseg}_reg_crop.nii.gz ${fileseg}_reg.nii.gz
         mv ${file_path}_ones_reg.nii.gz ${file_path}_ones_reg_no_crop.nii.gz
-        mv ${file_path}_ones_reg_crop.nii.gz ${file_path}_ones_reg.nii.gz
+        python ${PATH_SCRIPT}/remove_slices_seg.py -i ${fileseg}_reg_no_crop.nii.gz -c contrast -coverage-map ${file_path}_ones_reg_no_crop.nii.gz -o ${fileseg}_reg.nii.gz -o-coverage-map ${file_path}_ones_reg.nii.gz
   fi
 
 done
