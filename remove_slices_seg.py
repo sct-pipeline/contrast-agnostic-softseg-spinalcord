@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
-# Add padding to an image by mirroring the image
+# Removes top and bottom slices of segmentation and coverage map
 #
 # For usage, type: python remove_slices_seg.py -h
 
@@ -15,7 +15,7 @@ NEAR_ZERO_THRESHOLD = 1e-6
 
 def get_parser():
     parser = argparse.ArgumentParser(
-        description="TODO| Orientation needs to be RPI" )
+        description="Removes top and bottom slices of segmentation and coverage map to avoid propagation of registration errors when summing segmentations and coverage maps.")
     parser.add_argument('-i', required=True, type=str,
                         help="Input segmentation in T2w space.")
     parser.add_argument('-coverage-map', required=True, type=str,
@@ -40,6 +40,7 @@ def remove_slices(image, max_z_index, min_z_index, nb_slices):
     image_seg_crop = image.copy()
     # Remove top slices
     image_seg_crop[:, :, (max_z_index - nb_slices)::] = 0
+    # Remove bottom slice
     image_seg_crop[:, :, 0:(min_z_index + nb_slices + 1)] = 0
     return image_seg_crop
 
@@ -56,6 +57,7 @@ def main():
 
     # Get max and min index of the segmentation
     _, _, Z = (image_np > NEAR_ZERO_THRESHOLD).nonzero()
+    # Find index of top and bottom slice of the segmentation
     min_z_index, max_z_index = min(Z), max(Z)
 
     # Number of slices to remove:
@@ -68,9 +70,7 @@ def main():
     image_np_crop = remove_slices(image_np, max_z_index, min_z_index, nb_slices)
     coverage_map_np_crop = remove_slices(coverage_map_np, max_z_index, min_z_index, nb_slices)
 
-    # Find index of top and low slice
-    # remove n slices of segmentation and coverage map
-    # save new nifti for both
+    # save new nifti for both segmentation and coverage maps
     filename_seg_crop = args.o
     filename_coverage_crop = args.o_coverage_map
     save_Nifti1(image_np_crop, image, filename_seg_crop)
@@ -78,4 +78,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main() 
+    main()
