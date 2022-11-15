@@ -35,14 +35,14 @@ Next steps are to generate a contrast-agnostic soft segmentation:
 - bring back the segmentations to the original image space of each contrast (except for the T2)
 - Crop images, segmentations and soft segmentation around the spinal cord
 
-The output of this script is a new `derivatives/labels_softseg/` folder that contains the soft labels to be used in this contrast-agnostic segmentation project. All the registration were manually QC-ed (see [Quality Control](#quality-control)) and the problematic registrations were listed in [exclude_reg.yml](https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord/blob/main/exclude_reg.yml). The processing was run again to generate the soft segmentations. 
+The output of this script is a new `derivatives/labels_softseg/` folder that contains the soft labels to be used in this contrast-agnostic segmentation project. All the registration were manually QC-ed (see [Quality Control](#quality-control)) and the problematic registrations were listed in [exclude.yml](https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord/blob/main/exclude.yml). The processing was run again to generate the soft segmentations. 
 
 Specify the path of preprocessed dataset with the flag `-path-data`. 
 
 ### Launch processing
 
 ```
-sct_run_batch -jobs -1 -path-data <PATH_DATA> -path-output <PATH-OUTPUT> -script process_data.sh -script-args exclude_reg.yml
+sct_run_batch -jobs -1 -path-data <PATH_DATA> -path-output <PATH-OUTPUT> -script process_data.sh -script-args exclude.yml
 ```
 
 A `process_data_clean` folder is created in <PATH-OUTPUT> where the cropped data and derivatives are included. Here, only the images that have a manual segmentation and soft segmentation are transfered.
@@ -67,7 +67,7 @@ Re-run the analysis: [Launch processing](#launch-processing)
 
 * In QC report, search for "sct_register_multimodal" to only display results of registration.
 * Click on the F key to indicate if the registration is OK ✅, needs to be excluded ❌ or if the data is not usable ⚠️ (artifact). Two .yml lists, will automatically be generated.
-* Download the list by clicking on **Download QC Fails** and add the file names under `FILES_REG` to https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord/blob/main/exclude_reg.yml
+* Download the list by clicking on **Download QC Fails** and add the file names under `FILES_REG` to https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord/blob/main/exclude.yml
 * Re-run the analysis: [Launch processing](#launch-processing)
 
 **3. Soft segmentations**
