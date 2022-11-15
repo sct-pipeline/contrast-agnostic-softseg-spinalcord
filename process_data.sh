@@ -307,14 +307,19 @@ for file_path in "${inc_contrasts[@]}";do
   # Find contrast to do segmentation
   if [[ $file_path == *"T1w"* ]];then
       contrast_seg="t1"
+      contrast="t1w"
   elif [[ $file_path == *"T2star"* ]];then
       contrast_seg="t2s"
+      contrast=contrast_seg
   elif [[ $file_path == *"T1w_MTS"* ]];then
       contrast_seg="t1"
+      contrast="T1w_MTS"
   elif [[ $file_path == *"MTon_MTS"* ]];then
       contrast_seg="t2s"
+      contrast="MTon_MTS"
   elif [[ $file_path == *"dwi"* ]];then
       contrast_seg="dwi"
+      contrast=contrast_seg
   fi
 
   type=$(find_contrast $file_path)
@@ -326,7 +331,7 @@ for file_path in "${inc_contrasts[@]}";do
   python ${PATH_SCRIPT}/pad_seg.py -i ${fileseg}.nii.gz -o ${fileseg}_pad.nii.gz
   # Registration
   # ------------------------------------------------------------------------------
-  sct_register_multimodal -i ${file_path}.nii.gz -d ./anat/${file_t2}.nii.gz -iseg ${fileseg}_pad.nii.gz -dseg ./anat/${file_t2_seg}.nii.gz -param step=1,type=seg,algo=slicereg,metric=MeanSquares,iter=10,poly=2 -qc ${PATH_QC} -qc-subject ${SUBJECT} -o ${file_path}_reg.nii.gz
+  sct_register_multimodal -i ${file_path}.nii.gz -d ./anat/${file_t2}.nii.gz -iseg ${fileseg}_pad.nii.gz -dseg ./anat/${file_t2_seg}.nii.gz -param step=1,type=seg,algo=centermass -qc ${PATH_QC} -qc-subject ${SUBJECT} -o ${file_path}_reg.nii.gz
   warping_field=${type}warp_${file}2${file_t2}
 
   # Generate SC segmentation coverage and register to T2w
@@ -336,6 +341,13 @@ for file_path in "${inc_contrasts[@]}";do
   sct_apply_transfo -i ${file_path}_ones.nii.gz -d ./anat/${file_t2}.nii.gz -w ${warping_field}.nii.gz -x linear -o ${file_path}_ones_reg.nii.gz
   # Bring SC segmentation to T2w space
   sct_apply_transfo -i ${fileseg}.nii.gz -d ./anat/${file_t2_seg}.nii.gz -w ${warping_field}.nii.gz -x linear -o ${fileseg}_reg.nii.gz
+  # Remove 8 to 10 slices before adding all segmentation because of partial slices (except for T1w)
+  if [[ $contrast != "t1w" ]];then
+        mv ${fileseg}_reg.nii.gz ${fileseg}_reg_no_crop.nii.gz
+        mv ${file_path}_ones_reg.nii.gz ${file_path}_ones_reg_no_crop.nii.gz
+        python ${PATH_SCRIPT}/remove_slices_seg.py -i ${fileseg}_reg_no_crop.nii.gz -c contrast -coverage-map ${file_path}_ones_reg_no_crop.nii.gz -o ${fileseg}_reg.nii.gz -o-coverage-map ${file_path}_ones_reg.nii.gz
+  fi
+
 done
 # Create coverage mask for T2w
 sct_create_mask -i ./anat/${file_t2}.nii.gz -o ./anat/${file_t2}_ones.nii.gz -size 500 -p centerline,./anat/${file_t2_seg}.nii.gz
