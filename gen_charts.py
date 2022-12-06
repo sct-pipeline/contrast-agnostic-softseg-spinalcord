@@ -1,6 +1,6 @@
 """
 Usage: 
-    python gen_charts.py --contrasts T1w T2w T2star dwi \
+    python gen_charts.py --contrasts T1w T2w T2star rec-average_dwi \
         --predictions_folder ../duke/projects/ivadomed/contrast-agnostic-seg/csa_measures_pred/v1/ \
         --baseline_folder ../duke/projects/ivadomed/contrast-agnostic-seg/archive_derivatives_softsegs-seg/contrast-agnostic-preprocess-all-2022-08-21-final/results
 
