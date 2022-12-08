@@ -153,9 +153,9 @@ def macro_sd_violin_preli(df, methods, outfile=None):
 
     sns.violinplot(data=df[methods], ax=ax, inner="box", palette=cols_dic)
     #labels = sd_macro_perf_names
-    #labels = ["hard_manual", "meanGT_manual", "meanGT_soft_singlecontrast", "meanGT_soft_allcontrast"]
+    labels = ["hard_manual", "meanGT_manual", "meanGT_soft_singlecontrast", "meanGT_soft_allcontrast"]
     #labels = methods
-    labels = ["hard_manual", "meanGT_manual"]
+    #labels = ["hard_manual", "meanGT_manual"]
     ax.set_title("CSA's standard deviation of the Ground Truth segmentations across contrasts", pad=20, fontweight="bold", fontsize="x-large")
     ax.xaxis.set_tick_params(direction='out')
     ax.xaxis.set_ticks_position('bottom')
@@ -178,10 +178,11 @@ def macro_sd_violin(df, methods, outfile=None):
     plt.yticks(fontsize="x-large")
     cols_cat = ["#ff6767", "#8edba3"]
     cols_dic = {name: "#989e9a" if (k == 0 or k == 1) else cols_cat[k%2] for k, name in enumerate(methods)}
-
+    print('methods', methods)
     sns.violinplot(data=df[methods], ax=ax, inner="box", palette=cols_dic)
     #labels = sd_macro_perf_names
-    labels = ["GT_binary", "GT_softmean", "DL_soft_percontrast", "DL_soft_allcontrast"]
+    #labels = ["GT_binary", "GT_softmean", "DL_soft_percontrast", "DL_soft_allcontrast"]
+    labels = ["GT_binary", "GT_softmean", "DL_hard_percontrast","DL_soft_aug_percontrast ", "DL_soft_percontrast", "DL_soft_allcontrast"]
     #labels = ["hard_manual", "meanGT_manual", "meanGT_soft_singlecontrast", "meanGT_soft_allcontrast"]
     #labels = methods
     

@@ -54,22 +54,18 @@ def merge_csv(prediction_data_folder: str,
     seeds_in_folders = []
     
     for fd in csa_folders:
-        if fd.split('_')[0] == "old":
-            continue
         parts = fd.split('_')
         gtype = fd.split('_')[0]
         augtype = fd.split('_')[1]
         
-        # TODO: Potentially add the MTS cases
-        if len(parts) == 6:
-            contrast = "_".join([parts[2], parts[3]])
-            seed = parts[4][5:]
-        elif len(parts) == 5:
-            contrast = parts[2]
-            seed = parts[3][5:]
-        else:
-            raise ValueError("Prediction model folders are in the wrong format.")
+        contrast = [s for s in contrasts if s in fd ]
         
+        if len(contrast) == 0:
+            contrast = 'all'
+        else:
+            contrast = contrast[0]
+
+        seed = [part for part in parts if "seed" in part][0][5:]
         seeds_in_folders.append(int(seed))
         if contrast == 'all':
             csvs = [ff for ff in os.listdir(os.path.join(prediction_data_folder, fd, 'results')) if ff[-4:]=='.csv']
@@ -103,9 +99,7 @@ def merge_csv(prediction_data_folder: str,
             print(f"\nSeed {seed}| Missing {contrast} in spec model : {seed_patients_right}\n")
         if seed_patients_left != set():
             print(f"\nSeed {seed}| Missing {contrast} in all model : {seed_patients_left}\n")
-    
     seeds = list(set(seeds_in_folders))
-
     for s in seeds:
         for contrast in contrasts:
             for gtype in gtypes:
@@ -194,9 +188,9 @@ if __name__ == "__main__":
     prediction_data_folder = args.predictions_folder[0]
     baseline_data_folder = args.baseline_folder[0]
     dfs, preli_df = merge_csv(prediction_data_folder, baseline_data_folder, 
-                            contrasts=args.contrasts,
-                            gtypes=args.gtypes,
-                            augtypes=args.augtypes)
+                              contrasts=args.contrasts,
+                              gtypes=args.gtypes,
+                              augtypes=args.augtypes)
     exp_folder = create_experiment_folder()
     # Manual - MeanGT VS HardGT effect
     methods_preli = ["manual_hard_GT", "manual_soft_GT"] # Benchmarks
@@ -206,9 +200,9 @@ if __name__ == "__main__":
     print(f"Length preliminary dataset:  {len(preli_df)}") # 103
 
     # Individual seeds
-    methods = ["manual_hard_GT", "manual_soft_GT", 
-            "meanGT_soft", "meanGT_soft_all"]
-    
+    methods = ["manual_hard_GT", "manual_soft_GT", "hard_hard", "hard_soft",
+               "meanGT_soft", "meanGT_soft_all"]
+
     contrasts = [c for c in args.contrasts if c != "T2w"]  #["T1w", "T2star"]
     ref_contrast = "T2w"
     if ref_contrast not in args.contrasts:
