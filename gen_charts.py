@@ -10,7 +10,7 @@ import logging
 import argparse
 
 import pandas as pd
-
+from scipy import stats
 from charts_utils import macro_sd_violin, contrast_specific_pwd_violin, create_perf_df_sd, create_experiment_folder, create_perf_df_pwd, macro_sd_violin_preli
 
 def get_parser():
@@ -183,6 +183,11 @@ def merge_csv(prediction_data_folder: str,
     return dfs, pd.DataFrame.from_dict(preli_dic)
 
 
+def compute_paired_t_test(x, y):
+
+    return stats.ttest_rel(x, y, nan_policy='omit')
+
+
 if __name__ == "__main__":
     args = get_parser().parse_args()
     prediction_data_folder = args.predictions_folder[0]
@@ -221,3 +226,16 @@ if __name__ == "__main__":
     print(f"# Duplicates : {sum(duplicates)}/{len(duplicates)} \n Duplicate patients :\n {agg_df['patient_id'][duplicates]}")
     perf_df_sd, macro_perf_sd_names = create_perf_df_sd(agg_df, methods, contrasts+[ref_contrast])
     macro_sd_violin(perf_df_sd, methods=macro_perf_sd_names, outfile=os.path.join(exp_folder, f"macroSD_allseeds.png"))
+    
+    # Compute paired T-test
+    # Compare soft augmentation vs soft avg
+    results_2_vs_3 = compute_paired_t_test(perf_df_sd['hard_soft_perf_sd'], perf_df_sd['meanGT_soft_perf_sd'])
+    print("Paired T-test: soft augmentation vs soft average: ", results_2_vs_3)
+    # Compare per contrast vs all contrast
+    results_3_vs_4 = compute_paired_t_test(perf_df_sd['meanGT_soft_perf_sd'], perf_df_sd['meanGT_soft_all_perf_sd'])
+    print("Paired T-test: per contrast vs all contrast: ", results_3_vs_4)
+    # Compare meant GT vs all contrast
+    results_GT_vs_4 = compute_paired_t_test(perf_df_sd['manual_hard_GT_perf_sd'], perf_df_sd['meanGT_soft_all_perf_sd'])
+    print("Paired T-test: meant GT vs all contrast: ", results_GT_vs_4)
+
+    #['manual_hard_GT_perf_sd', 'manual_soft_GT_perf_sd', 'hard_hard_perf_sd', 'hard_soft_perf_sd', 'meanGT_soft_perf_sd', 'meanGT_soft_all_perf_sd']
