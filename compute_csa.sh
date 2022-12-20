@@ -142,10 +142,14 @@ for file_path in "${inc_contrasts[@]}";do
   file=${file_path/#"$type"}
   fileseg=${file_path}_seg
   # Check if file exists (pred file)
-  if [[ -f ${PATH_PRED_SEG}${file}_pred_painted.nii.gz ]];then
-    rsync -avzh ${PATH_PRED_SEG}${file}_pred_painted.nii.gz ${file_path}_pred.nii.gz
+  if [[ -f ${PATH_PRED_SEG}${file}_pred.nii.gz ]];then
+    rsync -avzh ${PATH_PRED_SEG}${file}_pred.nii.gz ${file_path}_pred.nii.gz
     pred_seg=${file_path}_pred
 
+    # Remove 4th dimension
+    sct_image -i ${pred_seg}.nii.gz -split t
+    pred_seg=${pred_seg}_T0000
+    
     # Create QC for pred mask
     sct_qc -i ${file_path}.nii.gz -s ${pred_seg}.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
 
