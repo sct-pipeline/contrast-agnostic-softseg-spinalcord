@@ -119,3 +119,11 @@ For every trained model, you can run:
 sct_run_batch -jobs -1 -path-data /data_processed_clean/ -path-output <PATH_OUTPUT> -script compute_csa.sh -script-args <PATH_PRED_MASKS>
 ```
 The CSA results will be under `<PATH_OUTPUT>/results`.
+
+To generate violin plots and analyse results, run the following command:
+
+```
+python gen_charts.py --contrasts T1w T2w T2star rec-average_dwi \
+       --predictions_folder ../duke/projects/ivadomed/contrast-agnostic-seg/csa_measures_pred/group8-9_combined-2022-12-21/ \
+       --baseline_folder ../duke/projects/ivadomed/contrast-agnostic-seg/archive_derivatives_softsegs-seg/contrast-agnostic-centerofmass-preprocess-clean-all-2022-10-22\results_MTS_renamed
+```
