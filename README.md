@@ -9,7 +9,11 @@ This repo creates a series of preparations for comparing the newly trained ivado
 - Python 3.7.
 
 ## Dataset
-The data are from the [spine-generic multi-subject](https://github.com/spine-generic/data-multi-subject/)
+The source data are from the [spine-generic multi-subject](https://github.com/spine-generic/data-multi-subject/).
+
+The processed data are located on `duke:projects/ivadomed/contrast-agnostic-seg/data`.
+
+> ⚠️ Currently, there are three processed datasets to account for the issue of ivadomed loader that cannot deal with the MTS files (https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord/issues/25). In the future, there should be only ONE processed dataset. 
 
 ## Processing
 Main processing steps include:
