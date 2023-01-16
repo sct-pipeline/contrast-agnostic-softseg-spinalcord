@@ -257,8 +257,8 @@ fi
 file_t1="${SUBJECT}_T1w"
 file_t2="${SUBJECT}_T2w"
 file_t2s="${SUBJECT}_T2star"
-file_t1w="${SUBJECT}_acq-T1w_MTS"
-file_mton="${SUBJECT}_acq-MTon_MTS"
+file_t1w="${SUBJECT}_flip-2_mt-off_MTS"
+file_mton="${SUBJECT}_flip-1_mt-on_MTS"
 file_dwi_mean="${SUBJECT}_rec-average_dwi"
 contrasts=($file_t1 $file_t2s $file_t1w $file_mton $file_dwi_mean)
 inc_contrasts=()
@@ -311,12 +311,12 @@ for file_path in "${inc_contrasts[@]}";do
   elif [[ $file_path == *"T2star"* ]];then
       contrast_seg="t2s"
       contrast=contrast_seg
-  elif [[ $file_path == *"T1w_MTS"* ]];then
+  elif [[ $file_path == *"flip-2_mt-off_MTS"* ]];then
       contrast_seg="t1"
-      contrast="T1w_MTS"
-  elif [[ $file_path == *"MTon_MTS"* ]];then
+      contrast="flip-2_mt-off_MTS"
+  elif [[ $file_path == *"flip-1_mt-on_MTS"* ]];then
       contrast_seg="t2s"
-      contrast="MTon_MTS"
+      contrast="flip-1_mt-on_MTS"
   elif [[ $file_path == *"dwi"* ]];then
       contrast_seg="dwi"
       contrast=contrast_seg
@@ -419,16 +419,16 @@ for file_path in "${inc_contrasts[@]}";do
   cd $PATH_DATA_PROCESSED/$SUBJECT 
 
   # Find contrast to name csa files
-  if [[ $file_path == *"T1w_MTS"* ]];then
-      contrast_seg="T1w_MTS"
+  if [[ $file_path == *"flip-2_mt-off_MTS"* ]];then
+      contrast_seg="flip-2_mt-off_MTS"
   elif [[ $file_path == *"T1w"* ]];then
       contrast_seg="T1w"
   elif [[ $file_path == *"T2w"* ]];then
       contrast_seg="T2w"
   elif [[ $file_path == *"T2star"* ]];then
       contrast_seg="T2star"
-  elif [[ $file_path == *"MTon_MTS"* ]];then
-      contrast_seg="MTon_MTS"
+  elif [[ $file_path == *"flip-1_mt-on_MTS"* ]];then
+      contrast_seg="flip-1_mt-on_MTS"
   elif [[ $file_path == *"dwi"* ]];then
       contrast_seg="dwi"
   fi
