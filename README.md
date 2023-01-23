@@ -80,9 +80,27 @@ Re-run the analysis: [Launch processing](#launch-processing)
 
 ## Training
 
-### create_training_joblib.py
-The function creates a joblib that allocates data from the testing set of the SCT model to the testing set of the ivadomed model. The output (new_splits.joblib) needs to be assigned on the config.json in the field "split_dataset": {"fname_split": new_splits.joblib"}. 
-Multiple datasets (BIDS folders) can be used as input for the creation of the joblib. The same list should be assigned on the config.json file in the path_data field.
+### config_generator.py
+The script helps create joblibs that are going to represent splits of our dataset. It will create a <code>joblibs</code> folder containing the data split for each sub-experiment (i.e. hard_hard, soft_soft ...). The way we leverage the aforementioned python script is by running the bash script <code>generate_config.sh</code> that will execute the following command for each sub-experiment:
+```
+python config_generator.py --config config_templates/hard_hard.json \
+                           --datasets path/to/data
+                           --ofolder path/to/joblib \
+                           --contrasts T1w T2w T2star rec-average_dwi \
+                           --seeds 15
+```
+in which one has to specify the config template for the sub-experiment, the dataset path, the joblibs output folder, the contrasts used for the experiment and the random generation seed(s) respectively.
+
+### training_scripts
+Once the joblibs describing how the data is split are generated, one can start training the different models within a sub-experiment. Notice that there are 3 folders in <code>training_scripts</code>, 2 of them are related to a specific MTS contrast and the last one is used to train models with the other contrasts. This flaw is due to the incompatibility of ivadomed's dataloader dealing with MTS contrasts properly, at the time of writing. We expect to address this problem in the next months so we can have a single bash script executing all the training experiments smoothly.
+For clarity, we go over a few examples about how to use the current training scripts.
+1. One wants to train MTS contrast-specific models. Then choose the right MTS contrast <code>acq-MTon_MTS</code> or <code>acq-T1w_MTS</code> and run the associated bash script. 
+2. One wants to train contrast-specific (without MTS) models AND generalist models (including MTS) then run the bash script in <code>training_scripts/all/training_run.sh</code>.
+
+All training runs are using the ivadomed's framework and logging training metrics in a <code>results</code> folder (optionally with wandb).
+
+### inference.sh 
+Once the models are trained, one can use the <code>inference.sh</code> bash script to segment SC for tests participants and qualitatively analyze the results. Again like in all bash scripts mentioned in this project, one has to change a few parameters to adapt to one's environment (e.g. dataset path ...).
 
 
 ### compare_with_sct_model.py
