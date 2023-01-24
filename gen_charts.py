@@ -28,7 +28,7 @@ def get_parser():
                         required=False,
                         nargs="*",
                         help="Contrasts to use for charts.",
-                        default=['T1w', 'T2w', 'T2star', 'rec-average_dwi'])
+                        default=['T1w', 'T2w', 'T2star', 'rec-average_dwi', 'flip-1_mt-on_MTS', 'flip-2_mt-off_MTS'])
     parser.add_argument("--gtypes",
                         required=False,
                         nargs="*",
@@ -92,11 +92,13 @@ def merge_csv(prediction_data_folder: str,
             csvs = [ff for ff in os.listdir(os.path.join(prediction_data_folder, fd, 'results')) if ff[-4:]=='.csv']
             for csv_path in csvs:
                 absolute_csv_path = os.path.join(prediction_data_folder, fd, 'results', csv_path)
-                contrast = csv_path[:-4].split('_')[-1]
-                contrast = "rec-average_dwi" if contrast == "dwi" else contrast # TODO: Refactor CSA folder names to only rec-average_dwi or dwi
+                contrast = [s for s in contrasts if s in csv_path ]
+                contrast = "rec-average_dwi" if "dwi" in csv_path else contrast[0]  # TODO: Refactor CSA folder names to only rec-average_dwi or dwi
+                print(contrast)
                 main_dic_key = "_".join([gtype, augtype, "all", contrast, f"seed={seed}"])
                 val_dic = extract_csv(absolute_csv_path)
                 logger.info(f"Folder : {fd} | Contrast : {contrast} | # patients:  {len(val_dic.keys())}")
+                print(main_dic_key)
                 main_dic[main_dic_key] = val_dic
         else:
             if contrast == "rec-average_dwi":
@@ -191,7 +193,7 @@ def merge_csv(prediction_data_folder: str,
     
     ## Preliminary exp dataframe - meanGT VS hardGT 
     patients_inter = set(list(main_dic[f"manual_soft_GT_T1w"].keys()))
-    manual_keys = [f"manual_{gtype}_GT_{c}" for gtype in ["hard", "soft"] for c in ["T1w", "T2w", "T2star", "rec-average_dwi", "T1w_MTS", "MTon_MTS"]]
+    manual_keys = [f"manual_{gtype}_GT_{c}" for gtype in ["hard", "soft"] for c in ["T1w", "T2w", "T2star", "rec-average_dwi", "flip-2_mt-off_MTS", "flip-1_mt-on_MTS"]]
     for manual_key in manual_keys:
         patients_inter = patients_inter.intersection(set(list(main_dic[manual_key].keys())))
     
@@ -229,7 +231,7 @@ def main():
 
     # Manual - MeanGT VS HardGT effect
     methods_preli = ["manual_hard_GT", "manual_soft_GT"] # Benchmarks
-    contrast_preli = ["T1w", "T2w", "T2star", "rec-average_dwi", "MTon_MTS", "T1w_MTS"]
+    contrast_preli = args.contrasts
     perf_df_sd, macro_perf_sd_names = create_perf_df_sd(preli_df, methods_preli, contrast_preli)
     macro_sd_violin_preli(perf_df_sd, methods=macro_perf_sd_names, outfile=os.path.join(exp_folder, f"preli_meanGT_VS_default.png"))
     logger.info(f"Length preliminary dataset:  {len(preli_df)}") # 103
