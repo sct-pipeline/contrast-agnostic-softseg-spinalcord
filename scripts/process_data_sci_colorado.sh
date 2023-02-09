@@ -100,6 +100,13 @@ file_t2="${SUBJECT}_T2w"
 segment_if_exists ${file_t2} 'anat' 't2'
 file_t2_seg="${file_t2}_seg"
 
+file_path=$file_t2
+fileseg="$file_t2_seg-manual"
+# Dilate spinal cord segmentation
+sct_maths -i ${PATH_DATA}/derivatives/labels/${SUBJECT}/anat/${fileseg}.nii.gz -dilate 7 -shape ball -o ${fileseg}_dilate.nii.gz
+# Crop image 
+sct_crop_image -i ${file_path}.nii.gz -m ${fileseg}_dilate.nii.gz -o ${file_path}_crop.nii.gz
+
 # Go back to root output folder
 cd $PATH_OUTPUT
 # Create and populate clean data processed folder for training
@@ -109,13 +116,6 @@ rsync -avzh $PATH_DATA_PROCESSED/dataset_description.json $PATH_DATA_PROCESSED_C
 rsync -avzh $PATH_DATA_PROCESSED/participants.* $PATH_DATA_PROCESSED_CLEAN/
 rsync -avzh $PATH_DATA_PROCESSED/README.md $PATH_DATA_PROCESSED_CLEAN/
 rsync -avzh $PATH_DATA_PROCESSED/dataset_description.json $PATH_DATA_PROCESSED_CLEAN/
-
-file_path=$file_t2
-fileseg=$file_t2_seg
-# Dilate spinal cord segmentation
-sct_maths -i ${PATH_DATA}/derivatives/labels/${SUBJECT}/anat/${fileseg}.nii.gz -dilate 7 -shape ball -o ${fileseg}_dilate.nii.gz
-# Crop image 
-sct_crop_image -i ${file_path}.nii.gz -m ${fileseg}_dilate.nii.gz -o ${file_path}_crop.nii.gz
 mkdir -p $PATH_DATA_PROCESSED_CLEAN $PATH_DATA_PROCESSED_CLEAN/${SUBJECT}/anat $PATH_DATA_PROCESSED_CLEAN/derivatives/labels/${SUBJECT}/anat
 # Put cropped image and json in cleaned dataset
 rsync -avzh $PATH_DATA_PROCESSED/${SUBJECT}/anat/${file_path}_crop.nii.gz $PATH_DATA_PROCESSED_CLEAN/${SUBJECT}/anat/${file_path}.nii.gz
