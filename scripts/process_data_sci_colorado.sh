@@ -106,6 +106,8 @@ fileseg="$file_t2_seg-manual"
 sct_maths -i ${PATH_DATA}/derivatives/labels/${SUBJECT}/anat/${fileseg}.nii.gz -dilate 7 -shape ball -o ${fileseg}_dilate.nii.gz
 # Crop image 
 sct_crop_image -i ${file_path}.nii.gz -m ${fileseg}_dilate.nii.gz -o ${file_path}_crop.nii.gz
+# Crop segmentation
+sct_crop_image -i ${PATH_DATA}/derivatives/labels/${SUBJECT}/anat/${fileseg}.nii.gz -m ${fileseg}_dilate.nii.gz -o ${fileseg}_crop.nii.gz
 
 # Go back to root output folder
 cd $PATH_OUTPUT
