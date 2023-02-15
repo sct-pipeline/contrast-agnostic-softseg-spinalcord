@@ -72,7 +72,7 @@ find_contrast(){
 cd ${SUBJECT}
 # We do a substitution '/' --> '_' in case there is a subfolder 'ses-0X/'
 file_sub="${SUBJECT//[\/]/_}"
-for file_pred in ${PATH_PRED_SEG}/*; do
+for $file_pred in ${PATH_PRED_SEG}/*; do
     if [[ $file_pred == *$file_sub* ]];then
         echo " File found, running QC report $file_pred"
         # Find if anat or dwi
