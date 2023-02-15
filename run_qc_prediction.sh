@@ -24,7 +24,6 @@ trap "echo Caught Keyboard Interrupt within script. Exiting now.; exit" INT
 # Retrieve input params
 SUBJECT=$1
 PATH_PRED_SEG=$2
-SES=$3
 
 # get starting time:
 start=`date +%s`
@@ -45,7 +44,7 @@ fi
 
 # Copy source images
 # Copy session if specified
-if [[ $SES == "ses" ]];then
+if [[ $SUBJECT == "*ses*" ]];then
     rsync -Ravzh $PATH_DATA/./$SUBJECT .
 else
     rsync -avzh $PATH_DATA/$SUBJECT .
