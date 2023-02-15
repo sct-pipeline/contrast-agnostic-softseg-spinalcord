@@ -24,6 +24,7 @@ trap "echo Caught Keyboard Interrupt within script. Exiting now.; exit" INT
 # Retrieve input params
 SUBJECT=$1
 PATH_PRED_SEG=$2
+SES=$3
 
 # get starting time:
 start=`date +%s`
@@ -41,8 +42,15 @@ fi
 if [[ ! -f $PATH_RESULTS/"participants.tsv" ]]; then
   rsync -avzh $PATH_DATA/participants.tsv $PATH_RESULTS/"participants.tsv"
 fi
+
 # Copy source images
-rsync -avzh $PATH_DATA/$SUBJECT .
+# Copy session if specified
+if [[ $SES == "ses" ]];then
+    rsync -Ravzh $PATH_DATA/./$SUBJECT .
+else
+    rsync -avzh $PATH_DATA/$SUBJECT .
+fi
+
 
 # FUNCTIONS
 # ==============================================================================
@@ -62,9 +70,10 @@ find_contrast(){
 # ==============================================================================
 # Go to anat folder where all structural data are located
 cd ${SUBJECT}
-
+# We do a substitution '/' --> '_' in case there is a subfolder 'ses-0X/'
+file_sub="${SUBJECT//[\/]/_}"
 for file_pred in ${PATH_PRED_SEG}/*; do
-    if [[ $file_pred == *$SUBJECT* ]];then
+    if [[ $file_pred == *$file_sub* ]];then
         echo " File found, running QC report $file_pred"
         # Find if anat or dwi
         file_seg_basename=${file_pred##*/}
