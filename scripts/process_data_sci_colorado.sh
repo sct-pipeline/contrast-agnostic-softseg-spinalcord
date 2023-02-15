@@ -102,12 +102,10 @@ file_t2_seg="${file_t2}_seg"
 
 file_path=$file_t2
 fileseg="$file_t2_seg-manual"
-# Dilate spinal cord segmentation
-sct_maths -i ${PATH_DATA}/derivatives/labels/${SUBJECT}/anat/${fileseg}.nii.gz -dilate 7 -shape ball -o ${fileseg}_dilate.nii.gz
 # Crop image 
-sct_crop_image -i ${file_path}.nii.gz -m ${fileseg}_dilate.nii.gz -o ${file_path}_crop.nii.gz
+sct_crop_image -i ${file_path}.nii.gz -dilate 7 -m ${PATH_DATA}/derivatives/labels/${SUBJECT}/anat/${fileseg}.nii.gz -o ${file_path}_crop.nii.gz
 # Crop segmentation
-sct_crop_image -i ${PATH_DATA}/derivatives/labels/${SUBJECT}/anat/${fileseg}.nii.gz -m ${fileseg}_dilate.nii.gz -o ${fileseg}_crop.nii.gz
+sct_crop_image -i ${PATH_DATA}/derivatives/labels/${SUBJECT}/anat/${fileseg}.nii.gz -dilate 7 -m ${PATH_DATA}/derivatives/labels/${SUBJECT}/anat/${fileseg}.nii.gz -o ${fileseg}_crop.nii.gz
 
 # Go back to root output folder
 cd $PATH_OUTPUT
