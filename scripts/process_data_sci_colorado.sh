@@ -56,7 +56,7 @@ rsync -avzh $PATH_DATA/$SUBJECT .
 
 # FUNCTIONS
 # ==============================================================================
-segment_if_exists(){
+segment_if_does_not_exist(){
   local file="$1"
   local contrast="$2"
   local contrast_for_seg="$3"
@@ -91,13 +91,13 @@ cd ${SUBJECT}/anat/
 # ------------------------------------------------------------------------------
 
 file_t1="${SUBJECT}_T1w"
-segment_if_exists ${file_t1} 'anat' 't1'
+segment_if_does_not_exist ${file_t1} 'anat' 't1'
 file_t1_seg="${file_t1}_seg"
 
 # T2w
 # ------------------------------------------------------------------------------
 file_t2="${SUBJECT}_T2w"
-segment_if_exists ${file_t2} 'anat' 't2'
+segment_if_does_not_exist ${file_t2} 'anat' 't2'
 file_t2_seg="${file_t2}_seg"
 
 file_path=$file_t2
