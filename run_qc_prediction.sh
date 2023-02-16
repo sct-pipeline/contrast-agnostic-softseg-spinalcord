@@ -44,7 +44,7 @@ fi
 
 # Copy source images
 # Copy session if specified
-if [[ $SUBJECT == "*ses*" ]];then
+if [[ $SUBJECT == *"ses"* ]];then
     rsync -Ravzh $PATH_DATA/./$SUBJECT .
 else
     rsync -avzh $PATH_DATA/$SUBJECT .
