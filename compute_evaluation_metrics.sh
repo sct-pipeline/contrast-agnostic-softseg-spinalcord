@@ -97,7 +97,7 @@ for file_pred in ${PATH_PRED_SEG}/*; do
             echo "Found! Using manual labels."
             rsync -avzh $FILELABELMANUAL ${type}/${FILELABEL}.nii.gz
             # Compute dice score
-            python ${PATH_SCRIPT}/compute_dice.py -im1 ${type}/${file_seg_basename} -im2 ${type}/${FILELABEL}.nii.gz -o ${PATH_RESULTS}/dice.csv
+            python ${PATH_SCRIPT}/compute_evaluation_metrics.py -im1 ${type}/${file_seg_basename} -im2 ${type}/${FILELABEL}.nii.gz -o ${PATH_RESULTS}/dice.csv
         else
             echo "Not found. cannot compute dice score."
             exit
