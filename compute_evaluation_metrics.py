@@ -240,6 +240,17 @@ def get_rvd(im1, im2):
 
     return rvd
 
+
+def get_avd(im1, im2):
+    """Absolute volume difference.
+
+    The volume is here defined by the physical volume, in mm3, of the non-zero voxels of a given mask.
+    Absolute volume difference equals the absolute value of the Relative Volume Difference.
+    Optimal value is zero.
+    """
+    return abs(get_rvd(im1, im2))
+
+
 def compute_dice(im1, im2, empty_score=np.nan):
     """Computes the Dice coefficient between im1 and im2.
     Compute a soft Dice coefficient between im1 and im2, ie equals twice the sum of the two masks product, divided by
@@ -284,17 +295,18 @@ def main():
     recall = recall_score(im1.get_fdata(), im2.get_fdata())
     mse_result = mse(im1.get_fdata(), im2.get_fdata())
     hausdorff = hausdorff_score(im1.get_fdata(), im2.get_fdata())
-    
+    rvd = get_rvd(im1, im2)
+    avd = get_avd(im1, im2)
 
     # Create .csv file of results
     if not os.path.isfile(fname_out):
         with open(fname_out, 'w') as csvfile:
-            header = ['Filename', 'Dice', 'Accuracy', 'Specificity', 'Recall', 'Precision', 'MSE', 'Hausdorff']
+            header = ['Filename', 'Dice', 'Accuracy', 'Specificity', 'Recall', 'Precision', 'MSE', 'Hausdorff', 'RVD', 'AVD']
             writer = csv.DictWriter(csvfile, fieldnames=header)
             writer.writeheader()
     with open(fname_out, 'a') as csvfile:
         spamwriter = csv.writer(csvfile, delimiter=',')
-        line = [args.im1, dice, accuracy, specificity, recall, precision, mse_result, hausdorff]
+        line = [args.im1, dice, accuracy, specificity, recall, precision, mse_result, hausdorff, rvd, avd]
         spamwriter.writerow(line)
 
 
