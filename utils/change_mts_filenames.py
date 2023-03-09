@@ -27,8 +27,6 @@ import os
 from glob import glob
 
 if __name__ == "__main__":
-    #dataset_type = "data_processed_clean_MTon_MTS"
-    #dataset_type = "data_processed_clean_T1w_MTS"
     user = "adelba" # POLYGRAMS
     user_temp_folder = "adrian" # DUKE TEMP FOLDER NAME
     dataset_type = "data_processed_clean"
