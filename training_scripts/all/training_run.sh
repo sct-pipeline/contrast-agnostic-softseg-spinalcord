@@ -1,8 +1,7 @@
 ####### Training Run #######                           
-seeds=(15) # seeds=(42 15 34 98 62)
+seeds=(15)
 config_types=("hard_hard" "hard_soft" "meanGT_soft" "meanGT_hard")
-#contrasts=("T1w" "T2w" "T2star" "rec-average_dwi" "all")
-contrasts=("all") # We can't differentiate between variants of MTS
+contrasts=("T1w" "T2w" "T2star" "rec-average_dwi" "all")
 
 for seed in ${seeds[@]}
 do
@@ -12,11 +11,11 @@ do
     do
       sleep 5
       #echo ./batch_configs/"$config"_"$contrast"_seed="$seed".json
-      output_dir=./batch_results/group-9/"$config"_"$contrast"_seed="$seed"
+      output_dir=./results/miccai2023/"$config"_"$contrast"_seed="$seed"
       echo $output_dir
       mkdir $output_dir
       #echo ./batch_configs/"$config"_"$contrast"_seed="$seed".json
-      CUDA_VISIBLE=2 ivadomed --train -c ./batch_configs/group-9/"$config"_"$contrast"_seed="$seed".json --path-output $output_dir
+      CUDA_VISIBLE=2 ivadomed --train -c ./config/miccai2023/"$config"_"$contrast"_seed="$seed".json --path-output $output_dir
     done
   done
 done
