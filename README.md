@@ -127,3 +127,8 @@ python gen_charts.py --contrasts T1w T2w T2star rec-average_dwi \
        --predictions_folder ../duke/projects/ivadomed/contrast-agnostic-seg/csa_measures_pred/group8-9_combined-2022-12-21/ \
        --baseline_folder ../duke/projects/ivadomed/contrast-agnostic-seg/archive_derivatives_softsegs-seg/contrast-agnostic-centerofmass-preprocess-clean-all-2022-10-22\results_MTS_renamed
 ```
+## Run qc report on prediction masks
+
+~~~
+sct_run_batch -path-data <PATH_DATA> -path-out <PATH-OUT> -script-args <PATH_PRED_MASK> -jobs 20 -script run_qc_prediction.sh
+~~~
