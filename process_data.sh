@@ -24,7 +24,7 @@
 set -x
 
 # Immediately exit if error
-set -e -o pipefail
+#set -e -o pipefail --> will not enter in the loop if so...
 
 # Exit if user presses CTRL+C (Linux) or CMD+C (OSX)
 trap "echo Caught Keyboard Interrupt within script. Exiting now.; exit" INT
@@ -85,6 +85,31 @@ concatenate_b0_and_dwi(){
     FILE_DWI="${file_dwi}"
   fi
 }
+
+# Check if manual label already exists. If it does, copy it locally. If it does
+# not, perform labeling.
+# NOTE: manual disc labels should go from C1-C2 to C7-T1.
+label_if_does_not_exist(){
+  local file="$1"
+  local file_seg="$2"
+  # Update global variable with segmentation file name
+  FILELABEL="${file}_labels-disc"
+  FILELABELMANUAL="${PATH_DATA}/derivatives/labels/${SUBJECT}/${FILELABEL}-manual.nii.gz"
+  # Binarize softsegmentation to create labeled softseg
+  #sct_maths -i ${file_seg}.nii.gz -bin 0.5 -o ${file_seg}_bin.nii.gz
+  echo "Looking for manual label: $FILELABELMANUAL"
+  if [[ -e $FILELABELMANUAL ]]; then
+    echo "Found! Using manual labels."
+    rsync -avzh $FILELABELMANUAL ${FILELABEL}.nii.gz
+    # Generate labeled segmentation from manual disc labels
+    sct_label_vertebrae -i ${file}.nii.gz -s ${file_seg}.nii.gz -discfile ${FILELABEL}.nii.gz -c t2 -ofolder ./anat/
+  else
+    echo "Not found. Proceeding with automatic labeling."
+    # Generate labeled segmentation
+    sct_label_vertebrae -i ${file}.nii.gz -s ${file_seg}.nii.gz -c t2 -ofolder ./anat/
+  fi
+}
+
 
 find_manual_seg(){
   local file="$1"
@@ -227,12 +252,13 @@ if [[ -f ./dwi/${file_dwi}.nii.gz ]];then
   cd ..
 fi
 
+
 # Initialize filenames
 file_t1="${SUBJECT}_T1w"
 file_t2="${SUBJECT}_T2w"
 file_t2s="${SUBJECT}_T2star"
-file_t1w="${SUBJECT}_acq-T1w_MTS"
-file_mton="${SUBJECT}_acq-MTon_MTS"
+file_t1w="${SUBJECT}_flip-2_mt-off_MTS"
+file_mton="${SUBJECT}_flip-1_mt-on_MTS"
 file_dwi_mean="${SUBJECT}_rec-average_dwi"
 contrasts=($file_t1 $file_t2s $file_t1w $file_mton $file_dwi_mean)
 inc_contrasts=()
@@ -259,107 +285,119 @@ for contrast in "${contrasts[@]}"; do
 done
 echo "Contrasts are" ${inc_contrasts[@]}
 
-# Check if softsegs exists, if not, generate softsegs:
-FILESOFTSEGMANUAL="${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/*/*softseg.nii.gz"
 FILESSEGMANUAL="${PATH_DATA}/derivatives/labels/${SUBJECT}/*/*seg-manual.nii.gz"
-FILESOFTSEGMANUAL_T2="${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/anat/${SUBJECT}_T2w_softseg.nii.gz"
 
-# Only check for T2w softseg
-echo "Looking for T2w soft segmentation: $FILESOFTSEGMANUAL_T2"
-if [[ -e $FILESOFTSEGMANUAL_T2 ]]; then
-  echo "Found! Using manual soft segmentations."
-  # Move all softsegs to data_processed
-  rsync -avzh $FILESOFTSEGMANUAL ./anat/
-  rsync -avzh $FILESSEGMANUAL ./anat/ # Transfer segmentations too
+# Generate softsegs
+# Create mask for regsitration
+find_manual_seg ${file_t2} 'anat' 't2'
+file_t2_seg="${file_t2}_seg"
+file_t2_mask="${file_t2_seg}_mask"
+sct_create_mask -i ./anat/${file_t2}.nii.gz -p centerline,./anat/${file_t2_seg}.nii.gz -size 55mm -o ./anat/${file_t2_mask}.nii.gz 
 
-  dwi_soft="${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/dwi/${SUBJECT}_rec-average_dwi_softseg.nii.gz"
-  dwi_seg="${PATH_DATA}/derivatives/labels/${SUBJECT}/dwi/${SUBJECT}_rec-average_dwi_seg-manual.nii.gz"
-  if [[ -e $dwi_soft ]];then
-    rsync -avzh $dwi_soft ./dwi/
+# Label intervertebral discs of T2w
+label_if_does_not_exist ./anat/${file_t2} ./anat/${file_t2_seg}
+file_t2_seg_labeled="${file_t2_seg}_labeled"
+file_t2_discs="${file_t2_seg}_labeled_discs"
+
+# Generate QC report to assess vertebral labeling
+sct_qc -i ./anat/${file_t2}.nii.gz -s ./anat/${file_t2_seg_labeled}.nii.gz -p sct_label_vertebrae -qc ${PATH_QC} -qc-subject ${SUBJECT}
+
+# Loop through available contrasts
+for file_path in "${inc_contrasts[@]}";do
+  # Find contrast to do segmentation
+  if [[ $file_path == *"T1w"* ]];then
+      contrast_seg="t1"
+      contrast="t1w"
+  elif [[ $file_path == *"T2star"* ]];then
+      contrast_seg="t2s"
+      contrast=contrast_seg
+  elif [[ $file_path == *"flip-2_mt-off_MTS"* ]];then
+      contrast_seg="t1"
+      contrast="flip-2_mt-off_MTS"
+  elif [[ $file_path == *"flip-1_mt-on_MTS"* ]];then
+      contrast_seg="t2s"
+      contrast="flip-1_mt-on_MTS"
+  elif [[ $file_path == *"dwi"* ]];then
+      contrast_seg="dwi"
+      contrast=contrast_seg
   fi
-  if [[ -e $dwi_seg ]];then
-    rsync -avzh $dwi_seg ./dwi/
+
+  type=$(find_contrast $file_path)
+  file=${file_path/#"$type"}
+  fileseg=${file_path}_seg
+  find_manual_seg $file $type $contrast_seg
+
+  # Add padding to seg to overcome edge effect
+  python ${PATH_SCRIPT}/pad_seg.py -i ${fileseg}.nii.gz -o ${fileseg}_pad.nii.gz
+  # Registration
+  # ------------------------------------------------------------------------------
+  sct_register_multimodal -i ${file_path}.nii.gz -d ./anat/${file_t2}.nii.gz -iseg ${fileseg}_pad.nii.gz -dseg ./anat/${file_t2_seg}.nii.gz -param step=1,type=seg,algo=centermass -qc ${PATH_QC} -qc-subject ${SUBJECT} -o ${file_path}_reg.nii.gz
+  warping_field=${type}warp_${file}2${file_t2}
+
+  # Generate SC segmentation coverage and register to T2w
+  # ------------------------------------------------------------------------------
+  sct_create_mask -i ${file_path}.nii.gz -o ${file_path}_ones.nii.gz -size 500 -p centerline,${fileseg}.nii.gz
+  # Bring coverage mask to T2w space
+  sct_apply_transfo -i ${file_path}_ones.nii.gz -d ./anat/${file_t2}.nii.gz -w ${warping_field}.nii.gz -x linear -o ${file_path}_ones_reg.nii.gz
+  # Bring SC segmentation to T2w space
+  sct_apply_transfo -i ${fileseg}.nii.gz -d ./anat/${file_t2_seg}.nii.gz -w ${warping_field}.nii.gz -x linear -o ${fileseg}_reg.nii.gz
+  # Remove 8 to 10 slices before adding all segmentation because of partial slices (except for T1w)
+  if [[ $contrast != "t1w" ]];then
+        mv ${fileseg}_reg.nii.gz ${fileseg}_reg_no_crop.nii.gz
+        mv ${file_path}_ones_reg.nii.gz ${file_path}_ones_reg_no_crop.nii.gz
+        python ${PATH_SCRIPT}/remove_slices_seg.py -i ${fileseg}_reg_no_crop.nii.gz -c contrast -coverage-map ${file_path}_ones_reg_no_crop.nii.gz -o ${fileseg}_reg.nii.gz -o-coverage-map ${file_path}_ones_reg.nii.gz
   fi
-else
-  echo "Manual soft segmentation not found."
-  # Generate softsegs
-  # Create mask for regsitration
-  find_manual_seg ${file_t2} 'anat' 't2'
-  file_t2_seg="${file_t2}_seg"
-  file_t2_mask="${file_t2_seg}_mask"
-  sct_create_mask -i ./anat/${file_t2}.nii.gz -p centerline,./anat/${file_t2_seg}.nii.gz -size 55mm -o ./anat/${file_t2_mask}.nii.gz 
-  # Loop through available contrasts
-  for file_path in "${inc_contrasts[@]}";do
-    # Find contrast to do segmentation
-    if [[ $file_path == *"T1w"* ]];then
-        contrast_seg="t1"
-    elif [[ $file_path == *"T2star"* ]];then
-        contrast_seg="t2s"
-    elif [[ $file_path == *"T1w_MTS"* ]];then
-        contrast_seg="t1"
-    elif [[ $file_path == *"MTon_MTS"* ]];then
-        contrast_seg="t2s"
-    elif [[ $file_path == *"dwi"* ]];then
-        contrast_seg="dwi"
-    fi
 
-    type=$(find_contrast $file_path)
-    file=${file_path/#"$type"}
-    fileseg=${file_path}_seg
-    find_manual_seg $file $type $contrast_seg
+done
+# Create coverage mask for T2w
+sct_create_mask -i ./anat/${file_t2}.nii.gz -o ./anat/${file_t2}_ones.nii.gz -size 500 -p centerline,./anat/${file_t2_seg}.nii.gz
+# Create soft SC segmentation
+# ------------------------------------------------------------------------------
+# Sum all coverage images
+contrasts_coverage=${inc_contrasts[@]/%/"_ones_reg.nii.gz"}
+sct_maths -i ./anat/${file_t2}_ones.nii.gz -add $(eval echo ${contrasts_coverage[@]}) -o sum_coverage.nii.gz
+# Sum all segmentations
+contrasts_seg=${inc_contrasts[@]/%/"_seg_reg.nii.gz"}
+sct_maths -i ./anat/${file_t2_seg}.nii.gz -add $(eval echo ${contrasts_seg[@]}) -o sum_sc_seg.nii.gz
+# Divide sum_sc_seg by sum_coverage
+sct_maths -i sum_sc_seg.nii.gz -div sum_coverage.nii.gz -o ./anat/${file_t2}_seg_soft.nii.gz
 
+file_softseg=./anat/"${file_t2}_seg_soft"
+# Check if softseg has NaN values, if so, change to 0
+python ${PATH_SCRIPT}/check_if_nan.py -i ${file_softseg}.nii.gz -o ./anat/${file_t2}_softseg.nii.gz
 
-    # Add padding to seg to overcome edge effect
-    python ${PATH_SCRIPT}/pad_seg.py -i ${fileseg}.nii.gz -o ${fileseg}_pad.nii.gz
-    # Registration
-    # ------------------------------------------------------------------------------
-    sct_register_multimodal -i ${file_path}.nii.gz -d ./anat/${file_t2}.nii.gz -iseg ${fileseg}_pad.nii.gz -dseg ./anat/${file_t2_seg}.nii.gz -param step=1,type=seg,algo=slicereg,metric=MeanSquares,iter=10,poly=2 -qc ${PATH_QC} -qc-subject ${SUBJECT} -o ${file_path}_reg.nii.gz
-    warping_field=${type}warp_${file}2${file_t2}
+# Create QC report of softseg on T2w
+sct_qc -i ./anat/${file_t2}.nii.gz -s ${file_softseg}.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
 
-    # Generate SC segmentation coverage and register to T2w
-    # ------------------------------------------------------------------------------
-    sct_create_mask -i ${file_path}.nii.gz -o ${file_path}_ones.nii.gz -size 500 -p centerline,${fileseg}.nii.gz
-    # Bring coverage mask to T2w space
-    sct_apply_transfo -i ${file_path}_ones.nii.gz -d ./anat/${file_t2}.nii.gz -w ${warping_field}.nii.gz -x linear -o ${file_path}_ones_reg.nii.gz
-    # Bring SC segmentation to T2w space
-    sct_apply_transfo -i ${fileseg}.nii.gz -d ./anat/${file_t2_seg}.nii.gz -w ${warping_field}.nii.gz -x linear -o ${fileseg}_reg.nii.gz
-  done
-  # Create coverage mask for T2w
-  sct_create_mask -i ./anat/${file_t2}.nii.gz -o ./anat/${file_t2}_ones.nii.gz -size 500 -p centerline,./anat/${file_t2_seg}.nii.gz
-  # Create soft SC segmentation
-  # ------------------------------------------------------------------------------
-  # Sum all coverage images
-  contrasts_coverage=${inc_contrasts[@]/%/"_ones_reg.nii.gz"}
-  sct_maths -i ./anat/${file_t2}_ones.nii.gz -add $(eval echo ${contrasts_coverage[@]}) -o sum_coverage.nii.gz
-  # Sum all segmentations
-  contrasts_seg=${inc_contrasts[@]/%/"_seg_reg.nii.gz"}
-  sct_maths -i ./anat/${file_t2_seg}.nii.gz -add $(eval echo ${contrasts_seg[@]}) -o sum_sc_seg.nii.gz
-  # Divide sum_sc_seg by sum_coverage
-  sct_maths -i sum_sc_seg.nii.gz -div sum_coverage.nii.gz -o ./anat/${file_t2}_seg_soft.nii.gz
-
-  file_softseg=./anat/"${file_t2}_seg_soft"
-
-  # Create QC report of softseg on T2w
-  sct_qc -i ./anat/${file_t2}.nii.gz -s ${file_softseg}.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
-
-  # Bring back softseg to native space and generate QC report 
-  # ------------------------------------------------------------------------------
-  for file_path in "${inc_contrasts[@]}";do
-    type=$(find_contrast $file_path)
-    file=${file_path/#"$type"}
-    fileseg=${file_path}_seg
-    warping_field_inv=${type}warp_${file_t2}2${file}
+# Bring back softseg to native space and generate QC report 
+# ------------------------------------------------------------------------------
+for file_path in "${inc_contrasts[@]}";do
+  type=$(find_contrast $file_path)
+  file=${file_path/#"$type"}
+  fileseg=${file_path}_seg
+  warping_field_inv=${type}warp_${file_t2}2${file}
 
 
-    # Bring softseg to native space
-    sct_apply_transfo -i ${file_softseg}.nii.gz -d ${file_path}.nii.gz -w ${warping_field_inv}.nii.gz -x linear -o ${file_path}_softseg.nii.gz
-    # Apply coverage mask to softseg
-    sct_maths -i ${file_path}_softseg.nii.gz -o ${file_path}_softseg.nii.gz -mul ${file_path}_ones.nii.gz
-    # Generate QC report
-    sct_qc -i ${file_path}.nii.gz -s ${file_path}_softseg.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
-  done
+  # Bring softseg to native space
+  sct_apply_transfo -i ${file_softseg}.nii.gz -d ${file_path}.nii.gz -w ${warping_field_inv}.nii.gz -x linear -o ${file_path}_softseg.nii.gz
+  # Apply coverage mask to softseg
+  sct_maths -i ${file_path}_softseg.nii.gz -o ${file_path}_softseg.nii.gz -mul ${file_path}_ones.nii.gz
+  # Generate QC report
+  sct_qc -i ${file_path}.nii.gz -s ${file_path}_softseg.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
+  
+  # Bring T2w disc labels to native space
+  sct_apply_transfo -i ./anat/${file_t2_discs}.nii.gz -d ${file_path}.nii.gz -w ${warping_field_inv}.nii.gz -x label -o ${file_path}_seg_labeled_discs.nii.gz
+  # Set sform to qform (there are disparencies)
+  sct_image -i ${file_path}_seg_labeled_discs.nii.gz -set-sform-to-qform
+  sct_image -i ${fileseg}.nii.gz -set-sform-to-qform
+  sct_image -i ${file_path}.nii.gz -set-sform-to-qform
+  # Generate labeled segmentation from warp disc labels
+  sct_label_vertebrae -i ${file_path}.nii.gz -s ${fileseg}.nii.gz -discfile ${file_path}_seg_labeled_discs.nii.gz -c t2 -ofolder $type
+  # Generate QC report to assess vertebral labeling
+  sct_qc -i ${file_path}.nii.gz -s ${fileseg}_labeled.nii.gz -p sct_label_vertebrae -qc ${PATH_QC} -qc-subject ${SUBJECT}
 
-fi
+done
+
 
 # Go back to root output folder
 cd $PATH_OUTPUT
@@ -377,10 +415,33 @@ for file_path in "${inc_contrasts[@]}";do
   file=${file_path/#"$type"}
   fileseg=${file_path}_seg-manual
   filesoftseg=${file_path}_softseg
-
+  fileseglabel=${file_path}_seg_labeled
   cd $PATH_DATA_PROCESSED/$SUBJECT 
 
-  # Onlu use segmentations and soft segmentations in the derivatives.
+  # Find contrast to name csa files
+  if [[ $file_path == *"flip-2_mt-off_MTS"* ]];then
+      contrast_seg="flip-2_mt-off_MTS"
+  elif [[ $file_path == *"T1w"* ]];then
+      contrast_seg="T1w"
+  elif [[ $file_path == *"T2w"* ]];then
+      contrast_seg="T2w"
+  elif [[ $file_path == *"T2star"* ]];then
+      contrast_seg="T2star"
+  elif [[ $file_path == *"flip-1_mt-on_MTS"* ]];then
+      contrast_seg="flip-1_mt-on_MTS"
+  elif [[ $file_path == *"dwi"* ]];then
+      contrast_seg="dwi"
+  fi
+  # Clip softsegs
+  python ${PATH_SCRIPT}/clip_softseg.py -i ${filesoftseg}.nii.gz -o ${filesoftseg}.nii.gz
+
+  # Compute CSA on hard GT and soft GT (only from the derivaives)
+  # Soft segmentation
+  sct_process_segmentation -i ${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/${filesoftseg}.nii.gz -vert 2,3 -vertfile ${fileseglabel}.nii.gz -o ${PATH_RESULTS}/csa_soft_GT_${contrast_seg}.csv -append 1
+  # Hard segmentation
+  sct_process_segmentation -i ${PATH_DATA}/derivatives/labels/${SUBJECT}/${fileseg}.nii.gz -vert 2,3 -vertfile ${fileseglabel}.nii.gz -o ${PATH_RESULTS}/csa_hard_GT_${contrast_seg}.csv -append 1
+  
+  # Only use segmentations and soft segmentations in the derivatives.
   # Dilate spinal cord segmentation
   sct_maths -i ${PATH_DATA}/derivatives/labels/${SUBJECT}/${fileseg}.nii.gz -dilate 7 -shape ball -o ${fileseg}_dilate.nii.gz
   # Crop image 
@@ -389,6 +450,8 @@ for file_path in "${inc_contrasts[@]}";do
   sct_crop_image -i ${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/${filesoftseg}.nii.gz -m ${fileseg}_dilate.nii.gz -o ${filesoftseg}_crop.nii.gz
   # Crop seg
   sct_crop_image -i ${PATH_DATA}/derivatives/labels/${SUBJECT}/${fileseg}.nii.gz -m ${fileseg}_dilate.nii.gz -o ${fileseg}_crop.nii.gz
+  # Crop disc labels
+  sct_crop_image -i ${fileseglabel}_discs.nii.gz -m ${fileseg}_dilate.nii.gz -o ${file_path}_discs_crop.nii.gz
 
 
   mkdir -p $PATH_DATA_PROCESSED_CLEAN $PATH_DATA_PROCESSED_CLEAN/${SUBJECT}/$type $PATH_DATA_PROCESSED_CLEAN/derivatives/labels/${SUBJECT}/$type
@@ -410,6 +473,8 @@ for file_path in "${inc_contrasts[@]}";do
   # Move json files of derivatives
   rsync -avzh "${PATH_DATA}/derivatives/labels/${SUBJECT}/${fileseg}.json" $PATH_DATA_PROCESSED_CLEAN/derivatives/labels/${SUBJECT}/${fileseg}.json
   rsync -avzh "${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/${filesoftseg}.json" $PATH_DATA_PROCESSED_CLEAN/derivatives/labels_softseg/${SUBJECT}/${filesoftseg}.json
+  # Move cropped disc labels into cleaned derivatives
+  rsync -avzh $PATH_DATA_PROCESSED/${SUBJECT}/${file_path}_discs_crop.nii.gz $PATH_DATA_PROCESSED_CLEAN/derivatives/labels/${SUBJECT}/${file_path}_discs.nii.gz
 
 done
 

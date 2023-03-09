@@ -9,7 +9,11 @@ This repo creates a series of preparations for comparing the newly trained ivado
 - Python 3.7.
 
 ## Dataset
-The data are from the [spine-generic multi-subject](https://github.com/spine-generic/data-multi-subject/)
+The source data are from the [spine-generic multi-subject](https://github.com/spine-generic/data-multi-subject/).
+
+The processed data are located on `duke:projects/ivadomed/contrast-agnostic-seg/data`.
+
+> ⚠️ Currently, there are three processed datasets to account for the issue of ivadomed loader that cannot deal with the MTS files (https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord/issues/25). In the future, there should be only ONE processed dataset. 
 
 ## Processing
 Main processing steps include:
@@ -35,14 +39,14 @@ Next steps are to generate a contrast-agnostic soft segmentation:
 - bring back the segmentations to the original image space of each contrast (except for the T2)
 - Crop images, segmentations and soft segmentation around the spinal cord
 
-The output of this script is a new `derivatives/labels_softseg/` folder that contains the soft labels to be used in this contrast-agnostic segmentation project. All the registration were manually QC-ed (see [Quality Control](#quality-control)) and the problematic registrations were listed in [exclude_reg.yml](https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord/blob/main/exclude_reg.yml). The processing was run again to generate the soft segmentations. 
+The output of this script is a new `derivatives/labels_softseg/` folder that contains the soft labels to be used in this contrast-agnostic segmentation project. All the registration were manually QC-ed (see [Quality Control](#quality-control)) and the problematic registrations were listed in [exclude.yml](https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord/blob/main/exclude.yml). The processing was run again to generate the soft segmentations. 
 
 Specify the path of preprocessed dataset with the flag `-path-data`. 
 
 ### Launch processing
 
 ```
-sct_run_batch -jobs -1 -path-data <PATH_DATA> -path-output <PATH-OUTPUT> -script process_data.sh -script-args exclude_reg.yml
+sct_run_batch -jobs -1 -path-data <PATH_DATA> -path-output <PATH-OUTPUT> -script process_data.sh -script-args exclude.yml
 ```
 
 A `process_data_clean` folder is created in <PATH-OUTPUT> where the cropped data and derivatives are included. Here, only the images that have a manual segmentation and soft segmentation are transfered.
@@ -67,7 +71,7 @@ Re-run the analysis: [Launch processing](#launch-processing)
 
 * In QC report, search for "sct_register_multimodal" to only display results of registration.
 * Click on the F key to indicate if the registration is OK ✅, needs to be excluded ❌ or if the data is not usable ⚠️ (artifact). Two .yml lists, will automatically be generated.
-* Download the list by clicking on **Download QC Fails** and add the file names under `FILES_REG` to https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord/blob/main/exclude_reg.yml
+* Download the list by clicking on **Download QC Fails** and add the file names under `FILES_REG` to https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord/blob/main/exclude.yml
 * Re-run the analysis: [Launch processing](#launch-processing)
 
 **3. Soft segmentations**
@@ -122,3 +126,27 @@ Problems with this approach:
     ii. The ivadomed model needs to be trained
     iii. compare_with_sct_model script needs to run
     iv. The ivadomed model needs to be tested 
+
+## Compute CSA on prediction masks
+
+To compute CSA at C2-C3 vertebral levels on the prediction masks obtained from the trained models, the script `compute_csa.sh` is used. The input is the folder `data_processed_clean` (result from preprocessing) and the path of the prediction masks is added as an extra script argument `-script-args`.
+
+For every trained model, you can run:
+
+```
+sct_run_batch -jobs -1 -path-data /data_processed_clean/ -path-output <PATH_OUTPUT> -script compute_csa.sh -script-args <PATH_PRED_MASKS>
+```
+The CSA results will be under `<PATH_OUTPUT>/results`.
+
+To generate violin plots and analyse results, run the following command:
+
+```
+python gen_charts.py --contrasts T1w T2w T2star rec-average_dwi \
+       --predictions_folder ../duke/projects/ivadomed/contrast-agnostic-seg/csa_measures_pred/group8-9_combined-2022-12-21/ \
+       --baseline_folder ../duke/projects/ivadomed/contrast-agnostic-seg/archive_derivatives_softsegs-seg/contrast-agnostic-centerofmass-preprocess-clean-all-2022-10-22\results_MTS_renamed
+```
+## Run qc report on prediction masks
+
+~~~
+sct_run_batch -path-data <PATH_DATA> -path-out <PATH-OUT> -script-args <PATH_PRED_MASK> -jobs 20 -script run_qc_prediction.sh
+~~~

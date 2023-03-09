@@ -1,0 +1,8 @@
+FILES_SEG:
+    - /mnt/nvme/sebeda/contrast-agnostic-centerofmass-crop-all-2022-10-13/data_processed/sub-brnoUhb02/sub-brnoUhb02_T2w.nii.gz
+    - /mnt/nvme/sebeda/contrast-agnostic-centerofmass-crop-all-2022-10-13/data_processed/sub-brnoUhb03/sub-brnoUhb03_T2w.nii.gz
+    - /mnt/nvme/sebeda/contrast-agnostic-centerofmass-crop-all-2022-10-13/data_processed/sub-brnoUhb07/sub-brnoUhb07_T2w.nii.gz
+    - /mnt/nvme/sebeda/contrast-agnostic-centerofmass-crop-all-2022-10-13/data_processed/sub-brnoUhb08/sub-brnoUhb08_T2w.nii.gz
+    - /mnt/nvme/sebeda/contrast-agnostic-centerofmass-crop-all-2022-10-13/data_processed/sub-mountSinai03/sub-mountSinai03_T2w.nii.gz
+    - /mnt/nvme/sebeda/contrast-agnostic-centerofmass-crop-all-2022-10-13/data_processed/sub-oxfordFmrib01/sub-oxfordFmrib01_T2w.nii.gz
+    - /mnt/nvme/sebeda/contrast-agnostic-centerofmass-crop-all-2022-10-13/data_processed/sub-ucdavis07/sub-ucdavis07_T2w.nii.gz
