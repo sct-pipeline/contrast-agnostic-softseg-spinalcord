@@ -109,26 +109,6 @@ Once the models are trained, one can use the <code>evaluation/inference.sh</code
 ### Evaluation on spine-generic-multi-subject (MICCAI 2023)
 Once the inference is done for all models and to reproduce the results presented in our paper, one would have to run the <code>compute_evaluation_metrics.py</code> after specifying the experiment folder paths inside that python script. A <code>spine-generic-test-results</code> folder will be created, in which a json file with the DICE and Relative Volume Difference (RVD) metrics for each experiments on the test set. To obtain the aggregated results **per_contrast** and **all_contrast**, run the <code>miccai_results_models.py</code> script. It generates aggregated results by the aforementioned category of models and the associated Latex table used in the paper. 
 
-### compare_with_sct_model.py
-The comparison is being done by running `sct_deepseg_sc` on every subject/contrast that was used in the testing set on ivadomed.
-
-One thing to note, is that the SCT scores have been marked after the usage of the function `sct_get_centerline` and cropping around this prior.
-In order to make a fair comparison, the ivadomed model needs to be tested on a testing set that has the centerline precomputed.
-
-The function `compare_with_sct_model.py` prepares the dataset for this comparison by using `sct_get_centerline` on the images and using this prior on the TESTING set.
-
-The output folder will contain as many folders as inputs are given to `compare_with_sct_model.py`, with the suffix SCT. These folders "siumulate" output folders from ivadomed (they contain  evaluation3dmetrics.csv files) in order to use violinpolots visualizations from the script `visualize_and_compare_testing_models.py`
-
-
-
-Problems with this approach: 
-1. _centerline.nii.gz derivatives for the testing set files are created in the database
-2. The order that processes need to be done might confuse people a bit:
-    i. Joblib needs to be created
-    ii. The ivadomed model needs to be trained
-    iii. compare_with_sct_model script needs to run
-    iv. The ivadomed model needs to be tested 
-
 ## Compute CSA on prediction masks
 
 To compute CSA at C2-C3 vertebral levels on the prediction masks obtained from the trained models, the script `compute_csa.sh` is used. The input is the folder `data_processed_clean` (result from preprocessing) and the path of the prediction masks is added as an extra script argument `-script-args`.
