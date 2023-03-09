@@ -1,15 +1,22 @@
 {
     "command": "train",
     "gpu_ids": [0],
-    "path_output": "contrast_specific_seg_sc_all_output",
-    "model_name": "contrast_specific_seg_sc_all_model",
+    "path_output": "hard_soft_<CONTRAST>_seed=<SEED>",
+    "model_name": "hard_soft_<CONTRAST>_seed=<SEED>",
     "debugging": true,
     "object_detection_params": {
         "object_detection_path": null,
         "safety_factor": [1.0, 1.0, 1.0]
     },
+    "wandb": {
+        "wandb_api_key": "18bbcc09542538f6d67167d2bb62b6415d3ce12b",
+        "project_name": "contrast-agnostic-softseg-sc-project",
+        "group_name": "group-8",
+        "run_name": "hard_soft_<CONTRAST>_seed=<SEED>",
+        "log_grads_every": 10
+    },
     "loader_parameters": {
-        "path_data": ["spine-generic-processed"],
+        "path_data": ["/home/GRAMES.POLYMTL.CA/adelba/duke/projects/ivadomed/contrast-agnostic-seg/contrast-agnostic-centerofmass-preprocess-clean-all-2022-10-22/data_processed_clean"],
         "subject_selection": {
             "n": [],
             "metadata": [],
@@ -22,8 +29,8 @@
             "slice_filter_roi": null
         },
         "contrast_params": {
-            "training_validation": ["T1w", "T2w", "T2star"],
-            "testing": ["T1w", "T2w", "T2star"],
+            "training_validation": ["<CONTRAST_PARAMS>"],
+            "testing": ["<CONTRAST_PARAMS>"],
             "balance": {}
         },
         "patch_filter_params": {
@@ -32,11 +39,10 @@
         },
         "slice_axis": "axial",
         "multichannel": false,
-        "soft_gt": false
+        "soft_gt": true
     },
     "split_dataset": {
-        "fname_split": "super_duper_seg_sc_all_output/split_datasets.joblib",
-        "random_seed": 42,
+        "fname_split": "<FNAME_SPLIT>",
         "center_test": [],
         "method": "per_patient",
         "balance": null,
@@ -44,20 +50,24 @@
         "test_fraction": 0.2
     },
     "training_parameters": {
-        "batch_size": 2,
+        "batch_size": 8,
         "loss": {
-            "name": "DiceLoss"
+            "name": "AdapWingLoss",
+            "epsilon": 1,
+            "theta": 0.5,
+            "omega": 8,
+            "alpha": 2.1
         },
         "training_time": {
-            "num_epochs": 100,
-            "early_stopping_patience": 25,
+            "num_epochs": 200,
+            "early_stopping_patience": 50,
             "early_stopping_epsilon": 0.001
         },
         "scheduler": {
             "initial_lr": 1e-3,
             "lr_scheduler": {
                 "name": "CosineAnnealingLR",
-                "base_lr": 1e-5,
+                "base_lr": 1e-4,
                 "max_lr": 1e-3
             }
         },
@@ -78,12 +88,12 @@
         "bn_momentum": 0.1,
         "depth": 4,
         "is_2d": false,
-        "final_activation": "sigmoid"
+        "final_activation": "relu"
     },
     "Modified3DUNet": {
         "applied": true,
-        "length_3D": [224, 256, 320],
-        "stride_3D": [224, 256, 320],
+        "length_3D": [48, 176, 288],
+        "stride_3D": [48, 176, 288],
         "attention": false,
         "n_filters": 8
     },
@@ -93,22 +103,32 @@
         "n_it": 0
     },
     "postprocessing": {
-        "binarize_prediction": {"thr": 0.5}
+        "binarize_prediction": {"thr": -1},
+        "remove_noise": {
+            "thr": -1
+        },
+        "keep_largest": {},
+        "fill_holes": {},
+        "remove_small": {
+            "unit": "vox",
+            "thr": 3
+        }
     },
     "evaluation_parameters": {},
     "transformation": {
-        "Resample": {
+        "Resample":
+        {
             "hspace": 1,
             "wspace": 1,
             "dspace": 1
         },
         "CenterCrop": {
-            "size": [224, 256, 320]
+            "size": [48, 176, 288]
         },
         "RandomAffine": {
-            "degrees": 10,
+            "degrees": 20,
             "scale": [0.2, 0.2, 0.2],
-            "translate": [0.0, 0.0, 0.0],
+            "translate": [0.1, 0.1, 0.1],
             "applied_to": ["im", "gt"],
             "dataset_type": ["training"]
         },
