@@ -85,7 +85,7 @@ Re-run the analysis: [Launch processing](#launch-processing)
 ## Training
 
 ### config_generator.py
-The script helps create joblibs that are going to represent splits of our dataset. It will create a <code>joblibs</code> folder containing the data split for each sub-experiment (i.e. hard_hard, soft_soft ...). The way we leverage the aforementioned python script is by running the bash script <code>generate_config.sh</code> that will execute the following command for each sub-experiment:
+The script helps create joblibs that are going to represent splits of our dataset. It will create a <code>joblibs</code> folder containing the data split for each sub-experiment (i.e. hard_hard, soft_soft ...). The way we leverage the aforementioned python script is by running the bash script <code>utils/create_joblibs.sh</code> that will execute the following command for each sub-experiment:
 ```
 python config_generator.py --config config_templates/hard_hard.json \
                            --datasets path/to/data
@@ -104,8 +104,10 @@ For clarity, we go over a few examples about how to use the current training scr
 All training runs are using the ivadomed's framework and logging training metrics in a <code>results</code> folder (optionally with wandb).
 
 ### inference.sh 
-Once the models are trained, one can use the <code>inference.sh</code> bash script to segment SC for tests participants and qualitatively analyze the results. Again like in all bash scripts mentioned in this project, one has to change a few parameters to adapt to one's environment (e.g. dataset path ...).
+Once the models are trained, one can use the <code>evaluation/inference.sh</code> bash script to segment SC for tests participants and qualitatively analyze the results. Again like in all bash scripts mentioned in this project, one has to change a few parameters to adapt to one's environment (e.g. dataset path ...).
 
+### Evaluation on spine-generic-multi-subject (MICCAI 2023)
+Once the inference is done for all models and to reproduce the results presented in our paper, one would have to run the <code>compute_evaluation_metrics.py</code> after specifying the experiment folder paths inside that python script. A <code>spine-generic-test-results</code> folder will be created, in which a json file with the DICE and Relative Volume Difference (RVD) metrics for each experiments on the test set. To obtain the aggregated results **per_contrast** and **all_contrast**, run the <code>miccai_results_models.py</code> script. It generates aggregated results by the aforementioned category of models and the associated Latex table used in the paper. 
 
 ### compare_with_sct_model.py
 The comparison is being done by running `sct_deepseg_sc` on every subject/contrast that was used in the testing set on ivadomed.
