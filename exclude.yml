@@ -1,4 +1,4 @@
-FILES_SEG:
+FILES_REG:
     - /mnt/nvme/sebeda/contrast-agnostic-centerofmass-crop-all-2022-10-13/data_processed/sub-brnoUhb02/sub-brnoUhb02_T2w.nii.gz
     - /mnt/nvme/sebeda/contrast-agnostic-centerofmass-crop-all-2022-10-13/data_processed/sub-brnoUhb03/sub-brnoUhb03_T2w.nii.gz
     - /mnt/nvme/sebeda/contrast-agnostic-centerofmass-crop-all-2022-10-13/data_processed/sub-brnoUhb07/sub-brnoUhb07_T2w.nii.gz
