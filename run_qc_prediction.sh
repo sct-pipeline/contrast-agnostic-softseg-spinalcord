@@ -83,9 +83,9 @@ for file_pred in ${PATH_PRED_SEG}/*; do
         # rsync prediction mask
         rsync -avzh $file_pred ${type}/$file_seg_basename
         prefix="spineGNoCrop_"
-        file_image=${file_seg_basename//"_00"}
-        file_image=${file_image#"$prefix"}
-        file_image="${file_image::-8}"  # Remove X.nii.gz since teh number X varies
+        file_image=${file_seg_basename#"$prefix"}
+        echo $file_image
+        file_image="${file_image::-11}"  # Remove X.nii.gz since teh number X varies
         # split with "-"
         arrIN=(${file_image//-/ })
         if [[ $type == *"dwi"* ]];then
