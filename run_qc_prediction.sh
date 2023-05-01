@@ -78,10 +78,23 @@ for file_pred in ${PATH_PRED_SEG}/*; do
         # Find if anat or dwi
         file_seg_basename=${file_pred##*/}
         echo $file_seg_basename
-        type=$(find_contrast $file_path)
+        type=$(find_contrast $file_pred)
+
         # rsync prediction mask
         rsync -avzh $file_pred ${type}/$file_seg_basename
-        file_image=${file_seg_basename//"_class-0_pred"}
+        prefix="spineGNoCrop_"
+        file_image=${file_seg_basename//"_00"}
+        file_image=${file_image#"$prefix"}
+        file_image="${file_image::-8}"  # Remove X.nii.gz since teh number X varies
+        # split with "-"
+        arrIN=(${file_image//-/ })
+        if [[ $type == *"dwi"* ]];then
+          contrast="rec-average_dwi"  # original image name
+        else
+          contrast=${file_image#${arrIN[0]}"-"}  # remove sub-
+          contrast=${contrast#${arrIN[1]}"-"}  # remove sub-id
+        fi
+        file_image=${arrIN[0]}"-"${arrIN[1]}"_"${contrast}".nii.gz"
         echo $file_image
         # Create QC for pred mask
         sct_qc -i ${type}/${file_image} -s ${type}/${file_seg_basename} -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
@@ -89,7 +102,6 @@ for file_pred in ${PATH_PRED_SEG}/*; do
 
     fi
 done
-#TODO find anat or dwi
 
 # Display useful info for the log
 end=`date +%s`
