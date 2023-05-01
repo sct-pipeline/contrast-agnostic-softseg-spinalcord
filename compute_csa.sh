@@ -19,7 +19,7 @@
 
 set -x
 # Immediately exit if error
-#set -e -o pipefail
+set -e -o pipefail
 
 # Exit if user presses CTRL+C (Linux) or CMD+C (OSX)
 trap "echo Caught Keyboard Interrupt within script. Exiting now.; exit" INT
@@ -86,95 +86,64 @@ find_contrast(){
 # ==============================================================================
 # Go to anat folder where all structural data are located
 cd ${SUBJECT}
+file_sub="${SUBJECT//[\/]/_}"
 
-# Initialize filenames
-file_t1="${SUBJECT}_T1w"
-file_t2="${SUBJECT}_T2w"
-file_t2s="${SUBJECT}_T2star"
-file_t1w="${SUBJECT}_flip-2_mt-off_MTS"
-file_mton="${SUBJECT}_flip-1_mt-on_MTS"
-file_dwi_mean="${SUBJECT}_rec-average_dwi"
-contrasts=($file_t1 $file_t2 $file_t2s $file_t1w $file_mton $file_dwi_mean)
-inc_contrasts=()
+# Check if file exists (pred file)
+for file_pred in ${PATH_PRED_SEG}/*; do
+  if [[ $file_pred == *$file_sub* ]];then
+      echo " File found, running QC report $file_pred"
+      # Find if anat or dwi
+      file_seg_basename=${file_pred##*/}
+      echo $file_seg_basename
+      type=$(find_contrast $file_pred)
 
-# Check available contrasts
-# ------------------------------------------------------------------------------
+      # rsync prediction mask
+      rsync -avzh $file_pred ${type}/$file_seg_basename
+      prefix="spineGNoCrop_"
+      file_image=${file_seg_basename#"$prefix"}
+      echo $file_image
+      file_image="${file_image::-11}"  # Remove X.nii.gz since teh number X varies
+      # split with "-"
+      arrIN=(${file_image//-/ })
+      if [[ $type == *"dwi"* ]];then
+        contrast="rec-average_dwi"  # original image name
+        contrast_csv="dwi"
+      else
+        contrast=${file_image#${arrIN[0]}"-"}  # remove sub-
+        contrast=${contrast#${arrIN[1]}"-"}  # remove sub-id
+        contrast_csv=$contrast
+      fi
+      file_image=${arrIN[0]}"-"${arrIN[1]}"_"${contrast}
+      echo $file_image
 
-# Check if a list of images to exclude was passed.
-if [ -z "$EXCLUDE_LIST" ]; then
-  EXCLUDE=""
-else
-  EXCLUDE=$(yaml $PATH_SCRIPT/${EXCLUDE_LIST} "['FILES_REG']")
-fi
+      pred_seg=${type}${file_seg_basename}
 
-for contrast in "${contrasts[@]}"; do
-  type=$(find_contrast $contrast)
-  if echo "$EXCLUDE" | grep -q "$contrast"; then
-    echo "$contrast found in exclude list.";
-  else
-    if [[ -f "${type}${contrast}.nii.gz" ]]; then
-      inc_contrasts+=(${type}${contrast})
-    else
-      echo "$contrast not found, excluding it."
-    fi
-  fi
+      # Create QC for pred mask
+      sct_qc -i ${type}${file_image}.nii.gz -s ${pred_seg} -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
 
-done
-echo "Contrasts are ${inc_contrasts[@]}"
+      # Get manual hard GT to get labeled segmentation
+      FILESEG="${type}${file_image}_seg"
+      FILESEGMANUAL="${PATH_DATA}/derivatives/labels/${SUBJECT}/${FILESEG}-manual.nii.gz"
+      echo
+      echo "Looking for manual segmentation: $FILESEGMANUAL"
+      if [[ -e $FILESEGMANUAL ]]; then
+        echo "Found! Using manual segmentation."
+        rsync -avzh $FILESEGMANUAL "${FILESEG}.nii.gz"
+      fi
+      # Create labeled segmentation of vertebral levels (only if it does not exist) 
+      label_if_does_not_exist ${tyep}${file_image} $FILESEG $type
 
-for file_path in "${inc_contrasts[@]}";do
-  # Find contrast to do compute CSA
-  if [[ $file_path == *"flip-2_mt-off_MTS"* ]];then
-    contrast_seg="flip-2_mt-off_MTS"
-  elif [[ $file_path == *"T2star"* ]];then
-    contrast_seg="T2star"
-  elif [[ $file_path == *"T2w"* ]];then
-    contrast_seg="T2w"
-  elif [[ $file_path == *"T1w"* ]];then
-    contrast_seg="T1w"
-  elif [[ $file_path == *"flip-1_mt-on_MTS"* ]];then
-    contrast_seg="flip-1_mt-on_MTS"
-  elif [[ $file_path == *"dwi"* ]];then
-    contrast_seg="dwi"
-  fi
+      file_seg_labeled="${FILESEG}_labeled"
+      # Generate QC report to assess vertebral labeling
+      sct_qc -i ${type}${file_image}.nii.gz -s ${file_seg_labeled}.nii.gz -p sct_label_vertebrae -qc ${PATH_QC} -qc-subject ${SUBJECT}
 
-  type=$(find_contrast $file_path)
-  file=${file_path/#"$type"}
-  fileseg=${file_path}_seg
-  # Check if file exists (pred file)
-  if [[ -f ${PATH_PRED_SEG}${file}_pred.nii.gz ]];then
-    rsync -avzh ${PATH_PRED_SEG}${file}_pred.nii.gz ${file_path}_pred.nii.gz
-    pred_seg=${file_path}_pred
-
-    # Remove 4th dimension
-    sct_image -i ${pred_seg}.nii.gz -split t
-    pred_seg=${pred_seg}_T0000
-
-    # Create QC for pred mask
-    sct_qc -i ${file_path}.nii.gz -s ${pred_seg}.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
-
-    # Get manual hard GT to get labeled segmentation
-    FILESEG="${file_path}_seg"
-    FILESEGMANUAL="${PATH_DATA}/derivatives/labels/${SUBJECT}/${FILESEG}-manual.nii.gz"
-    echo
-    echo "Looking for manual segmentation: $FILESEGMANUAL"
-    if [[ -e $FILESEGMANUAL ]]; then
-      echo "Found! Using manual segmentation."
-      rsync -avzh $FILESEGMANUAL "${FILESEG}.nii.gz"
-    fi
-    # Create labeled segmentation of vertebral levels (only if it does not exist) 
-    label_if_does_not_exist $file_path $FILESEG $type
-
-    file_seg_labeled="${FILESEG}_labeled"
-    # Generate QC report to assess vertebral labeling
-    sct_qc -i ${file_path}.nii.gz -s ${file_seg_labeled}.nii.gz -p sct_label_vertebrae -qc ${PATH_QC} -qc-subject ${SUBJECT}
-
-    # Compute average cord CSA between C2 and C3
-    sct_process_segmentation -i ${pred_seg}.nii.gz -vert 2:3 -vertfile ${file_seg_labeled}.nii.gz -o ${PATH_RESULTS}/csa_pred_${contrast_seg}.csv -append 1
+      # Compute average cord CSA between C2 and C3
+      sct_process_segmentation -i ${pred_seg} -vert 2:3 -vertfile ${file_seg_labeled}.nii.gz -o ${PATH_RESULTS}/csa_pred_${contrast_csv}.csv -append 1
   else
     echo "Pred mask not found"
   fi
 done
+
 
 # Display useful info for the log
 end=`date +%s`
