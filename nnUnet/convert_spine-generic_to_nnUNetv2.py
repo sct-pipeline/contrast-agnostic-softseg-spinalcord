@@ -10,19 +10,19 @@ modified to include those as well.
 
 Usage example:
     python convert_spine-generic_to_nnUNetv2.py --path-data /path/to/spine-generic --path-out /path/to/nnunet 
-        --dataset-name spineGen --dataset-number 701 --split 0.8 0.2
+        --path-joblib /path/to/ivadomed/joblib-file --dataset-name spineGen --dataset-number 701
     
 """
 
 import argparse
 import pathlib
 from pathlib import Path
+import joblib
 import json
 import os
 from collections import OrderedDict
 import pandas as pd
 from loguru import logger
-from sklearn.model_selection import train_test_split
 
 import nibabel as nib
 import numpy as np
@@ -30,7 +30,7 @@ import numpy as np
 
 def binarize_label(subject_path, label_path):
     label_npy = nib.load(label_path).get_fdata()
-    threshold = 1e-8
+    threshold = 0.5
     label_npy = np.where(label_npy > threshold, 1, 0)
     ref = nib.load(subject_path)
     label_bin = nib.Nifti1Image(label_npy, ref.affine, ref.header)
@@ -42,21 +42,16 @@ def binarize_label(subject_path, label_path):
 parser = argparse.ArgumentParser(description='Convert BIDS-structured dataset to nnUNetV2 database format.')
 parser.add_argument('--path-data', help='Path to BIDS dataset.', required=True)
 parser.add_argument('--path-out', help='Path to output directory.', required=True)
+parser.add_argument('--path-joblib', help='Path to joblib file from ivadomed containing the dataset splits.', required=True)
 parser.add_argument('--dataset-name', '-dname', default='MSSpineLesion', type=str,
                     help='Specify the task name - usually the anatomy to be segmented, e.g. Hippocampus',)
 parser.add_argument('--dataset-number', '-dnum', default=501,type=int, 
                     help='Specify the task number, has to be greater than 500 but less than 999. e.g 502')
 
-parser.add_argument('--seed', default=42, type=int, 
-                    help='Seed to be used for the random number generator split into training and test sets.')
-# argument that accepts a list of floats as train val test splits
-parser.add_argument('--split', nargs='+', required=True, type=float, default=[0.8, 0.2],
-                    help='Ratios of training (includes validation) and test splits lying between 0-1. Example: --split 0.8 0.2')
-
 args = parser.parse_args()
 
 root = Path(args.path_data)
-train_ratio, test_ratio = args.split
+# train_ratio, test_ratio = args.split
 path_out = Path(os.path.join(os.path.abspath(args.path_out), f'Dataset{args.dataset_number}_{args.dataset_name}'))
 
 # create individual directories for train and test images and labels
@@ -64,9 +59,6 @@ path_out_imagesTr = Path(os.path.join(path_out, 'imagesTr'))
 path_out_imagesTs = Path(os.path.join(path_out, 'imagesTs'))
 path_out_labelsTr = Path(os.path.join(path_out, 'labelsTr'))
 path_out_labelsTs = Path(os.path.join(path_out, 'labelsTs'))
-
-train_images, train_labels, test_images, test_labels = [], [], [], []
-
 
 
 if __name__ == '__main__':
@@ -78,23 +70,27 @@ if __name__ == '__main__':
     pathlib.Path(path_out_labelsTr).mkdir(parents=True, exist_ok=True)
     pathlib.Path(path_out_labelsTs).mkdir(parents=True, exist_ok=True)
 
-    # set the random number generator seed
-    rng = np.random.default_rng(args.seed)
-
-    # # Get all subjects from participants.tsv
-    # subjects_df = pd.read_csv(os.path.join(root, 'participants.tsv'), sep='\t')
-    # subjects_tsv = subjects_df['participant_id'].values.tolist()
-    # logger.info(f"Total number of subjects in the tsv file: {len(subjects_tsv)}")
-
     # get the list of subjects in the root directory 
     subjects = [subject for subject in os.listdir(root) if subject.startswith('sub-')]
     logger.info(f"Total number of subjects in the root directory: {len(subjects)}")
     # sort the subjects list
     subjects.sort()
 
-    # Get the training and test splits
-    train_subjects, test_subjects = train_test_split(subjects, test_size=test_ratio, random_state=args.seed)
-    # rng.shuffle(train_subjects)
+    train_subjects, test_subjects = [], []
+    # load information from the joblib to match train and test subjects
+    joblib_file = os.path.join(args.path_joblib, 'split_datasets_all_seed=15.joblib')
+    splits = joblib.load("split_datasets_all_seed=15.joblib")
+    for test_sub in splits['test']:
+        test_sub_name = test_sub.split('_')[0]  # get only the subject name
+        if test_sub_name in subjects:
+            test_subjects.append(test_sub_name)
+        else:
+            print(f"Subject {test_sub_name} not found in the latest version of the dataset")
+    
+    # remove duplicates because of multiple contrasts
+    test_subjects = sorted(list(set(test_subjects)))
+    # take the remaining subjects as train subjects
+    train_subjects = [subject for subject in subjects if subject not in test_subjects]
 
     # list of contrasts: T2w, T1w, T2star, MTon, MToff, DWI
     contrasts = ['dwi', 'flip-1_mt-on_MTS', 'flip-2_mt-off_MTS', 'T1w', 'T2star', 'T2w']
