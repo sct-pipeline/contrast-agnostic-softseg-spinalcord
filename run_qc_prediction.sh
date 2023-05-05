@@ -14,6 +14,11 @@
 # PATH_LOG="~/log"
 # PATH_QC="~/qc"
 
+# EXAMPLE of command:
+# sct_run_batch -jobs 20 -path-data ~/data_nvme_sebeda/datasets/dcm-zurich/ 
+#  -path-output ~/data_nvme_sebeda/qc_dcm_zurich -script run_qc_prediction.sh 
+# -script-args ~/duke/temp/muena/contrast-agnostic/pure-inference/Dataset721_dcmZurichAxial_test/
+
 set -x
 # Immediately exit if error
 set -e -o pipefail
