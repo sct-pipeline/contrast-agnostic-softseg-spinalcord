@@ -92,9 +92,10 @@ def merge_csv(prediction_data_folder: str,
             csvs = [ff for ff in os.listdir(os.path.join(prediction_data_folder, fd, 'results')) if ff[-4:]=='.csv']
             for csv_path in csvs:
                 absolute_csv_path = os.path.join(prediction_data_folder, fd, 'results', csv_path)
-                contrast = [s for s in contrasts if s in csv_path ]
-                contrast = "rec-average_dwi" if "dwi" in csv_path else contrast[0]  # TODO: Refactor CSA folder names to only rec-average_dwi or dwi
-                print(contrast)
+                if "dwi" in csv_path:
+                    contrast = "rec-average_dwi"  # TODO: Refactor CSA folder names to only rec-average_dwi or dwi
+                else:
+                    contrast = [s for s in contrasts if s in csv_path][0]
                 main_dic_key = "_".join([gtype, augtype, "all", contrast, f"seed={seed}"])
                 val_dic = extract_csv(absolute_csv_path)
                 logger.info(f"Folder : {fd} | Contrast : {contrast} | # patients:  {len(val_dic.keys())}")

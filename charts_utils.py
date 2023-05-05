@@ -7,7 +7,9 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import seaborn as sns
 
-plt.style.use('seaborn')
+#plt.style.use('seaborn')
+plt.style.use('seaborn-ticks')
+
 
 
 def create_perf_df_pwd(dataframe, methods, contrasts, ref_contrast="t2w", perf_suffix="_perf_pwd"):
@@ -76,7 +78,7 @@ def contrast_specific_pwd_violin(dataframe, methods, contrasts, ref_contrast="t2
         df (pandas.Dataframe): contains PWD values for each contrast
             across patients.
         methods (list): list of method names
-        contrasts (list): contrast names exclusing reference contrast
+        contrasts (list): contrast names excluding reference contrast
         ref_contrast (str): Reference contrast
     """
     quotient, remainder = divmod(len(contrasts), 2)
@@ -166,7 +168,7 @@ def macro_sd_violin_preli(df, methods, outfile=None):
     ax.set_ylabel(f'Standard deviation ($mm^2$)', fontsize="x-large", fontweight="bold")
 
 
-def macro_sd_violin(df, methods, outfile=None):
+def macro_sd_violin(df, methods, outfile=None):  # HERE
     """Plots a violin plot of each method representing the overall
     performance of a method across contrasts. This performance is
     measured via the CSA\'s standard deviation across contrasts.
@@ -176,42 +178,54 @@ def macro_sd_violin(df, methods, outfile=None):
         methods (list): method's performance column names following 
             this format [method_name]_perf_[measure_type]
     """
-    fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(10, 10))
+    sns.set_style('whitegrid', rc={'xtick.bottom': True,
+                                 'ytick.left': True,})
+    fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(10, 9)) 
     plt.rcParams['legend.title_fontsize'] = 'x-large'
     plt.yticks(fontsize="x-large")
+    
     cols_cat = ["#ff6767", "#ff6767", "#8edba3", "#8edba3"]
     cols_dic = {name: "#989e9a" if (k == 0 or k == 1) else cols_cat[k-2] for k, name in enumerate(methods)}
-    sns.violinplot(data=df[methods], ax=ax, inner="box", palette=cols_dic)
+    sns.violinplot(data=df[methods], ax=ax, inner="box", palette=cols_dic, linewidth=2)
     labels = ["GT_binary", "GT_softmean", "(1) DL_hard_percontrast","(2) DL_soft_aug_percontrast ", "(3) DL_soft_avg_percontrast", "(4) DL_soft_avg_allcontrast"]
     
-    ax.set_title("Variability of CSA across MRI contrasts", pad=20, fontweight="bold", fontsize="xx-large")
+    ax.set_title("Variability of CSA across MRI contrasts", pad=20, fontweight="bold", fontsize=17)
     ax.xaxis.set_tick_params(direction='out')
     ax.xaxis.set_ticks_position('bottom')
-    ax.set_xticks(np.arange(0, len(labels)), labels, rotation=45, ha='right', fontsize="x-large")
+    ax.xaxis.grid(True, which='minor')
+    ax.set_xticks(np.arange(0, len(labels)), labels, rotation=30, ha='right', fontsize=17)
+    plt.yticks(fontsize=17)
     ax.tick_params(direction='out', axis='both')
-    ax.set_xlabel('Segmentation type', fontsize="xx-large", fontweight="bold")
-    ax.set_ylabel(r'Standard deviation ($\bf{mm^2}$)', fontsize="xx-large", fontweight="bold")
+    #ax.set_xlabel('Segmentation type', fontsize=17, fontweight="bold")
+    ax.set_ylabel(r'Standard deviation ($\bf{mm^2}$)', fontsize=17, fontweight="bold")
     yabs_max = abs(max(ax.get_ylim(), key=abs))
     ax.set_ylim(ymax=(yabs_max + 1))
+    
 
     # Here is the label and arrow code of interest
     ax.annotate('per contrast', xy=(0.6, 0.905), xytext=(0.6, 0.93), xycoords='axes fraction', 
-            fontsize=14.0, ha='center', va='bottom',
-            arrowprops=dict(arrowstyle='-[, widthB=10.0, lengthB=1.0', lw=2.0))
+            fontsize=15.0, ha='center', va='bottom', color='black',
+            arrowprops=dict(arrowstyle='-[, widthB=9.0, lengthB=1.0', lw=2.0, color='k'))
     ax.annotate('all contrasts', xy=(0.92, 0.905), xytext=(0.92, 0.93), xycoords='axes fraction', 
-            fontsize=14.0, ha='center', va='bottom',
-            arrowprops=dict(arrowstyle='-[, widthB=3.2, lengthB=1.0', lw=2.0))
-
+            fontsize=15.0, ha='center', va='bottom', color='black',
+            arrowprops=dict(arrowstyle='-[, widthB=2.5, lengthB=1.0', lw=2.0, color='k'))
 
 
     bench_patch = mpatches.Patch(color="#989e9a", label='Manual GT')
-    singleGT_patch = mpatches.Patch(color="#ff6767", label='DL-Hard GT')
-    meanGT_patch = mpatches.Patch(color="#8edba3", label='DL-Soft Average GT')
-    ax.legend(title= r"$\bf{Segmentation\  type}$", handles=[bench_patch, singleGT_patch, meanGT_patch], fontsize="x-large", loc='upper left', frameon=True, fancybox=True, framealpha=1, borderpad=1)
+    singleGT_patch = mpatches.Patch(color="#ff6767", label='Hard GT')
+    meanGT_patch = mpatches.Patch(color="#8edba3", label='Soft Average GT')
+    ax.legend(#title= r"$\bf{Segmentation\  type}$", 
+              handles=[bench_patch, singleGT_patch, meanGT_patch], 
+              fontsize=14,
+              loc="upper left", #, ncol=3, bbox_to_anchor=(0.5, 1.15), 
+              frameon=True, 
+              fancybox=True, 
+              framealpha=0.7, 
+              borderpad=1)
 
     plt.tight_layout()
     if outfile:
-        plt.savefig(outfile)
+        plt.savefig(outfile, dpi=400, bbox_inches="tight")
 
 def create_experiment_folder():
     folder = "charts_" + str(datetime.now())
