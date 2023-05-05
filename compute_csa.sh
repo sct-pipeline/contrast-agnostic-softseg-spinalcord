@@ -19,7 +19,7 @@
 
 set -x
 # Immediately exit if error
-set -e -o pipefail
+#set -e -o pipefail
 
 # Exit if user presses CTRL+C (Linux) or CMD+C (OSX)
 trap "echo Caught Keyboard Interrupt within script. Exiting now.; exit" INT
@@ -131,7 +131,7 @@ for file_pred in ${PATH_PRED_SEG}/*; do
         rsync -avzh $FILESEGMANUAL "${FILESEG}.nii.gz"
       fi
       # Create labeled segmentation of vertebral levels (only if it does not exist) 
-      label_if_does_not_exist ${tyep}${file_image} $FILESEG $type
+      label_if_does_not_exist ${type}${file_image} $FILESEG $type
 
       file_seg_labeled="${FILESEG}_labeled"
       # Generate QC report to assess vertebral labeling
