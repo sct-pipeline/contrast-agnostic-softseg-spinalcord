@@ -86,16 +86,16 @@ def main():
                 df[contrast] = get_csa(os.path.join(path_csa, file))
                # print(dataset)
         dfs[folder] = df
-    print(df)
-
-    # Drop nan
-    df.dropna(axis=0, inplace=True)
+        df.dropna(axis=0, inplace=True)
     # Compute STD
-    std = df.std(axis=1)
-    print('Mean STD:', std.mean())
+    stds = pd.DataFrame()
+    for method in dfs.keys():
+        std = dfs[method].std(axis=1)
+        print('Mean STD:', method, std.mean(), std.std())
+        stds[method] = std
    # print(std)
-    violin_plot(df, r'CSA ($\bf{mm^2}$)', exp_folder, 'violin_plot_csa_percontrast.png')
-    violin_plot(std, r'Standard deviation ($\bf{mm^2}$)', exp_folder, 'violin_plot_all.png')
+       # violin_plot(df, r'CSA ($\bf{mm^2}$)', exp_folder, 'violin_plot_csa_percontrast.png')
+    violin_plot(stds, r'Standard deviation ($\bf{mm^2}$)', exp_folder, 'violin_plot_all.png')
 
 
 if __name__ == "__main__":
