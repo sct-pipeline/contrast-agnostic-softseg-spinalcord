@@ -38,7 +38,7 @@ def get_csa(csa_filename):
     return csa
 
 
-def violin_plot(df, y_label, path_out, filename):
+def violin_plot(df, y_label, path_out, filename, set_ylim=False):
     sns.set_style('whitegrid', rc={'xtick.bottom': True,
                                  'ytick.left': True,})
     fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(10, 9)) 
@@ -55,8 +55,11 @@ def violin_plot(df, y_label, path_out, filename):
     ax.tick_params(direction='out', axis='both')
     #ax.set_xlabel('Segmentation type', fontsize=17, fontweight="bold")
     ax.set_ylabel(y_label, fontsize=17, fontweight="bold")
-    yabs_max = abs(max(ax.get_ylim(), key=abs))
-    ax.set_ylim(ymax=(yabs_max + 1))
+    if set_ylim:
+        ax.set_ylim([40, 105])
+    else:
+        yabs_max = abs(max(ax.get_ylim(), key=abs))
+        ax.set_ylim(ymax=(yabs_max + 1))
 
     plt.tight_layout()
     outfile = os.path.join(path_out, filename)
@@ -75,14 +78,12 @@ def main():
         df = pd.DataFrame()
         path_csa = os.path.join(path_in, folder, 'results')
         for file in os.listdir(path_csa):
-            print(file)
             if 'csv' in file:
                 contrast = file.split('_')
                 if len(contrast) < 4:
                     contrast = contrast[-1].split('.')[0]
                 else:
                     contrast = contrast[-2]
-                print(contrast)
                 df[contrast] = get_csa(os.path.join(path_csa, file))
                # print(dataset)
         dfs[folder] = df
@@ -91,10 +92,15 @@ def main():
     stds = pd.DataFrame()
     for method in dfs.keys():
         std = dfs[method].std(axis=1)
-        print('Mean STD:', method, std.mean(), std.std())
+        mean_std = std.mean()
+        std_std = std.std()
+        print(f'{method} Mean STD: {mean_std} ± {std_std} mm^2')
+        print(f'{method} Mean CSA: {dfs[method].values.mean()} ± {dfs[method].values.std(ddof=1)} mm^2')
+        print(f'{method} Mean CSA: {dfs[method].mean()}')
         stds[method] = std
    # print(std)
-       # violin_plot(df, r'CSA ($\bf{mm^2}$)', exp_folder, 'violin_plot_csa_percontrast.png')
+        violin_plot(dfs[method], r'CSA ($\bf{mm^2}$)', exp_folder, 'violin_plot_csa_percontrast_'+method+'.png', set_ylim=True)
+    print('Number of subject in test set:', len(stds.index))
     violin_plot(stds, r'Standard deviation ($\bf{mm^2}$)', exp_folder, 'violin_plot_all.png')
 
 
