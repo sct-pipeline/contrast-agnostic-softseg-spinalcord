@@ -99,7 +99,7 @@ for file_pred in ${PATH_PRED_SEG}/*; do
 
       # rsync prediction mask
       rsync -avzh $file_pred ${type}/$file_seg_basename
-      prefix="spineGCropThr_"
+      prefix="spineGNoCropThr_"
       file_image=${file_seg_basename#"$prefix"}
       echo $file_image
       file_image="${file_image::-11}"  # Remove X.nii.gz since teh number X varies
