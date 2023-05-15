@@ -184,36 +184,36 @@ def macro_sd_violin(df, methods, outfile=None):  # HERE
     plt.rcParams['legend.title_fontsize'] = 'x-large'
     plt.yticks(fontsize="x-large")
     
-    cols_cat = ["#ff6767", "#ff6767", "#8edba3", "#8edba3"]
-    cols_dic = {name: "#989e9a" if (k == 0 or k == 1) else cols_cat[k-2] for k, name in enumerate(methods)}
+    cols_dic = {'manual_hard_GT_perf_sd': '#989e9a', 'manual_soft_GT_perf_sd': '#989e9a', 'hard_hard_perf_sd': '#ff6767', 'hard_soft_perf_sd': '#ff6767', 'meanGT_soft_perf_sd': '#8edba3', 'meanGT_soft_all_perf_sd': '#8edba3'}
+    print(cols_dic)
     sns.violinplot(data=df[methods], ax=ax, inner="box", palette=cols_dic, linewidth=2)
-    labels = ["GT_binary", "GT_softmean", "(1) DL_hard_percontrast","(2) DL_soft_aug_percontrast ", "(3) DL_soft_avg_percontrast", "(4) DL_soft_avg_allcontrast"]
-    
-    ax.set_title("Variability of CSA across MRI contrasts", pad=20, fontweight="bold", fontsize=17)
+    labels = ["GT Binary", "GT Average Soft", "(1) Binary GT - percontrast" ,"(2) Average soft GT – percontrast", "(3) Average soft  GT – all contrast"]
+
+    ax.set_title("Variability of CSA across MRI contrasts", pad=20, fontweight="bold", fontsize=20)
     ax.xaxis.set_tick_params(direction='out')
     ax.xaxis.set_ticks_position('bottom')
     ax.xaxis.grid(True, which='minor')
-    ax.set_xticks(np.arange(0, len(labels)), labels, rotation=30, ha='right', fontsize=17)
+    ax.set_xticks(np.arange(0, len(labels)), labels, rotation=25, ha='right', fontsize=17)
     plt.yticks(fontsize=17)
     ax.tick_params(direction='out', axis='both')
     #ax.set_xlabel('Segmentation type', fontsize=17, fontweight="bold")
     ax.set_ylabel(r'Standard deviation ($\bf{mm^2}$)', fontsize=17, fontweight="bold")
     yabs_max = abs(max(ax.get_ylim(), key=abs))
-    ax.set_ylim(ymax=(yabs_max + 1))
+    ax.set_ylim(ymax=(yabs_max + 2))
     
 
     # Here is the label and arrow code of interest
     ax.annotate('per contrast', xy=(0.6, 0.905), xytext=(0.6, 0.93), xycoords='axes fraction', 
             fontsize=15.0, ha='center', va='bottom', color='black',
             arrowprops=dict(arrowstyle='-[, widthB=9.0, lengthB=1.0', lw=2.0, color='k'))
-    ax.annotate('all contrasts', xy=(0.92, 0.905), xytext=(0.92, 0.93), xycoords='axes fraction', 
+    ax.annotate('all contrasts', xy=(0.90, 0.905), xytext=(0.90, 0.93), xycoords='axes fraction', 
             fontsize=15.0, ha='center', va='bottom', color='black',
             arrowprops=dict(arrowstyle='-[, widthB=2.5, lengthB=1.0', lw=2.0, color='k'))
 
 
     bench_patch = mpatches.Patch(color="#989e9a", label='Manual GT')
-    singleGT_patch = mpatches.Patch(color="#ff6767", label='Hard GT')
-    meanGT_patch = mpatches.Patch(color="#8edba3", label='Soft Average GT')
+    singleGT_patch = mpatches.Patch(color="#ff6767", label='Binary GT')
+    meanGT_patch = mpatches.Patch(color="#8edba3", label='Average soft GT')
     ax.legend(#title= r"$\bf{Segmentation\  type}$", 
               handles=[bench_patch, singleGT_patch, meanGT_patch], 
               fontsize=14,

@@ -234,6 +234,7 @@ def main():
     methods_preli = ["manual_hard_GT", "manual_soft_GT"] # Benchmarks
     contrast_preli = args.contrasts
     perf_df_sd, macro_perf_sd_names = create_perf_df_sd(preli_df, methods_preli, contrast_preli)
+    
     macro_sd_violin_preli(perf_df_sd, methods=macro_perf_sd_names, outfile=os.path.join(exp_folder, f"preli_meanGT_VS_default.png"))
     logger.info(f"Length preliminary dataset:  {len(preli_df)}") # 103
 
@@ -251,13 +252,15 @@ def main():
         perf_df_pwd, macro_perf_pwd_names = create_perf_df_pwd(dataframe, methods, contrasts, ref_contrast)
         contrast_specific_pwd_violin(perf_df_pwd, methods, contrasts, outfile=os.path.join(exp_folder, f"contrast_specific_PWD_seed{s}.png"))
         perf_df_sd, macro_perf_sd_names = create_perf_df_sd(dataframe, methods, contrasts+[ref_contrast])
-        macro_sd_violin(perf_df_sd, methods=macro_perf_sd_names, outfile=os.path.join(exp_folder, f"macroSD_seed_{s}.png"))
+        #macro_sd_violin(perf_df_sd, methods=macro_perf_sd_names, outfile=os.path.join(exp_folder, f"macroSD_seed_{s}.png"))
 
     # Seed Aggregation - Macro performance plots across seeds
     agg_df = pd.concat(dfs.values())
     duplicates = agg_df.duplicated(subset="patient_id")
     logger.info(f"# Duplicates : {sum(duplicates)}/{len(duplicates)} \n Duplicate patients :\n {agg_df['patient_id'][duplicates]}")
     perf_df_sd, macro_perf_sd_names = create_perf_df_sd(agg_df, methods, contrasts+[ref_contrast])
+    print(macro_perf_sd_names)
+    macro_perf_sd_names.remove('hard_soft_perf_sd')
     macro_sd_violin(perf_df_sd, methods=macro_perf_sd_names, outfile=os.path.join(exp_folder, f"macroSD_allseeds.png"))
     
     # Compute paired T-test
