@@ -115,6 +115,13 @@ def main():
             dfs[folder] = df
             df.dropna(axis=0, inplace=True)
     # Compute STD
+
+    rename = {'ivado_avg_bin_no_crop': 'IVADO_avg_bin',
+             'ivado_soft_no_crop':'IVADO_avg',
+             'ivado_hard_GT': 'IVADO_hard_GT',
+             'csa_nnunet_soft_avg_all_no_crop': 'nnUnet_avg_bin',
+             }
+    dfs = dict((rename[key], value) for (key, value) in dfs.items())
     stds = pd.DataFrame()
     for method in dfs.keys():
         std = dfs[method].std(axis=1)
@@ -131,12 +138,7 @@ def main():
                     filename='violin_plot_csa_percontrast_'+method+'.png', 
                     set_ylim=True)
     logger.info(f'Number of subject in test set: {len(stds.index)}')
-    stds = stds[['ivado_hard_GT', 'ivado_soft_no_crop', 'ivado_hard_avg_no_crop', 'csa_nnunet_soft_avg_all_no_crop']]
-    stds.rename(columns = {'ivado_hard_avg_no_crop': 'IVADO_average_bin',
-                            'ivado_soft_no_crop':'IVADO_average',
-                            'ivado_hard_GT': 'IVADO_hard GT',
-                            'csa_nnunet_soft_avg_all_no_crop': 'nnUnet',
-                            }, inplace = True)
+    stds = stds[['IVADO_hard_GT', 'IVADO_avg', 'IVADO_avg_bin', 'nnUnet_avg_bin']]
     
     violin_plot(stds,
                 y_label=r'Standard deviation ($\bf{mm^2}$)', 
