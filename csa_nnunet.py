@@ -131,12 +131,11 @@ def main():
                     filename='violin_plot_csa_percontrast_'+method+'.png', 
                     set_ylim=True)
     logger.info(f'Number of subject in test set: {len(stds.index)}')
-    stds = stds[['ivado_hard_avg_no_crop', 'ivado_soft_no_crop', 'ivado_hard_GT', 'nnunet_711_no_crop', 'nnunet_711_b8']]
+    stds = stds[['ivado_hard_GT', 'ivado_soft_no_crop', 'ivado_hard_avg_no_crop', 'csa_nnunet_soft_avg_all_no_crop']]
     stds.rename(columns = {'ivado_hard_avg_no_crop': 'IVADO_average_bin',
                             'ivado_soft_no_crop':'IVADO_average',
                             'ivado_hard_GT': 'IVADO_hard GT',
-                            'nnunet_711_no_crop': 'nnUnet',
-                            'nnunet_711_b8': 'nnunet_b8'
+                            'csa_nnunet_soft_avg_all_no_crop': 'nnUnet',
                             }, inplace = True)
     
     violin_plot(stds,
