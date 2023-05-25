@@ -31,6 +31,7 @@ import numpy as np
 def binarize_label(subject_path, label_path):
     label_npy = nib.load(label_path).get_fdata()
     threshold = 0.5
+    # threshold = 1e-8
     label_npy = np.where(label_npy > threshold, 1, 0)
     ref = nib.load(subject_path)
     label_bin = nib.Nifti1Image(label_npy, ref.affine, ref.header)
@@ -41,6 +42,8 @@ def binarize_label(subject_path, label_path):
 # parse command line arguments
 parser = argparse.ArgumentParser(description='Convert BIDS-structured dataset to nnUNetV2 database format.')
 parser.add_argument('--path-data', help='Path to BIDS dataset.', required=True)
+parser.add_argument('--label-type', help='Type of label, e.g. soft or hard', required=True,
+                    choices=['soft', 'hard'])
 parser.add_argument('--path-out', help='Path to output directory.', required=True)
 parser.add_argument('--path-joblib', help='Path to joblib file from ivadomed containing the dataset splits.', required=True)
 parser.add_argument('--dataset-name', '-dname', default='MSSpineLesion', type=str,
@@ -51,7 +54,6 @@ parser.add_argument('--dataset-number', '-dnum', default=501,type=int,
 args = parser.parse_args()
 
 root = Path(args.path_data)
-# train_ratio, test_ratio = args.split
 path_out = Path(os.path.join(os.path.abspath(args.path_out), f'Dataset{args.dataset_number}_{args.dataset_name}'))
 
 # create individual directories for train and test images and labels
@@ -95,6 +97,13 @@ if __name__ == '__main__':
     # list of contrasts: T2w, T1w, T2star, MTon, MToff, DWI
     contrasts = ['dwi', 'flip-1_mt-on_MTS', 'flip-2_mt-off_MTS', 'T1w', 'T2star', 'T2w']
 
+    if args.label_type == 'soft':
+        logger.info("Using the `labels_softseg` (i.e. averaged soft labels) directory for labels!")
+        logger.info(f"Soft labels path: {os.path.join(root, 'derivatives', 'labels_softseg')}")
+    else:
+        logger.info("Using the `labels` (i.e. using hard binary labels) directory for labels!")
+        logger.info(f"Hard labels path: {os.path.join(root, 'derivatives', 'labels')}")
+
     train_ctr, test_ctr = 0, 0
     for subject in subjects:
 
@@ -106,10 +115,14 @@ if __name__ == '__main__':
                 
                 if contrast != 'dwi':
                     subject_images_path = os.path.join(root, subject, 'anat')
-                    subject_labels_path = os.path.join(root, 'derivatives', 'labels', subject, 'anat')
-
                     subject_image_file = os.path.join(subject_images_path, f"{subject}_{contrast}.nii.gz")
-                    subject_label_file = os.path.join(subject_labels_path, f"{subject}_{contrast}_seg-manual.nii.gz")
+                    
+                    if args.label_type == 'soft':
+                        subject_labels_path = os.path.join(root, 'derivatives', 'labels_softseg', subject, 'anat')
+                        subject_label_file = os.path.join(subject_labels_path, f"{subject}_{contrast}_softseg.nii.gz")
+                    elif args.label_type == 'hard':
+                        subject_labels_path = os.path.join(root, 'derivatives', 'labels', subject, 'anat')
+                        subject_label_file = os.path.join(subject_labels_path, f"{subject}_{contrast}_seg-manual.nii.gz")
 
                     # check if both image and label files exist
                     if not (os.path.exists(subject_image_file) and os.path.exists(subject_label_file)):
@@ -134,10 +147,14 @@ if __name__ == '__main__':
 
                 else:
                     subject_images_path = os.path.join(root, subject, 'dwi')
-                    subject_labels_path = os.path.join(root, 'derivatives', 'labels', subject, 'dwi')
-
                     subject_image_file = os.path.join(subject_images_path, f"{subject}_rec-average_{contrast}.nii.gz")
-                    subject_label_file = os.path.join(subject_labels_path, f"{subject}_rec-average_{contrast}_seg-manual.nii.gz")
+                    
+                    if args.label_type == 'soft':
+                        subject_labels_path = os.path.join(root, 'derivatives', 'labels_softseg', subject, 'dwi')
+                        subject_label_file = os.path.join(subject_labels_path, f"{subject}_rec-average_{contrast}_softseg.nii.gz")
+                    elif args.label_type == 'hard':
+                        subject_labels_path = os.path.join(root, 'derivatives', 'labels', subject, 'dwi')
+                        subject_label_file = os.path.join(subject_labels_path, f"{subject}_rec-average_{contrast}_seg-manual.nii.gz")
 
                     # check if both image and label files exist
                     if not (os.path.exists(subject_image_file) and os.path.exists(subject_label_file)):
@@ -170,10 +187,14 @@ if __name__ == '__main__':
                 
                 if contrast != 'dwi':
                     subject_images_path = os.path.join(root, subject, 'anat')
-                    subject_labels_path = os.path.join(root, 'derivatives', 'labels', subject, 'anat')
-
                     subject_image_file = os.path.join(subject_images_path, f"{subject}_{contrast}.nii.gz")
-                    subject_label_file = os.path.join(subject_labels_path, f"{subject}_{contrast}_seg-manual.nii.gz")
+                    
+                    if args.label_type == 'soft':
+                        subject_labels_path = os.path.join(root, 'derivatives', 'labels_softseg', subject, 'anat')
+                        subject_label_file = os.path.join(subject_labels_path, f"{subject}_{contrast}_softseg.nii.gz")
+                    elif args.label_type == 'hard':
+                        subject_labels_path = os.path.join(root, 'derivatives', 'labels', subject, 'anat')
+                        subject_label_file = os.path.join(subject_labels_path, f"{subject}_{contrast}_seg-manual.nii.gz")
 
                     # check if both image and label files exist
                     if not (os.path.exists(subject_image_file) and os.path.exists(subject_label_file)):
@@ -198,10 +219,14 @@ if __name__ == '__main__':
 
                 else:
                     subject_images_path = os.path.join(root, subject, 'dwi')
-                    subject_labels_path = os.path.join(root, 'derivatives', 'labels', subject, 'dwi')
-
                     subject_image_file = os.path.join(subject_images_path, f"{subject}_rec-average_{contrast}.nii.gz")
-                    subject_label_file = os.path.join(subject_labels_path, f"{subject}_rec-average_{contrast}_seg-manual.nii.gz")
+                    
+                    if args.label_type == 'soft':
+                        subject_labels_path = os.path.join(root, 'derivatives', 'labels_softseg', subject, 'dwi')
+                        subject_label_file = os.path.join(subject_labels_path, f"{subject}_rec-average_{contrast}_softseg.nii.gz")
+                    elif args.label_type == 'hard':
+                        subject_labels_path = os.path.join(root, 'derivatives', 'labels', subject, 'dwi')
+                        subject_label_file = os.path.join(subject_labels_path, f"{subject}_rec-average_{contrast}_seg-manual.nii.gz")
 
                     # check if both image and label files exist
                     if not (os.path.exists(subject_image_file) and os.path.exists(subject_label_file)):
