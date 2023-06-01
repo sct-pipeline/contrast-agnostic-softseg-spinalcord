@@ -173,7 +173,7 @@ python gen_charts.py --contrasts T1w T2w T2star rec-average_dwi \
 cd scripts
 ~~~
 2. Run bash script to generate QC report from prediction masks.
-**Note:** For nnUnet, ensure `prefix` in the script `compute_csa_nnunet.sh` according to the preffix in the prediction name.
+**Note:** For nnUnet, ensure `prefix` in the script `compute_csa_nnunet.sh` according to the preffix in the prediction name and `contrast` with the image contrast.
 ~~~
 sct_run_batch -path-data <PATH_DATA> -path-out <PATH-OUT> -script-args <PATH_PRED_MASK> -jobs 20 -script run_qc_prediction_XXX.sh
 ~~~
