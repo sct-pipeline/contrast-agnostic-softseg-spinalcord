@@ -152,7 +152,7 @@ for file_path in "${inc_contrasts[@]}";do
 
     # Create QC for pred mask
     sct_qc -i ${file_path}.nii.gz -s ${pred_seg}.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
-    sct_maths -i ${pred_seg}.nii.gz -bin 0.5 -o ${pred_seg}_bin.nii.gz
+
     # Get manual hard GT to get labeled segmentation
     FILESEG="${file_path}_seg"
     FILESEGMANUAL="${PATH_DATA}/derivatives/labels/${SUBJECT}/${FILESEG}-manual.nii.gz"
@@ -170,7 +170,7 @@ for file_path in "${inc_contrasts[@]}";do
     sct_qc -i ${file_path}.nii.gz -s ${file_seg_labeled}.nii.gz -p sct_label_vertebrae -qc ${PATH_QC} -qc-subject ${SUBJECT}
 
     # Compute average cord CSA between C2 and C3
-    sct_process_segmentation -i ${pred_seg}_bin.nii.gz -vert 2:3 -vertfile ${file_seg_labeled}.nii.gz -o ${PATH_RESULTS}/csa_pred_${contrast_seg}.csv -append 1
+    sct_process_segmentation -i ${pred_seg}.nii.gz -vert 2:3 -vertfile ${file_seg_labeled}.nii.gz -o ${PATH_RESULTS}/csa_pred_${contrast_seg}.csv -append 1
   else
     echo "Pred mask not found"
   fi
