@@ -75,27 +75,24 @@ file_sub="${SUBJECT//[\/]/_}"
 
 for file_pred in ${PATH_PRED_SEG}/*; do
     if [[ $file_pred == *$file_sub* ]];then
-        echo " File found, running QC report $file_pred"
-        # Find if anat or dwi
-        file_seg_basename=${file_pred##*/}
-        echo $file_seg_basename
-        type=$(find_contrast $file_pred)
-        prefix="baselMP2RageRPI_"  # TODO change accroding to prediction names
-        file_image=${file_seg_basename#"$prefix"}
-        echo $file_image
-        file_image="${file_image::-11}"  # Remove X.nii.gz since the number X varies
-        # split with "-"
-        arrIN=(${file_image//-/ })
-        contrast="_UNIT1"
-        file_image=${arrIN[0]}"-"${arrIN[1]}"${contrast}.nii.gz"
-        echo $file_image
-	# rsync prediction mask
-	file_pred_new_name=${type}/${arrIN[0]}"-"${arrIN[1]}"${contrast}_pred.nii.gz"
-	rsync -avzh $file_pred $file_pred_new_name
-	# Create QC for pred mask
-	sct_qc -i ${type}/${file_image} -s $file_pred_new_name -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
-
-
+      echo " File found, running QC report $file_pred"
+      # Find if anat or dwi
+      file_seg_basename=${file_pred##*/}
+      echo $file_seg_basename
+      type=$(find_contrast $file_pred)
+      prefix="baselMP2RageRPI_"  # TODO change accroding to prediction names
+      file_image=${file_seg_basename#"$prefix"}
+      file_image="${file_image::-11}"  # Remove X.nii.gz since the number X varies
+      # split with "-"
+      arrIN=(${file_image//-/ })
+      contrast="_UNIT1"
+      file_image=${arrIN[0]}"-"${arrIN[1]}"${contrast}.nii.gz"
+      echo $file_image
+      # rsync prediction mask
+      file_pred_new_name=${type}/${arrIN[0]}"-"${arrIN[1]}"${contrast}_pred.nii.gz"
+      rsync -avzh $file_pred $file_pred_new_name
+      # Create QC for pred mask
+      sct_qc -i ${type}/${file_image} -s $file_pred_new_name -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
     fi
 done
 
