@@ -130,6 +130,7 @@ def main():
         logger.info(f'{method} Mean STD: {mean_std} ± {std_std} mm^2')
         logger.info(f'{method} Mean CSA: {dfs[method].values.mean()} ± {dfs[method].values.std(ddof=1)} mm^2')
         logger.info(f'{method} Mean CSA: \n{dfs[method].mean()}')
+        logger.info(f'{method} STD CSA: \n{dfs[method].std()}')
         stds[method] = std
         violin_plot(dfs[method], 
                     y_label=r'CSA ($\bf{mm^2}$)',
