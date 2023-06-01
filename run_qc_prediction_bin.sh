@@ -84,10 +84,8 @@ for file_pred in ${PATH_PRED_SEG}/*; do
         file_image=${file_seg_basename//"_class-0_pred"}
         echo $file_image
         # Create QC for pred mask
-	sct_maths -i ${type}/${file_seg_basename} -bin 0.5 -o ${type}/${file_seg_basename}
-  	sct_qc -i ${type}/${file_image} -s ${type}/${file_seg_basename} -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
-
-
+      sct_maths -i ${type}/${file_seg_basename} -bin 0.5 -o ${type}/${file_seg_basename}
+      sct_qc -i ${type}/${file_image} -s ${type}/${file_seg_basename} -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
     fi
 done
 #TODO find anat or dwi
