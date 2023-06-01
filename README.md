@@ -163,7 +163,7 @@ sct_run_batch -path-data <PATH_DATA> -path-out <PATH-OUT> -script-args <PATH_PRE
 * `-script`: Script `run_qc_prediction_XXX` corresponding to the dataset.
 * `-script-args`: Path to prediction masks for the specific dataset
   
-## Example running QC on prediction masks from nnUnet from other datasets
+### Example running QC on prediction masks from nnUnet from other datasets
 ~~~
 sct_run_batch -jobs 20 -path-data ~/data_nvme_sebeda/datasets/dcm-zurich/ \
                        -path-output ~/data_nvme_sebeda/qc_dcm_zurich_sag_nnUnet_2023-05-30 \
