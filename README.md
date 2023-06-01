@@ -11,9 +11,7 @@ This repo creates a series of preparations for comparing the newly trained ivado
 ## Dataset
 The source data are from the [spine-generic multi-subject](https://github.com/spine-generic/data-multi-subject/).
 
-The processed data are located on `duke:projects/ivadomed/contrast-agnostic-seg/data`.
-
-> ⚠️ Currently, there are three processed datasets to account for the issue of ivadomed loader that cannot deal with the MTS files (https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord/issues/25). In the future, there should be only ONE processed dataset. 
+The processed data are located on `duke:projects/ivadomed/contrast-agnostic-seg/data_processed_sg_2023-03-10_NO_CROP\data_processed_clean`.
 
 ## Processing
 Main processing steps include:
@@ -111,24 +109,64 @@ Once the inference is done for all models and to reproduce the results presented
 
 ## Compute CSA on prediction masks
 
-To compute CSA at C2-C3 vertebral levels on the prediction masks obtained from the trained models, the script `compute_csa.sh` is used. The input is the folder `data_processed_clean` (result from preprocessing) and the path of the prediction masks is added as an extra script argument `-script-args`.
-
+To compute CSA at C2-C3 vertebral levels on the prediction masks obtained from the trained models, the script `compute_csa_nnunet.sh` is used. The input is the folder `data_processed_clean` (result from preprocessing) and the path of the prediction masks is added as an extra script argument `-script-args`.
+  
 For every trained model, you can run:
 
 ```
-sct_run_batch -jobs -1 -path-data /data_processed_clean/ -path-output <PATH_OUTPUT> -script compute_csa.sh -script-args <PATH_PRED_MASKS>
+sct_run_batch -jobs -1 -path-data /data_processed_clean/ -path-output <PATH_OUTPUT> -script compute_csa_nnunet.sh -script-args <PATH_PRED_MASKS>
 ```
+* `-path-data`: Path to data from spine generic used for training.
+* `-path-output`: Path to save results
+* `-script`: Script to compute CSA : `compute_csa_nnunet.sh`
+* `-script-args`: Path to the prediction masks
+
 The CSA results will be under `<PATH_OUTPUT>/results`.
 
-To generate violin plots and analyse results, run the following command:
+### Example nnUnet
+ **Note:** For nnUnet, change `prefix` in the script `compute_csa_nnunet.sh` according to the preffix in the prediction name.
+Here is an example on how to compute CSA on nnUnet models.
+```
+sct_run_batch -jobs -1 -path-data ~/duke/projects/ivadomed/contrast-agnostic-seg/data_processed_sg_2023-03-10_NO_CROP\data_processed_clean -path-output ~/results -script compute_csa_nnunet.sh -script-args ~/duke/temp/muena/contrast-agnostic/Dataset713_spineGNoCropSoftAvgBin_test
+``` 
+## Analyse CSA results
+To generate violin plots and analyse results, put all CSA results file in the same folder (here `csa_nnunet_vs_ivadomed`) and run:
 
 ```
+python analyse_csa_nnunet_ivadomed.py -i-folder ~/duke/projects/ivadomed/contrast-agnostic-seg/csa_measures_pred/csa_nnunet_vs_ivadomed/ \
+                                      -include ivado_hard_GT ivado_avg_bin_no_crop ivado_soft_no_crop csa_nnunet_soft_avg_all_no_crop \
+```
+* `-i-folder`: Path to folder containing CSA results from models to analyse
+* `-include`: names of the folder names to include in the analysis (one model = one foler)
+
+To generate violin plots to compare 4 ivadomed models (original):
+```
+### Analyse CSA IVADOMED only
 python gen_charts.py --contrasts T1w T2w T2star rec-average_dwi \
        --predictions_folder ../duke/projects/ivadomed/contrast-agnostic-seg/csa_measures_pred/group8-9_combined-2022-12-21/ \
        --baseline_folder ../duke/projects/ivadomed/contrast-agnostic-seg/archive_derivatives_softsegs-seg/contrast-agnostic-centerofmass-preprocess-clean-all-2022-10-22\results_MTS_renamed
 ```
-## Run qc report on prediction masks
+  
+## Run qc report on prediction masks from other datasets
 
+1. Got inside the `scripts` folder:
 ~~~
-sct_run_batch -path-data <PATH_DATA> -path-out <PATH-OUT> -script-args <PATH_PRED_MASK> -jobs 20 -script run_qc_prediction.sh
+cd scripts
+~~~
+2. Run bash script to generate QC report from prediction masks.
+**Note:** For nnUnet, ensure `prefix` in the script `compute_csa_nnunet.sh` according to the preffix in the prediction name.
+~~~
+sct_run_batch -path-data <PATH_DATA> -path-out <PATH-OUT> -script-args <PATH_PRED_MASK> -jobs 20 -script run_qc_prediction_XXX.sh
+~~~
+* `-path-data`: Path to the original dataset used to run inferences.
+* `-path-output`: Path to the results folder to save QC report
+* `-script`: Script `run_qc_prediction_XXX` corresponding to the dataset.
+* `-script-args`: Path to prediction masks for the specific dataset
+  
+## Example running QC on prediction masks from nnUnet from other datasets
+~~~
+sct_run_batch -jobs 20 -path-data ~/data_nvme_sebeda/datasets/dcm-zurich/ \
+                       -path-output ~/data_nvme_sebeda/qc_dcm_zurich_sag_nnUnet_2023-05-30 \
+                       -script run_qc_prediction_dcm_zurich_sag.sh \
+                       -script-args ~/duke/temp/muena/contrast-agnostic/pure-inference/Dataset725_dcmZurichSagittalRPI/test713_softAvg/
 ~~~
