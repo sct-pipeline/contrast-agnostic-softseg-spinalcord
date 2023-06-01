@@ -2,7 +2,7 @@
 #
 # Run QC report on prediction masks
 # Usage:
-#   ./run_qc_prediction.sh <SUBJECT>
+#   ./run_qc_prediction_basel_mp2rage.sh <SUBJECT>
 #
 #
 # Authors: Sandrine Bédard
@@ -80,24 +80,14 @@ for file_pred in ${PATH_PRED_SEG}/*; do
         file_seg_basename=${file_pred##*/}
         echo $file_seg_basename
         type=$(find_contrast $file_pred)
-
-        # rsync prediction mask
-        #rsync -avzh $file_pred ${type}/$file_seg_basename
-        prefix="baselMP2RageRPI_"  #TODO  
+        prefix="baselMP2RageRPI_"  # TODO change accroding to prediction names
         file_image=${file_seg_basename#"$prefix"}
         echo $file_image
         file_image="${file_image::-11}"  # Remove X.nii.gz since the number X varies
         # split with "-"
         arrIN=(${file_image//-/ })
-        if [[ $type == *"dwi"* ]];then
-          contrast="rec-average_dwi"  # original image name
-        else
-          contrast=${file_image#${arrIN[0]}"-"}  # remove sub-
-          contrast=${contrast#${arrIN[1]}"-"}  # remove sub-id
-	  contrast="_UNIT1"
-        fi
-        file_image=${arrIN[0]}"-"${arrIN[1]}"_"${contrast}".nii.gz"
-	file_image=${arrIN[0]}"-"${arrIN[1]}"${contrast}.nii.gz"
+        contrast="_UNIT1"
+        file_image=${arrIN[0]}"-"${arrIN[1]}"${contrast}.nii.gz"
         echo $file_image
 	# rsync prediction mask
 	file_pred_new_name=${type}/${arrIN[0]}"-"${arrIN[1]}"${contrast}_pred.nii.gz"
