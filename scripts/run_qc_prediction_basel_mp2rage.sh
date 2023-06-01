@@ -83,7 +83,7 @@ for file_pred in ${PATH_PRED_SEG}/*; do
 
         # rsync prediction mask
         #rsync -avzh $file_pred ${type}/$file_seg_basename
-        prefix="dcmZurichAxial_"  #TODO  
+        prefix="baselMP2RageRPI_"  #TODO  
         file_image=${file_seg_basename#"$prefix"}
         echo $file_image
         file_image="${file_image::-11}"  # Remove X.nii.gz since the number X varies
@@ -94,16 +94,16 @@ for file_pred in ${PATH_PRED_SEG}/*; do
         else
           contrast=${file_image#${arrIN[0]}"-"}  # remove sub-
           contrast=${contrast#${arrIN[1]}"-"}  # remove sub-id
-	  contrast="_acq-axial_T2w"
+	  contrast="_UNIT1"
         fi
         file_image=${arrIN[0]}"-"${arrIN[1]}"_"${contrast}".nii.gz"
 	file_image=${arrIN[0]}"-"${arrIN[1]}"${contrast}.nii.gz"
         echo $file_image
 	# rsync prediction mask
 	file_pred_new_name=${type}/${arrIN[0]}"-"${arrIN[1]}"${contrast}_pred.nii.gz"
-        rsync -avzh $file_pred $file_pred_new_name
-        # Create QC for pred mask
-        sct_qc -i ${type}/${file_image} -s $file_pred_new_name -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
+	rsync -avzh $file_pred $file_pred_new_name
+	# Create QC for pred mask
+	sct_qc -i ${type}/${file_image} -s $file_pred_new_name -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
 
 
     fi

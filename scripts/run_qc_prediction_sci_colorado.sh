@@ -82,7 +82,7 @@ for file_pred in ${PATH_PRED_SEG}/*; do
         type=$(find_contrast $file_pred)
 
         # rsync prediction mask
-        rsync -avzh $file_pred ${type}/$file_seg_basename
+        #rsync -avzh $file_pred ${type}/$file_seg_basename
         prefix="tSCIColoradoSCSeg_"  #TODO  
         file_image=${file_seg_basename#"$prefix"}
         echo $file_image
@@ -99,8 +99,11 @@ for file_pred in ${PATH_PRED_SEG}/*; do
         file_image=${arrIN[0]}"-"${arrIN[1]}"_"${contrast}".nii.gz"
 	file_image=${arrIN[0]}"-"${arrIN[1]}"${contrast}.nii.gz"
         echo $file_image
+	# rsync prediction mask
+        file_pred_new_name=${type}/${arrIN[0]}"-"${arrIN[1]}"${contrast}_pred.nii.gz"
+        rsync -avzh $file_pred $file_pred_new_name
         # Create QC for pred mask
-        sct_qc -i ${type}/${file_image} -s ${type}/${file_seg_basename} -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
+        sct_qc -i ${type}/${file_image} -s $file_pred_new_name -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
 
 
     fi
