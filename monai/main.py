@@ -8,6 +8,7 @@ import wandb
 import torch
 import pytorch_lightning as pl
 import torch.nn.functional as F
+import matplotlib.pyplot as plt
 
 from utils import precision_score, recall_score, dice_score, plot_slices
 from losses import SoftDiceLoss
@@ -62,9 +63,9 @@ class Model(pl.LightningModule):
         self.soft_dice_metric = dice_score
 
         # temp lists for storing outputs from training, validation, and testing
-        self.training_step_outputs = {}
-        self.val_step_outputs = {}
-        self.test_step_outputs = {}
+        self.train_step_outputs = []
+        self.val_step_outputs = []
+        self.test_step_outputs = []
 
 
     # --------------------------------
@@ -111,8 +112,8 @@ class Model(pl.LightningModule):
             val_files = val_files[:2]
             test_files = test_files[:6]
         
-        self.train_ds = CacheDataset(data=train_files, transform=transforms_train, cache_rate=0.1, num_workers=4)
-        self.val_ds = CacheDataset(data=val_files, transform=transforms_val, cache_rate=0.1, num_workers=4)
+        self.train_ds = CacheDataset(data=train_files, transform=transforms_train, cache_rate=0.25, num_workers=4)
+        self.val_ds = CacheDataset(data=val_files, transform=transforms_val, cache_rate=0.5, num_workers=4)
 
         # define test transforms
         transforms_test = test_transforms(lbl_key='label')
@@ -127,7 +128,7 @@ class Model(pl.LightningModule):
                     nearest_interp=False, to_tensor=True),
             ])
 
-        self.test_ds = CacheDataset(data=test_files, transform=transforms_test, cache_rate=0.1, num_workers=4)
+        self.test_ds = CacheDataset(data=test_files, transform=transforms_test, cache_rate=0.5, num_workers=4)
 
 
     # --------------------------------
@@ -171,35 +172,47 @@ class Model(pl.LightningModule):
         # NOTE: this is done on patches (and not entire 3D volume) because SlidingWindowInference is not used here
         # So, take this dice score with a lot of salt
         train_soft_dice = self.soft_dice_metric(output, labels) 
-        train_hard_dice = self.soft_dice_metric((output.detach() > 0.5).float(), (labels.detach() > 0.5).float())
+        # train_hard_dice = self.soft_dice_metric((output.detach() > 0.5).float(), (labels.detach() > 0.5).float())
 
-        self.training_step_outputs["loss"] = loss
-        self.training_step_outputs["train_soft_dice"] = train_soft_dice
-        self.training_step_outputs["train_hard_dice"] = train_hard_dice
-        self.training_step_outputs["train_number"] = len(inputs)
+        metrics_dict = {
+            "loss": loss,
+            "train_soft_dice": train_soft_dice,
+            # "train_hard_dice": train_hard_dice,
+            "train_number": len(inputs),
+            # "train_image": inputs[0].squeeze(),
+            # "train_gt": labels[0].squeeze(),
+            # "train_pred": output[0].squeeze()
+        }
+        self.train_step_outputs.append(metrics_dict)
 
-        # get input image and label for visualization
-        if batch_idx == 0:
-            self.training_step_outputs["train_image"] = inputs[0].squeeze()
-            self.training_step_outputs["train_gt"] = labels[0].squeeze()
-            self.training_step_outputs["train_pred"] = output[0].squeeze()
+        return metrics_dict
 
-        return self.training_step_outputs
-
+    # TODO: remove on_train_epoch_end to save memory
     def on_train_epoch_end(self):
-        avg_loss = torch.stack([self.training_step_outputs["loss"]]).mean()
-        avg_soft_dice_train = torch.stack([self.training_step_outputs["train_soft_dice"]]).mean()
-        avg_hard_dice_train = torch.stack([self.training_step_outputs["train_hard_dice"]]).mean()
+        train_loss, num_items, train_soft_dice = 0, 0, 0
+        for output in self.train_step_outputs:
+            train_loss += output["loss"].sum().item()
+            train_soft_dice += output["train_soft_dice"].sum().item()
+            num_items += output["train_number"]
+        
+        mean_train_loss = torch.tensor(train_loss / num_items)
+        mean_train_soft_dice = torch.tensor(train_soft_dice / num_items)
 
-        self.log('train_soft_dice', avg_soft_dice_train, on_step=False, on_epoch=True)
+        wandb_logs = {
+            "train_soft_dice": mean_train_soft_dice,
+            "train_loss": mean_train_loss,
+        }
+        self.log_dict(wandb_logs)
 
-        # plot the training images
-        fig = plot_slices(image=self.training_step_outputs["train_image"],
-                          gt=self.training_step_outputs["train_gt"],
-                          pred=self.training_step_outputs["train_pred"],)
-        wandb.log({"training images": wandb.Image(fig)})
+        # # plot the training images
+        # fig = plot_slices(image=self.train_step_outputs[0]["train_image"],
+        #                   gt=self.train_step_outputs[0]["train_gt"],
+        #                   pred=self.train_step_outputs[0]["train_pred"],)
+        # wandb.log({"training images": wandb.Image(fig)})
 
-        self.training_step_outputs.clear()  # free up memory
+        # free up memory
+        self.train_step_outputs.clear()
+        # plt.close(fig)
 
 
     # --------------------------------
@@ -209,7 +222,8 @@ class Model(pl.LightningModule):
         
         inputs, labels = batch["image"], batch["label"]
 
-        outputs = sliding_window_inference(inputs, self.inference_roi_size, sw_batch_size=4, predictor=self.forward, overlap=0.5,) 
+        outputs = sliding_window_inference(inputs, self.inference_roi_size, 
+                                           sw_batch_size=4, predictor=self.forward, overlap=0.5,) 
         # outputs shape: (B, C, <original H x W x D>)
         
         # calculate validation loss
@@ -219,70 +233,79 @@ class Model(pl.LightningModule):
         post_outputs = [self.val_post_pred(i) for i in decollate_batch(outputs)]
         post_labels = [self.val_post_label(i) for i in decollate_batch(labels)]
         val_soft_dice = self.soft_dice_metric(post_outputs[0], post_labels[0])
-        val_hard_dice = self.soft_dice_metric((post_outputs[0].detach() > 0.5).float(), (post_labels[0].detach() > 0.5).float())
-
-        self.val_step_outputs["val_loss"] = loss
-        self.val_step_outputs["val_soft_dice"] = val_soft_dice
-        self.val_step_outputs["val_hard_dice"] = val_hard_dice
-        self.val_step_outputs["val_number"] = len(post_outputs)        
-
-        # get input image and label for visualization
-        if batch_idx == 0:
-            self.val_step_outputs["val_image"] = inputs[0].squeeze()
-            self.val_step_outputs["val_gt"] = labels[0].squeeze()
-            self.val_step_outputs["val_pred"] = outputs[0].squeeze()
-
-        return self.val_step_outputs
+        val_hard_dice = self.soft_dice_metric(
+            (post_outputs[0].detach() > 0.5).float(), (post_labels[0].detach() > 0.5).float()
+            )
+        
+        metrics_dict = {
+            "val_loss": loss,
+            "val_soft_dice": val_soft_dice,
+            "val_hard_dice": val_hard_dice,
+            "val_number": len(post_outputs),
+            "val_image": inputs[0].squeeze(),
+            "val_gt": labels[0].squeeze(),
+            "val_pred": post_outputs[0].detach().squeeze(),
+        }
+        self.val_step_outputs.append(metrics_dict)
+        
+        return metrics_dict
 
     def on_validation_epoch_end(self):
 
-        avg_loss = torch.stack([self.val_step_outputs["val_loss"]]).mean()
-        avg_soft_dice_val = torch.stack([self.val_step_outputs["val_soft_dice"]]).mean()
-        avg_hard_dice_val = torch.stack([self.val_step_outputs["val_hard_dice"]]).mean()
+        val_loss, num_items, val_soft_dice, val_hard_dice = 0, 0, 0, 0
+        for output in self.val_step_outputs:
+            val_loss += output["val_loss"].sum().item()
+            val_soft_dice += output["val_soft_dice"].sum().item()
+            val_hard_dice += output["val_hard_dice"].sum().item()
+            num_items += output["val_number"]
+        
+        mean_val_loss = torch.tensor(val_loss / num_items)
+        mean_val_soft_dice = torch.tensor(val_soft_dice / num_items)
+        mean_val_hard_dice = torch.tensor(val_hard_dice / num_items)
                 
         wandb_logs = {
-            "val_soft_dice": avg_soft_dice_val,
-            "val_hard_dice": avg_hard_dice_val,
-            "val_loss": avg_loss,
+            "val_soft_dice": mean_val_soft_dice,
+            # "val_hard_dice": avg_hard_dice_val,
+            "val_loss": mean_val_loss,
         }
-        if avg_soft_dice_val > self.best_val_dice:
-            self.best_val_dice = avg_soft_dice_val
+        if mean_val_soft_dice > self.best_val_dice:
+            self.best_val_dice = mean_val_soft_dice
             self.best_val_epoch = self.current_epoch
 
         print(
             f"Current epoch: {self.current_epoch}"
-            f"\nCurrent Mean Soft Dice: {avg_soft_dice_val:.4f}"
-            f"\nCurrent Mean Hard Dice: {avg_hard_dice_val:.4f}"
-            f"\nBest Mean Dice: {self.best_val_dice:.4f} at Epoch: {self.best_val_epoch}"
+            f"\nAverage Soft Dice (VAL): {mean_val_soft_dice:.4f}"
+            f"\nAverage Hard Dice (VAL): {mean_val_hard_dice:.4f}"
+            f"\nBest Average Soft Dice: {self.best_val_dice:.4f} at Epoch: {self.best_val_epoch}"
             f"\n----------------------------------------------------")
         
-        self.metric_values.append(avg_soft_dice_val)
+        self.metric_values.append(mean_val_soft_dice)
 
         # log on to wandb
         self.log_dict(wandb_logs)
 
         # plot the validation images
-        fig = plot_slices(image=self.val_step_outputs["val_image"],
-                          gt=self.val_step_outputs["val_gt"],
-                          pred=self.val_step_outputs["val_pred"],)
+        fig = plot_slices(image=self.val_step_outputs[0]["val_image"],
+                          gt=self.val_step_outputs[0]["val_gt"],
+                          pred=self.val_step_outputs[0]["val_pred"],)
         wandb.log({"validation images": wandb.Image(fig)})
 
         # free up memory
         self.val_step_outputs.clear()
+        plt.close(fig)
         
         return {"log": wandb_logs}
 
     # --------------------------------
     # TESTING
     # --------------------------------
-    # def test_step(self, batch, batch_idx, dataloader_idx):
-    
     def test_step(self, batch, batch_idx):
         
         test_input, test_label = batch["image"], batch["label"]
         # print(batch["label_meta_dict"]["filename_or_obj"][0])
         # print(f"test_input.shape: {test_input.shape} \t test_label.shape: {test_label.shape}")
-        batch["pred"] = sliding_window_inference(test_input, self.inference_roi_size, sw_batch_size=4, predictor=self.forward, overlap=0.5)
+        batch["pred"] = sliding_window_inference(test_input, self.inference_roi_size, 
+                                                 sw_batch_size=4, predictor=self.forward, overlap=0.5)
         # print(f"batch['pred'].shape: {batch['pred'].shape}")
 
         # # upon fsleyes visualization, observed that very small values need to be set to zero, but NOT fully binarizing the pred
@@ -333,24 +356,25 @@ class Model(pl.LightningModule):
         # 3. Recall Score
         test_recall = recall_score(pred.numpy(), label.numpy())
 
-        self.test_step_outputs["test_hard_dice"] = test_hard_dice
-        self.test_step_outputs["test_soft_dice"] = test_soft_dice
-        self.test_step_outputs["test_precision"] = test_precision
-        self.test_step_outputs["test_recall"] = test_recall
+        metrics_dict = {
+            "test_hard_dice": test_hard_dice,
+            "test_soft_dice": test_soft_dice,
+            "test_precision": test_precision,
+            "test_recall": test_recall,
+        }
+        self.test_step_outputs.append(metrics_dict)
 
-
-        return self.test_step_outputs
+        return metrics_dict
 
     def on_test_epoch_end(self):
-
-        # avg_hard_dice_test = torch.stack([x["test_hard_dice"] for x in outputs]).mean().cpu().numpy()
-        avg_hard_dice_test, std_hard_dice_test = np.stack([self.test_step_outputs["test_hard_dice"]]).mean(), \
-                                                     np.stack([self.test_step_outputs["test_hard_dice"]]).std()
-        avg_soft_dice_test, std_soft_dice_test = np.stack([self.test_step_outputs["test_soft_dice"]]).mean(), \
-                                                     np.stack([self.test_step_outputs["test_soft_dice"]]).std()
-        avg_precision_test = np.stack([self.test_step_outputs["test_precision"]]).mean()
-        avg_recall_test = np.stack([self.test_step_outputs["test_recall"]]).mean()
-
+        
+        avg_hard_dice_test, std_hard_dice_test = np.stack([x["test_hard_dice"] for x in self.test_step_outputs]).mean(), \
+                                                    np.stack([x["test_hard_dice"] for x in self.test_step_outputs]).std()
+        avg_soft_dice_test, std_soft_dice_test = np.stack([x["test_soft_dice"] for x in self.test_step_outputs]).mean(), \
+                                                    np.stack([x["test_soft_dice"] for x in self.test_step_outputs]).std()
+        avg_precision_test = np.stack([x["test_precision"] for x in self.test_step_outputs]).mean()
+        avg_recall_test = np.stack([x["test_recall"] for x in self.test_step_outputs]).mean()
+        
         logger.info(f"Test (Soft) Dice: {avg_soft_dice_test}")
         logger.info(f"Test (Hard) Dice: {avg_hard_dice_test}")
         logger.info(f"Test Precision Score: {avg_precision_test}")
@@ -360,6 +384,9 @@ class Model(pl.LightningModule):
         self.avg_test_dice_hard, self.std_test_dice_hard = avg_hard_dice_test, std_hard_dice_test
         self.avg_test_precision = avg_precision_test
         self.avg_test_recall = avg_recall_test
+
+        # free up memory
+        self.test_step_outputs.clear()
 
 
 # --------------------------------
@@ -390,9 +417,9 @@ def main(args):
                         args.init_filters * 16
                     ),
                     strides=(2, 2, 2, 2),
-                    num_res_units=2,
+                    num_res_units=3,
                 )
-        save_exp_id =f"{args.model}_lr={args.learning_rate}"
+        save_exp_id =f"{args.model}_nf={args.init_filters}_nrs=3_lr={args.learning_rate}"
     elif args.model in ["unetr", "UNETR"]:
         # define image size to be fed to the model
         img_size = (96, 96, 96)
@@ -417,6 +444,9 @@ def main(args):
     loss_func = SoftDiceLoss(p=1, smooth=1.0)
 
     # TODO: move this inside the for loop when using more folds
+    timestamp = datetime.now().strftime(f"%Y%m%d-%H%M")   # prints in YYYYMMDD-HHMMSS format
+    save_exp_id = f"{save_exp_id}_{timestamp}"
+
     # to save the best model on validation
     save_path = os.path.join(args.save_path, f"{save_exp_id}")
     if not os.path.exists(save_path):
@@ -431,8 +461,8 @@ def main(args):
     for fold in range(args.num_cv_folds):
         logger.info(f" Training on fold {fold+1} out of {args.num_cv_folds} folds! ")
 
-        timestamp = datetime.now().strftime(f"%Y%m%d-%H%M")   # prints in YYYYMMDD-HHMMSS format
-        save_exp_id = f"{save_exp_id}_fold={fold}_{timestamp}"
+        # timestamp = datetime.now().strftime(f"%Y%m%d-%H%M")   # prints in YYYYMMDD-HHMMSS format
+        # save_exp_id = f"{save_exp_id}_fold={fold}_{timestamp}"
 
         # i.e. train by loading weights from scratch
         pl_model = Model(args, data_root=dataset_root, fold_num=fold, 
