@@ -178,9 +178,9 @@ def plot_slices(image, gt, pred):
     """
 
     # bring everything to numpy
-    image = image.detach().cpu().numpy()
-    gt = gt.detach().cpu().numpy()
-    pred = pred.detach().cpu().numpy()
+    image = image.numpy()
+    gt = gt.numpy()
+    pred = pred.numpy()
 
     fig, axs = plt.subplots(1, 3, figsize=(10, 8))
     fig.suptitle('Original Image --> Ground Truth --> Prediction')
