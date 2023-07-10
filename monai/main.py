@@ -47,8 +47,6 @@ class Model(pl.LightningModule):
         self.results_path = results_path
 
         self.best_val_dice, self.best_val_epoch = 0, 0
-        self.metric_values = []
-        self.epoch_losses, self.epoch_soft_dice_train, self.epoch_hard_dice_train = [], [], []
 
         # define cropping and padding dimensions
         # NOTE: taken from nnUNet_plans.json
@@ -113,7 +111,7 @@ class Model(pl.LightningModule):
             test_files = test_files[:6]
         
         self.train_ds = CacheDataset(data=train_files, transform=transforms_train, cache_rate=0.25, num_workers=4)
-        self.val_ds = CacheDataset(data=val_files, transform=transforms_val, cache_rate=0.5, num_workers=4)
+        self.val_ds = CacheDataset(data=val_files, transform=transforms_val, cache_rate=0.25, num_workers=4)
 
         # define test transforms
         transforms_test = test_transforms(lbl_key='label')
@@ -127,8 +125,7 @@ class Model(pl.LightningModule):
                     meta_keys=["pred_meta_dict", "label_meta_dict"],
                     nearest_interp=False, to_tensor=True),
             ])
-
-        self.test_ds = CacheDataset(data=test_files, transform=transforms_test, cache_rate=0.5, num_workers=4)
+        self.test_ds = CacheDataset(data=test_files, transform=transforms_test, cache_rate=0.1, num_workers=4)
 
 
     # --------------------------------
@@ -175,8 +172,8 @@ class Model(pl.LightningModule):
         # train_hard_dice = self.soft_dice_metric((output.detach() > 0.5).float(), (labels.detach() > 0.5).float())
 
         metrics_dict = {
-            "loss": loss,
-            "train_soft_dice": train_soft_dice,
+            "loss": loss.cpu(),
+            "train_soft_dice": train_soft_dice.detach().cpu(),
             # "train_hard_dice": train_hard_dice,
             "train_number": len(inputs),
             # "train_image": inputs[0].squeeze(),
@@ -187,7 +184,6 @@ class Model(pl.LightningModule):
 
         return metrics_dict
 
-    # TODO: remove on_train_epoch_end to save memory
     def on_train_epoch_end(self):
         train_loss, num_items, train_soft_dice = 0, 0, 0
         for output in self.train_step_outputs:
@@ -195,12 +191,12 @@ class Model(pl.LightningModule):
             train_soft_dice += output["train_soft_dice"].sum().item()
             num_items += output["train_number"]
         
-        mean_train_loss = torch.tensor(train_loss / num_items)
-        mean_train_soft_dice = torch.tensor(train_soft_dice / num_items)
+        mean_train_loss = (train_loss / num_items)
+        mean_train_soft_dice = (train_soft_dice / num_items)
 
         wandb_logs = {
-            "train_soft_dice": mean_train_soft_dice,
-            "train_loss": mean_train_loss,
+            "train_soft_dice": mean_train_soft_dice, 
+            "train_loss": mean_train_loss
         }
         self.log_dict(wandb_logs)
 
@@ -212,6 +208,7 @@ class Model(pl.LightningModule):
 
         # free up memory
         self.train_step_outputs.clear()
+        wandb_logs.clear()
         # plt.close(fig)
 
 
@@ -237,14 +234,17 @@ class Model(pl.LightningModule):
             (post_outputs[0].detach() > 0.5).float(), (post_labels[0].detach() > 0.5).float()
             )
         
+        # NOTE: there was a massive memory leak when storing cuda tensors in this dict. Hence,
+        # using .detach() to avoid storing the whole computation graph
+        # Ref: https://discuss.pytorch.org/t/cuda-memory-leak-while-training/82855/2
         metrics_dict = {
-            "val_loss": loss,
-            "val_soft_dice": val_soft_dice,
-            "val_hard_dice": val_hard_dice,
+            "val_loss": loss.detach().cpu(),
+            "val_soft_dice": val_soft_dice.detach().cpu(),
+            "val_hard_dice": val_hard_dice.detach().cpu(),
             "val_number": len(post_outputs),
-            "val_image": inputs[0].squeeze(),
-            "val_gt": labels[0].squeeze(),
-            "val_pred": post_outputs[0].detach().squeeze(),
+            "val_image": inputs[0].detach().cpu().squeeze(),
+            "val_gt": labels[0].detach().cpu().squeeze(),
+            "val_pred": post_outputs[0].detach().cpu().squeeze(),
         }
         self.val_step_outputs.append(metrics_dict)
         
@@ -259,9 +259,9 @@ class Model(pl.LightningModule):
             val_hard_dice += output["val_hard_dice"].sum().item()
             num_items += output["val_number"]
         
-        mean_val_loss = torch.tensor(val_loss / num_items)
-        mean_val_soft_dice = torch.tensor(val_soft_dice / num_items)
-        mean_val_hard_dice = torch.tensor(val_hard_dice / num_items)
+        mean_val_loss = (val_loss / num_items)
+        mean_val_soft_dice = (val_soft_dice / num_items)
+        mean_val_hard_dice = (val_hard_dice / num_items)
                 
         wandb_logs = {
             "val_soft_dice": mean_val_soft_dice,
@@ -278,8 +278,6 @@ class Model(pl.LightningModule):
             f"\nAverage Hard Dice (VAL): {mean_val_hard_dice:.4f}"
             f"\nBest Average Soft Dice: {self.best_val_dice:.4f} at Epoch: {self.best_val_epoch}"
             f"\n----------------------------------------------------")
-        
-        self.metric_values.append(mean_val_soft_dice)
 
         # log on to wandb
         self.log_dict(wandb_logs)
@@ -292,9 +290,10 @@ class Model(pl.LightningModule):
 
         # free up memory
         self.val_step_outputs.clear()
+        wandb_logs.clear()
         plt.close(fig)
         
-        return {"log": wandb_logs}
+        # return {"log": wandb_logs}
 
     # --------------------------------
     # TESTING
@@ -417,9 +416,9 @@ def main(args):
                         args.init_filters * 16
                     ),
                     strides=(2, 2, 2, 2),
-                    num_res_units=3,
+                    num_res_units=2,
                 )
-        save_exp_id =f"{args.model}_nf={args.init_filters}_nrs=3_lr={args.learning_rate}"
+        save_exp_id =f"{args.model}_nf={args.init_filters}_nrs=2_lr={args.learning_rate}"
     elif args.model in ["unetr", "UNETR"]:
         # define image size to be fed to the model
         img_size = (96, 96, 96)
@@ -498,7 +497,7 @@ def main(args):
             callbacks=[checkpoint_callback, lr_monitor, early_stopping],
             check_val_every_n_epoch=args.check_val_every_n_epochs,
             max_epochs=args.max_epochs, 
-            precision=32,
+            precision=32,   # TODO: see if 16-bit precision is stable
             # deterministic=True,
             enable_progress_bar=args.enable_progress_bar)
 
@@ -566,7 +565,7 @@ if __name__ == "__main__":
                         choices=['adamw', 'AdamW', 'SGD', 'sgd'], 
                         default='adamw', type=str, help='Optimizer to use')
     parser.add_argument('-lr', '--learning_rate', default=1e-4, type=float, help='Learning rate for training the model')
-    parser.add_argument('-pat', '--patience', default=200, type=int, 
+    parser.add_argument('-pat', '--patience', default=15, type=int, 
                             help='number of validation steps (val_every_n_iters) to wait before early stopping')
     parser.add_argument('-epb', '--enable_progress_bar', default=False, action='store_true', 
                             help='by default is disabled since it doesnt work in colab')
