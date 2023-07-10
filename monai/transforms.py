@@ -15,7 +15,7 @@ def train_transforms(crop_size, num_samples_pv, lbl_key="label"):
             # Orientationd(keys=["image", lbl_key], axcodes="RPI"),
             # TODO: if the source_key is set to "label", then the cropping is only around the label mask
             CropForegroundd(keys=["image", lbl_key], source_key="image"),     # crops >0 values with a bounding box
-            Spacingd(keys=["image", "label"], pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "nearest"),),
+            Spacingd(keys=["image", "label"], pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "bilinear"),),
             SpatialPadd(keys=["image", lbl_key], spatial_size=(123, 255, 214), method="symmetric"),
             # RandSpatialCropSamplesd(keys=["image", lbl_key], roi_size=crop_size, num_samples=num_samples_pv, random_center=True, random_size=False),
             RandCropByPosNegLabeld(keys=["image", "label"], label_key="label",
@@ -38,7 +38,7 @@ def val_transforms(lbl_key="label"):
             EnsureChannelFirstd(keys=["image", lbl_key]),
             Orientationd(keys=["image", lbl_key], axcodes="RPI"),
             CropForegroundd(keys=["image", lbl_key], source_key="image"),
-            Spacingd(keys=["image", "label"], pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "nearest"),),
+            Spacingd(keys=["image", "label"], pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "bilinear"),),
             # SpatialPadd(keys=["image", lbl_key], spatial_size=(123, 255, 214), method="symmetric"),
             # HistogramNormalized(keys=["image"], mask=None),
             NormalizeIntensityd(keys=["image"], nonzero=False, channel_wise=True),
@@ -51,7 +51,7 @@ def test_transforms(lbl_key="label"):
             EnsureChannelFirstd(keys=["image", lbl_key]),
             Orientationd(keys=["image", lbl_key], axcodes="RPI"),
             CropForegroundd(keys=["image", lbl_key], source_key="image"),
-            Spacingd(keys=["image", "label"], pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "nearest"),),
+            Spacingd(keys=["image", "label"], pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "bilinear"),),
             # AddChanneld(keys=["image", lbl_key]),
             # HistogramNormalized(keys=["image"], mask=None),
             NormalizeIntensityd(keys=["image"], nonzero=False, channel_wise=True),
