@@ -10,7 +10,7 @@ import pytorch_lightning as pl
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
 
-from utils import precision_score, recall_score, dice_score, plot_slices
+from utils import precision_score, recall_score, dice_score, plot_slices, PolyLRScheduler
 from losses import SoftDiceLoss
 from transforms import train_transforms, val_transforms, test_transforms
 
@@ -50,8 +50,8 @@ class Model(pl.LightningModule):
 
         # define cropping and padding dimensions
         # NOTE: taken from nnUNet_plans.json
-        self.voxel_cropping_size = (80, 192, 160) 
-        self.inference_roi_size = (80, 192, 160)
+        self.voxel_cropping_size = (64, 128, 128)   # (80, 192, 160) 
+        self.inference_roi_size = (64, 128, 128)   # (80, 192, 160)
 
         # define post-processing transforms for validation, nothing fancy just making sure that it's a tensor (default)
         self.val_post_pred = Compose([EnsureType()]) 
@@ -149,8 +149,8 @@ class Model(pl.LightningModule):
     # --------------------------------
     def configure_optimizers(self):
         optimizer = self.optimizer_class(self.parameters(), lr=self.lr, weight_decay=1e-5)
-        # TODO: look at poly learning rate scheduler
-        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.5)
+        # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.5)
+        scheduler = PolyLRScheduler(optimizer, self.lr, max_steps=self.args.max_epochs)
         return [optimizer], [scheduler]
 
 
@@ -160,6 +160,12 @@ class Model(pl.LightningModule):
     def training_step(self, batch, batch_idx):
 
         inputs, labels = batch["image"], batch["label"]
+
+        # filter empty input patches
+        if not inputs.any():
+            print("Encountered empty input patch. Skipping...")
+            return None
+
         output = self.forward(inputs)
 
         # calculate training loss
@@ -176,40 +182,45 @@ class Model(pl.LightningModule):
             "train_soft_dice": train_soft_dice.detach().cpu(),
             # "train_hard_dice": train_hard_dice,
             "train_number": len(inputs),
-            # "train_image": inputs[0].squeeze(),
-            # "train_gt": labels[0].squeeze(),
-            # "train_pred": output[0].squeeze()
+            "train_image": inputs[0].detach().cpu().squeeze(),
+            "train_gt": labels[0].detach().cpu().squeeze(),
+            "train_pred": output[0].detach().cpu().squeeze()
         }
         self.train_step_outputs.append(metrics_dict)
 
         return metrics_dict
 
     def on_train_epoch_end(self):
-        train_loss, num_items, train_soft_dice = 0, 0, 0
-        for output in self.train_step_outputs:
-            train_loss += output["loss"].sum().item()
-            train_soft_dice += output["train_soft_dice"].sum().item()
-            num_items += output["train_number"]
-        
-        mean_train_loss = (train_loss / num_items)
-        mean_train_soft_dice = (train_soft_dice / num_items)
 
-        wandb_logs = {
-            "train_soft_dice": mean_train_soft_dice, 
-            "train_loss": mean_train_loss
-        }
-        self.log_dict(wandb_logs)
+        if self.train_step_outputs == []:
+            # means the training step was skipped because of empty input patch
+            return None
+        else:
+            train_loss, num_items, train_soft_dice = 0, 0, 0
+            for output in self.train_step_outputs:
+                train_loss += output["loss"].sum().item()
+                train_soft_dice += output["train_soft_dice"].sum().item()
+                num_items += output["train_number"]
+            
+            mean_train_loss = (train_loss / num_items)
+            mean_train_soft_dice = (train_soft_dice / num_items)
 
-        # # plot the training images
-        # fig = plot_slices(image=self.train_step_outputs[0]["train_image"],
-        #                   gt=self.train_step_outputs[0]["train_gt"],
-        #                   pred=self.train_step_outputs[0]["train_pred"],)
-        # wandb.log({"training images": wandb.Image(fig)})
+            wandb_logs = {
+                "train_soft_dice": mean_train_soft_dice, 
+                "train_loss": mean_train_loss
+            }
+            self.log_dict(wandb_logs)
 
-        # free up memory
-        self.train_step_outputs.clear()
-        wandb_logs.clear()
-        # plt.close(fig)
+            # plot the training images
+            fig = plot_slices(image=self.train_step_outputs[0]["train_image"],
+                              gt=self.train_step_outputs[0]["train_gt"],
+                              pred=self.train_step_outputs[0]["train_pred"],)
+            wandb.log({"training images": wandb.Image(fig)})
+
+            # free up memory
+            self.train_step_outputs.clear()
+            wandb_logs.clear()
+            plt.close(fig)
 
 
     # --------------------------------
@@ -242,9 +253,9 @@ class Model(pl.LightningModule):
             "val_soft_dice": val_soft_dice.detach().cpu(),
             "val_hard_dice": val_hard_dice.detach().cpu(),
             "val_number": len(post_outputs),
-            "val_image": inputs[0].detach().cpu().squeeze(),
-            "val_gt": labels[0].detach().cpu().squeeze(),
-            "val_pred": post_outputs[0].detach().cpu().squeeze(),
+            # "val_image": inputs[0].detach().cpu().squeeze(),
+            # "val_gt": labels[0].detach().cpu().squeeze(),
+            # "val_pred": post_outputs[0].detach().cpu().squeeze(),
         }
         self.val_step_outputs.append(metrics_dict)
         
@@ -265,7 +276,7 @@ class Model(pl.LightningModule):
                 
         wandb_logs = {
             "val_soft_dice": mean_val_soft_dice,
-            # "val_hard_dice": avg_hard_dice_val,
+            "val_hard_dice": mean_val_hard_dice,
             "val_loss": mean_val_loss,
         }
         if mean_val_soft_dice > self.best_val_dice:
@@ -282,16 +293,16 @@ class Model(pl.LightningModule):
         # log on to wandb
         self.log_dict(wandb_logs)
 
-        # plot the validation images
-        fig = plot_slices(image=self.val_step_outputs[0]["val_image"],
-                          gt=self.val_step_outputs[0]["val_gt"],
-                          pred=self.val_step_outputs[0]["val_pred"],)
-        wandb.log({"validation images": wandb.Image(fig)})
+        # # plot the validation images
+        # fig = plot_slices(image=self.val_step_outputs[0]["val_image"],
+        #                   gt=self.val_step_outputs[0]["val_gt"],
+        #                   pred=self.val_step_outputs[0]["val_pred"],)
+        # wandb.log({"validation images": wandb.Image(fig)})
 
         # free up memory
         self.val_step_outputs.clear()
         wandb_logs.clear()
-        plt.close(fig)
+        # plt.close(fig)
         
         # return {"log": wandb_logs}
 
@@ -518,6 +529,7 @@ def main(args):
             print('\n-------------- Test Metrics ----------------', file=f)
             print(f"\nSeed Used: {args.seed}", file=f)
             print(f"\ninitf={args.init_filters}_lr={args.learning_rate}_bs={args.batch_size}_{timestamp}", file=f)
+            print(f"\npatch_size={pl_model.voxel_cropping_size}", file=f)
             # print(f"\n{np.array(centers_list)[None, :]}", file=f)
             # print(f"\n{np.array(centers_list)[:, None]}", file=f)
             
@@ -565,8 +577,9 @@ if __name__ == "__main__":
                         choices=['adamw', 'AdamW', 'SGD', 'sgd'], 
                         default='adamw', type=str, help='Optimizer to use')
     parser.add_argument('-lr', '--learning_rate', default=1e-4, type=float, help='Learning rate for training the model')
-    parser.add_argument('-pat', '--patience', default=15, type=int, 
+    parser.add_argument('-pat', '--patience', default=25, type=int, 
                             help='number of validation steps (val_every_n_iters) to wait before early stopping')
+    # NOTE: patience is acutally until (patience * check_val_every_n_epochs) epochs 
     parser.add_argument('-epb', '--enable_progress_bar', default=False, action='store_true', 
                             help='by default is disabled since it doesnt work in colab')
     parser.add_argument('-cve', '--check_val_every_n_epochs', default=1, type=int, help='num of epochs to wait before validation')
