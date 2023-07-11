@@ -407,7 +407,7 @@ def main(args):
     pl.seed_everything(args.seed, workers=True)
 
     # define root path for finding datalists
-    dataset_root = "/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/contrast-agnostic-softseg-spinalcord/monai"
+    dataset_root = "/home/GRAMES.POLYMTL.CA/lobouz/brainhack_data/nnUNet_data/nnUNet_raw/Dataset1_sg_basel_sci_canpr_fmri_insp_zur_agg"
 
     # define optimizer
     if args.optimizer in ["adamw", "AdamW", "Adamw"]:
@@ -487,7 +487,7 @@ def main(args):
                             group=f"{args.model}", 
                             log_model=True, # save best model using checkpoint callback
                             project='contrast-agnostic',
-                            entity='naga-karthik',
+                            entity='whats_ai',
                             config=args)
         # else:
         #     exp_logger = pl.loggers.CSVLogger(save_dir=args.save_path, name="my_exp_name")
@@ -585,7 +585,7 @@ if __name__ == "__main__":
     parser.add_argument('-cve', '--check_val_every_n_epochs', default=1, type=int, help='num of epochs to wait before validation')
     # saving
     parser.add_argument('-sp', '--save_path', 
-                        default=f"/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/saved_models", 
+                        default=f"/home/GRAMES.POLYMTL.CA/lobouz/contrast-agnostic/saved_models", 
                         type=str, help='Path to the saved models directory')
     parser.add_argument('-c', '--continue_from_checkpoint', default=False, action='store_true', 
                             help='Load model from checkpoint and continue training')
@@ -595,7 +595,7 @@ if __name__ == "__main__":
                             help='if true, test predictions are saved in `save_path`')
     # testing
     parser.add_argument('-rd', '--results_dir', 
-                    default=f"/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/results", 
+                    default=f"/home/GRAMES.POLYMTL.CA/lobouz/contrast-agnostic/results", 
                     type=str, help='Path to the model prediction results directory')
 
 
