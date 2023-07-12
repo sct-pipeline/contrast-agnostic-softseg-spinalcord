@@ -3,7 +3,7 @@ import json
 from tqdm import tqdm
 import numpy as np
 import argparse
-# import nibabel as nib
+import joblib
 from utils import FoldGenerator
 from loguru import logger
 from sklearn.model_selection import train_test_split
@@ -18,6 +18,8 @@ parser.add_argument('--seed', default=42, type=int, help="Seed for reproducibili
 parser.add_argument('-ncvf', '--num-cv-folds', default=5, type=int, 
             help="[1-k] To create a k-fold dataset for cross validation, 0 for single file with all subjects")
 parser.add_argument('-pd', '--path-data', default=root, type=str, help='Path to the data set directory')
+parser.add_argument('-pj', '--path-joblib', help='Path to joblib file from ivadomed containing the dataset splits.',
+                    default=None, type=str)
 parser.add_argument('-po', '--path-out', type=str, help='Path to the output directory where dataset json is saved')
 args = parser.parse_args()
 
@@ -148,12 +150,23 @@ if args.num_cv_folds != 0:
         jsonFile.write(final_json)
         jsonFile.close()
 else: 
-    # create one json file with 60-20-20 train-val-test split
-    train_ratio, val_ratio, test_ratio = 0.6, 0.2, 0.2
-    train_subjects, test_subjects = train_test_split(subjects, test_size=test_ratio, random_state=args.seed)
-    # Use the training split to further split into training and validation splits
-    train_subjects, val_subjects = train_test_split(train_subjects, test_size=val_ratio / (train_ratio + val_ratio),
-                                                    random_state=args.seed, )
+
+    if args.path_joblib is not None:
+        # load information from the joblib to match train and test subjects
+        joblib_file = os.path.join(args.path_joblib, 'split_datasets_all_seed=15.joblib')
+        splits = joblib.load("split_datasets_all_seed=15.joblib")
+        # get the subjects from the joblib file
+        train_subjects = sorted(list(set([sub.split('_')[0] for sub in splits['train']])))
+        val_subjects = sorted(list(set([sub.split('_')[0] for sub in splits['valid']])))
+        test_subjects = sorted(list(set([sub.split('_')[0] for sub in splits['test']])))
+
+    else:
+        # create one json file with 60-20-20 train-val-test split
+        train_ratio, val_ratio, test_ratio = 0.6, 0.2, 0.2
+        train_subjects, test_subjects = train_test_split(subjects, test_size=test_ratio, random_state=args.seed)
+        # Use the training split to further split into training and validation splits
+        train_subjects, val_subjects = train_test_split(train_subjects, test_size=val_ratio / (train_ratio + val_ratio),
+                                                        random_state=args.seed, )
 
     logger.info(f"Number of training subjects: {len(train_subjects)}")
     logger.info(f"Number of validation subjects: {len(val_subjects)}")
