@@ -1,0 +1,59 @@
+GPU available: True, used: True
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+<class 'monai.transforms.utility.array.AddChannel'>: Class `AddChannel` has been deprecated since version 0.8. please use MetaTensor data type and monai.transforms.EnsureChannelFirst instead.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Loading dataset: 100%|█████████████████████████████████████████████████████████████████████████████████████████| 148/148 [00:46<00:00,  3.16it/s]
+
+
+
+Loading dataset:  83%|███████████████████████████████████████████████████████████████████████████▊               | 10/12 [00:08<00:01,  1.25it/s]
+Loading dataset: 100%|███████████████████████████████████████████████████████████████████████████████████████████| 12/12 [00:08<00:00,  1.41it/s]
+Global seed set to 42
+Initializing distributed: GLOBAL_RANK: 0, MEMBER: 1/1
+----------------------------------------------------------------------------------------------------
+distributed_backend=nccl
+All distributed processes registered. Starting with 1 processes
+----------------------------------------------------------------------------------------------------
+Checkpoint directory /home/GRAMES.POLYMTL.CA/lobouz/contrast_agnostic/models_unetr exists and is not empty.
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0,1,2,3]
+  | Name          | Type     | Params
+-------------------------------------------
+0 | net           | UNETR    | 73.8 M
+1 | loss_function | DiceLoss | 0
+-------------------------------------------
+73.8 M    Trainable params
+0         Non-trainable params
+73.8 M    Total params
+295.318   Total estimated model params size (MB)
+single channel prediction, `softmax=True` ignored.
+single channel prediction, `to_onehot_y=True` ignored.
+single channel prediction, `include_background=False` ignored.
+Current epoch: 0
+Current Mean Dice: 0.0000
+Best Mean Dice: 0.0000 at Epoch: 0
+----------------------------------------------------
+------- Training Done! -------
+------- Printing the Best Model Path! ------
+Detected KeyboardInterrupt, attempting graceful shutdown...

@@ -1,0 +1,415 @@
+GPU available: True, used: True
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+<class 'monai.transforms.utility.array.AddChannel'>: Class `AddChannel` has been deprecated since version 0.8. please use MetaTensor data type and monai.transforms.EnsureChannelFirst instead.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Loading dataset: 100%|██████████████████████████████████████████████████████████████████████████████| 148/148 [02:02<00:00,  1.21it/s]
+
+
+
+
+Loading dataset: 100%|████████████████████████████████████████████████████████████████████████████████| 12/12 [00:24<00:00,  2.03s/it]
+Global seed set to 42
+Initializing distributed: GLOBAL_RANK: 0, MEMBER: 1/1
+----------------------------------------------------------------------------------------------------
+distributed_backend=nccl
+All distributed processes registered. Starting with 1 processes
+----------------------------------------------------------------------------------------------------
+2023-04-11 15:31:33,492 - Added key: store_based_barrier_key:1 to store for rank: 0
+Checkpoint directory /home/GRAMES.POLYMTL.CA/lobouz/contrast_agnostic/models_unetr exists and is not empty.
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0,1,2,3]
+  | Name          | Type     | Params
+-------------------------------------------
+0 | net           | UNETR    | 92.6 M
+1 | loss_function | DiceLoss | 0
+-------------------------------------------
+92.6 M    Trainable params
+0         Non-trainable params
+92.6 M    Total params
+370.484   Total estimated model params size (MB)
+Current epoch: 0
+Current Mean Dice: 0.2296
+Best Mean Dice: 0.2296 at Epoch: 0
+----------------------------------------------------
+Current epoch: 29
+Current Mean Dice: 0.4595
+Best Mean Dice: 0.4595 at Epoch: 29
+----------------------------------------------------
+Current epoch: 59
+Current Mean Dice: 0.4578
+Best Mean Dice: 0.4595 at Epoch: 29
+----------------------------------------------------
+Current epoch: 89
+Current Mean Dice: 0.4630
+Best Mean Dice: 0.4630 at Epoch: 89
+----------------------------------------------------
+Current epoch: 119
+Current Mean Dice: 0.4635
+Best Mean Dice: 0.4635 at Epoch: 119
+----------------------------------------------------
+Current epoch: 149
+Current Mean Dice: 0.4628
+Best Mean Dice: 0.4635 at Epoch: 119
+----------------------------------------------------
+Current epoch: 179
+Current Mean Dice: 0.4641
+Best Mean Dice: 0.4641 at Epoch: 179
+----------------------------------------------------
+Current epoch: 209
+Current Mean Dice: 0.4646
+Best Mean Dice: 0.4646 at Epoch: 209
+----------------------------------------------------
+Current epoch: 239
+Current Mean Dice: 0.4626
+Best Mean Dice: 0.4646 at Epoch: 209
+----------------------------------------------------
+Current epoch: 269
+Current Mean Dice: 0.4683
+Best Mean Dice: 0.4683 at Epoch: 269
+----------------------------------------------------
+Current epoch: 299
+Current Mean Dice: 0.4632
+Best Mean Dice: 0.4683 at Epoch: 269
+----------------------------------------------------
+Current epoch: 329
+Current Mean Dice: 0.4674
+Best Mean Dice: 0.4683 at Epoch: 269
+----------------------------------------------------
+Current epoch: 359
+Current Mean Dice: 0.4669
+Best Mean Dice: 0.4683 at Epoch: 269
+----------------------------------------------------
+Current epoch: 389
+Current Mean Dice: 0.4641
+Best Mean Dice: 0.4683 at Epoch: 269
+----------------------------------------------------
+Current epoch: 419
+Current Mean Dice: 0.4704
+Best Mean Dice: 0.4704 at Epoch: 419
+----------------------------------------------------
+Current epoch: 449
+Current Mean Dice: 0.4684
+Best Mean Dice: 0.4704 at Epoch: 419
+----------------------------------------------------
+Current epoch: 479
+Current Mean Dice: 0.4657
+Best Mean Dice: 0.4704 at Epoch: 419
+----------------------------------------------------
+Current epoch: 509
+Current Mean Dice: 0.4680
+Best Mean Dice: 0.4704 at Epoch: 419
+----------------------------------------------------
+Current epoch: 539
+Current Mean Dice: 0.4626
+Best Mean Dice: 0.4704 at Epoch: 419
+----------------------------------------------------
+Current epoch: 569
+Current Mean Dice: 0.4670
+Best Mean Dice: 0.4704 at Epoch: 419
+----------------------------------------------------
+Current epoch: 599
+Current Mean Dice: 0.4691
+Best Mean Dice: 0.4704 at Epoch: 419
+----------------------------------------------------
+Current epoch: 629
+Current Mean Dice: 0.4697
+Best Mean Dice: 0.4704 at Epoch: 419
+----------------------------------------------------
+Current epoch: 659
+Current Mean Dice: 0.4717
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 689
+Current Mean Dice: 0.4614
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 719
+Current Mean Dice: 0.4622
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 749
+Current Mean Dice: 0.4629
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 779
+Current Mean Dice: 0.4671
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 809
+Current Mean Dice: 0.4703
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 839
+Current Mean Dice: 0.4644
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 869
+Current Mean Dice: 0.4651
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 899
+Current Mean Dice: 0.4632
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 929
+Current Mean Dice: 0.4674
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 959
+Current Mean Dice: 0.4621
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 989
+Current Mean Dice: 0.4682
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 1019
+Current Mean Dice: 0.4656
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 1049
+Current Mean Dice: 0.4648
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 1079
+Current Mean Dice: 0.4652
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 1109
+Current Mean Dice: 0.4661
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 1139
+Current Mean Dice: 0.4670
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 1169
+Current Mean Dice: 0.4677
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 1199
+Current Mean Dice: 0.4659
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 1229
+Current Mean Dice: 0.4652
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 1259
+Current Mean Dice: 0.4654
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 1289
+Current Mean Dice: 0.4632
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 1319
+Current Mean Dice: 0.4692
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 1349
+Current Mean Dice: 0.4686
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 1379
+Current Mean Dice: 0.4666
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 1409
+Current Mean Dice: 0.4621
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 1439
+Current Mean Dice: 0.4646
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 1469
+Current Mean Dice: 0.4643
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 1499
+Current Mean Dice: 0.4648
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 1529
+Current Mean Dice: 0.4638
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 1559
+Current Mean Dice: 0.4632
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 1589
+Current Mean Dice: 0.4660
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 1619
+Current Mean Dice: 0.4651
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 1649
+Current Mean Dice: 0.4579
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 1679
+Current Mean Dice: 0.4619
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 1709
+Current Mean Dice: 0.4587
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 1739
+Current Mean Dice: 0.4625
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 1769
+Current Mean Dice: 0.4626
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 1799
+Current Mean Dice: 0.4624
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 1829
+Current Mean Dice: 0.4657
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 1859
+Current Mean Dice: 0.4636
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 1889
+Current Mean Dice: 0.4619
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 1919
+Current Mean Dice: 0.4711
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 1949
+Current Mean Dice: 0.4622
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 1979
+Current Mean Dice: 0.4615
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 2009
+Current Mean Dice: 0.4627
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 2039
+Current Mean Dice: 0.4630
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 2069
+Current Mean Dice: 0.4649
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 2099
+Current Mean Dice: 0.4639
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 2129
+Current Mean Dice: 0.4640
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 2159
+Current Mean Dice: 0.4652
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 2189
+Current Mean Dice: 0.4657
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 2219
+Current Mean Dice: 0.4640
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 2249
+Current Mean Dice: 0.4631
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 2279
+Current Mean Dice: 0.4654
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 2309
+Current Mean Dice: 0.4636
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 2339
+Current Mean Dice: 0.4648
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 2369
+Current Mean Dice: 0.4587
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 2399
+Current Mean Dice: 0.4625
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 2429
+Current Mean Dice: 0.4683
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 2459
+Current Mean Dice: 0.4644
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+Current epoch: 2489
+Current Mean Dice: 0.4598
+Best Mean Dice: 0.4717 at Epoch: 659
+----------------------------------------------------
+------- Training Done! -------
+------- Printing the Best Model Path! ------
+/home/GRAMES.POLYMTL.CA/lobouz/contrast_agnostic/models_unetr/spine-generic_unetr_dice_adamw_lr=0.0001_fs=16_hs=768_mlpd=3072_nh=12-v1.ckpt

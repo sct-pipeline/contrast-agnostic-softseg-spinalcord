@@ -57,6 +57,7 @@ nvidia-cusparse-cu11==11.7.4.91
 nvidia-nccl-cu11==2.14.3
 nvidia-nvtx-cu11==11.7.91
 packaging==23.1
+pybids
 pandas==2.0.3
 parso==0.8.3
 pathtools==0.1.2
@@ -91,10 +92,10 @@ smmap==3.0.5
 stack-data==0.6.2
 sympy==1.12
 threadpoolctl==3.1.0
-torch==2.0.0+cu117
-torchaudio==2.0.1+cu117
+torch==2.0.0
+torchaudio==2.0.1
 torchmetrics==0.11.4
-torchvision==0.15.1+cu117
+torchvision==0.15.1
 tornado==6.3.2
 tqdm==4.65.0
 traitlets==5.9.0

@@ -1,0 +1,76 @@
+# Dataset convert
+
+This is not an ideal procedure, rather a temporary one.
+I will be working on a way to make it work with a single script instead.
+
+
+# Convert multiple sets in order — keep spine generic test set the same (in /script)
+
+Spine generic: 
+python convert_spine-generic_to_nnUNetv2.py --path-data /home/GRAMES.POLYMTL.CA/lobouz/duke/projects/ivadomed/contrast-agnostic-seg/data_processed_sg_2023-03-10_NO_CROP/data_processed_clean  --path-out ${nnUNet_raw} --path-joblib joblibs/spine-generic  -dname sg_basel_sci_canpr_fmri_insp_zur_agg -dnum 1 --label-type soft
+
+Canproco:
+Get data:
+git clone git@data:datasets/canproco
+cd canproco 
+git-annex get .
+
+Convert data:
+python convert_bids_to_nnUnetv2.py --path-data /home/GRAMES.POLYMTL.CA/lobouz/data_tmp/canproco --path-out ${nnUNet_raw}  --split 1.0 0.0 --label-suffix seg-manual --contrast T2w --dataset-name sg_basel_sci_canpr_fmri_insp_zur_agg --dataset-number 1 --seed 15 --session-name ses-M0
+
+Sci-colorado:
+Get data:
+git clone git@data:datasets/sci-colorado
+cd sci-colorado 
+git-annex get .
+
+Convert data:
+python convert_bids_to_nnUnetv2.py --path-data /home/GRAMES.POLYMTL.CA/lobouz/data_tmp/sci-colorado --path-out ${nnUNet_raw}  --split 1.0 0.0 --label-suffix seg-manual --contrast T2w --dataset-name sg_basel_sci_canpr_fmri_insp_zur_agg --dataset-number 1 --seed 15
+
+Inspired:
+Get data:
+git clone git@data:datasets/inspired
+cd inspired 
+git-annex get .
+
+Convert data:
+python convert_bids_to_nnUnetv2.py --path-data /home/GRAMES.POLYMTL.CA/lobouz/data_tmp/inspired --path-out ${nnUNet_raw}  --split 1.0 0.0 --label-suffix label-SC_seg --contrast acq-cspineAxial_T2w --dataset-name sg_basel_sci_canpr_fmri_insp_zur_agg --dataset-number 1 --seed 15 --labels-path-name manual_labels
+
+Basel:
+Get data:
+git clone git@data:datasets/basel-mp2rage
+cd canproco 
+git-annex get .
+
+Convert data:
+python convert_bids_to_nnUnetv2.py --path-data /home/GRAMES.POLYMTL.CA/lobouz/data_tmp/basel-mp2rage --path-out ${nnUNet_raw}  --split 1 0 --label-suffix label-SC_seg --contrast UNIT1 --dataset-name sg_basel_sci_canpr_fmri_insp_zur_agg --dataset-number 1 --seed 15
+
+Zurich:
+git clone git@data:datasets/dcm-zurich
+cd dcm-zurich
+git-annex get .
+
+Convert data:
+python convert_bids_to_nnUnetv2.py --path-data /home/GRAMES.POLYMTL.CA/lobouz/data_tmp/dcm-zurich --path-out ${nnUNet_raw}  --split 1 0 --label-suffix label-SC_mask-manual --contrast acq-axial_T2w --dataset-name sg_basel_sci_canpr_fmri_insp_zur_agg --dataset-number 1 --seed 15
+
+
+FMRI:
+Get data: (Rohan’s Duke, link in path below)
+
+Convert data:
+python convert_bids_to_nnUnetv2.py --path-data /home/GRAMES.POLYMTL.CA/lobouz/duke/temp/rohan/fmri_sc_seg/datasets/data_superset --path-out ${nnUNet_raw}  --split 1.0 0.0 --label-suffix seg-manual --contrast task-motor_bold task-thermal_bold task-rest_bold task-BilatMotorThermal_bold task-tactile_bold --dataset-name sg_basel_sci_canpr_fmri_insp_zur_agg --dataset-number 1 --seed 15
+
+
+# Add all sets together in dataset file
+Edit dataset.json with the correct aggregated amount of train and test data.
+
+# Re-orient and preprocess all datasets
+Using SCT, run this script in imagesTs, imagesTr, labelsTs, labelsTr
+for file in *.nii.gz;do sct_image -i ${file} -setorient RPI -o ${file}; done
+
+# Create new dataset.json file
+python populate_dataset_--path-out /home/GRAMES.POLYMTL.CA/lobouz/brainhack_data/nnUNet_data/nnUNet_raw/ --path-data /home/GRAMES.POLYMTL.CA/lobouz/brainhack_data/nnUNet_data/nnUNet_raw/Dataset1_sg_basel_sci_canpr_fmri_insp_zur_agg
+
+# Train (in /monai)
+CUDA_VISIBLE_DEVICES=1 python main.py -epb
+

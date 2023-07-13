@@ -1,0 +1,28 @@
+GPU available: True, used: True
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+Traceback (most recent call last):
+  File "monai_main.py", line 421, in <module>
+    main(args)
+  File "monai_main.py", line 310, in main
+    trainer.fit(pl_model)
+  File "/home/GRAMES.POLYMTL.CA/lobouz/miniconda3/envs/monai-unetr/lib/python3.8/site-packages/pytorch_lightning/trainer/trainer.py", line 770, in fit
+    self._call_and_handle_interrupt(
+  File "/home/GRAMES.POLYMTL.CA/lobouz/miniconda3/envs/monai-unetr/lib/python3.8/site-packages/pytorch_lightning/trainer/trainer.py", line 721, in _call_and_handle_interrupt
+    return self.strategy.launcher.launch(trainer_fn, *args, trainer=self, **kwargs)
+  File "/home/GRAMES.POLYMTL.CA/lobouz/miniconda3/envs/monai-unetr/lib/python3.8/site-packages/pytorch_lightning/strategies/launchers/subprocess_script.py", line 93, in launch
+    return function(*args, **kwargs)
+  File "/home/GRAMES.POLYMTL.CA/lobouz/miniconda3/envs/monai-unetr/lib/python3.8/site-packages/pytorch_lightning/trainer/trainer.py", line 811, in _fit_impl
+    results = self._run(model, ckpt_path=self.ckpt_path)
+  File "/home/GRAMES.POLYMTL.CA/lobouz/miniconda3/envs/monai-unetr/lib/python3.8/site-packages/pytorch_lightning/trainer/trainer.py", line 1164, in _run
+    self._data_connector.prepare_data()
+  File "/home/GRAMES.POLYMTL.CA/lobouz/miniconda3/envs/monai-unetr/lib/python3.8/site-packages/pytorch_lightning/trainer/connectors/data_connector.py", line 138, in prepare_data
+    self.trainer._call_lightning_module_hook("prepare_data")
+  File "/home/GRAMES.POLYMTL.CA/lobouz/miniconda3/envs/monai-unetr/lib/python3.8/site-packages/pytorch_lightning/trainer/trainer.py", line 1595, in _call_lightning_module_hook
+    output = fn(*args, **kwargs)
+  File "monai_main.py", line 65, in prepare_data
+    datalist = load_decathlon_datalist(datasets, True, "training")
+  File "/home/GRAMES.POLYMTL.CA/lobouz/miniconda3/envs/monai-unetr/lib/python3.8/site-packages/monai/data/decathlon_datalist.py", line 119, in load_decathlon_datalist
+    raise ValueError(f"Data list file {data_list_file_path} does not exist.")
+ValueError: Data list file /home/GRAMES.POLYMTL.CA/lobouz/duke/projects/ivadomed/contrast-agnostic-seg/data_processed_sg_2023-03-10_NO_CROP/data_processed_clean/dataset_binary.json does not exist.

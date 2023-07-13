@@ -1,0 +1,27 @@
+2023-04-04 14:17:33,933 INFO    MainThread:326947 [wandb_setup.py:_flush():76] Configure stats pid to 326947
+2023-04-04 14:17:33,933 INFO    MainThread:326947 [wandb_setup.py:_flush():76] Loading settings from /home/GRAMES.POLYMTL.CA/lobouz/.config/wandb/settings
+2023-04-04 14:17:33,933 INFO    MainThread:326947 [wandb_setup.py:_flush():76] Loading settings from /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/settings
+2023-04-04 14:17:33,933 INFO    MainThread:326947 [wandb_setup.py:_flush():76] Loading settings from environment variables: {}
+2023-04-04 14:17:33,933 INFO    MainThread:326947 [wandb_setup.py:_flush():76] Applying setup settings: {'_disable_service': False}
+2023-04-04 14:17:33,933 INFO    MainThread:326947 [wandb_setup.py:_flush():76] Inferring run settings from compute environment: {'program_relpath': 'monai_main.py', 'program': 'monai_main.py'}
+2023-04-04 14:17:33,933 INFO    MainThread:326947 [wandb_init.py:_log_setup():506] Logging user logs to /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_141733-azlrxkzc/logs/debug.log
+2023-04-04 14:17:33,933 INFO    MainThread:326947 [wandb_init.py:_log_setup():507] Logging internal logs to /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_141733-azlrxkzc/logs/debug-internal.log
+2023-04-04 14:17:33,933 INFO    MainThread:326947 [wandb_init.py:init():546] calling init triggers
+2023-04-04 14:17:33,934 INFO    MainThread:326947 [wandb_init.py:init():552] wandb.init called with sweep_config: {}
+config: {'only_eval': False, 'model': 'unetr', 'dataset': 'spine-generic', 'init_filters': 16, 'feature_size': 16, 'hidden_size': 768, 'mlp_dim': 2048, 'num_heads': 12, 'loss_func': 'dice', 'num_gpus': 1, 'num_workers': 4, 'precision': 32, 'max_epochs': 1000, 'batch_size': 2, 'optimizer': 'adamw', 'learning_rate': 0.0001, 'patience': 200, 'T_0': 100, 'enable_progress_bar': False, 'check_val_every_n_epochs': 30, 'model_name': 'unetr', 'save_path': '/home/GRAMES.POLYMTL.CA/lobouz/contrast_agnostic/models_unetr', 'continue_from_checkpoint': False, 'seed': 42, 'visualize_test_preds': False}
+2023-04-04 14:17:33,934 INFO    MainThread:326947 [wandb_init.py:init():602] starting backend
+2023-04-04 14:17:33,934 INFO    MainThread:326947 [wandb_init.py:init():606] setting up manager
+2023-04-04 14:17:33,941 INFO    MainThread:326947 [backend.py:_multiprocessing_setup():106] multiprocessing start_methods=fork,spawn,forkserver, using: spawn
+2023-04-04 14:17:33,949 INFO    MainThread:326947 [wandb_init.py:init():613] backend started and connected
+2023-04-04 14:17:33,960 INFO    MainThread:326947 [wandb_init.py:init():701] updated telemetry
+2023-04-04 14:17:34,025 INFO    MainThread:326947 [wandb_init.py:init():741] communicating run to backend with 60.0 second timeout
+2023-04-04 14:17:34,342 INFO    MainThread:326947 [wandb_run.py:_on_init():2133] communicating current version
+2023-04-04 14:17:34,389 INFO    MainThread:326947 [wandb_run.py:_on_init():2142] got version response 
+2023-04-04 14:17:34,389 INFO    MainThread:326947 [wandb_init.py:init():789] starting run threads in backend
+2023-04-04 14:17:37,699 INFO    MainThread:326947 [wandb_run.py:_console_start():2114] atexit reg
+2023-04-04 14:17:37,700 INFO    MainThread:326947 [wandb_run.py:_redirect():1969] redirect: SettingsConsole.WRAP_RAW
+2023-04-04 14:17:37,701 INFO    MainThread:326947 [wandb_run.py:_redirect():2034] Wrapping output streams.
+2023-04-04 14:17:37,701 INFO    MainThread:326947 [wandb_run.py:_redirect():2059] Redirects installed.
+2023-04-04 14:17:37,702 INFO    MainThread:326947 [wandb_init.py:init():831] run started, returning control to user process
+2023-04-04 14:42:39,007 INFO    MainThread:326947 [wandb_run.py:_config_callback():1251] config_cb None None {'args/only_eval': False, 'args/model': 'unetr', 'args/dataset': 'spine-generic', 'args/init_filters': 16, 'args/feature_size': 16, 'args/hidden_size': 768, 'args/mlp_dim': 2048, 'args/num_heads': 12, 'args/loss_func': 'dice', 'args/num_gpus': 1, 'args/num_workers': 4, 'args/precision': 32, 'args/max_epochs': 1000, 'args/batch_size': 2, 'args/optimizer': 'adamw', 'args/learning_rate': 0.0001, 'args/patience': 200, 'args/T_0': 100, 'args/enable_progress_bar': False, 'args/check_val_every_n_epochs': 30, 'args/model_name': 'unetr', 'args/save_path': '/home/GRAMES.POLYMTL.CA/lobouz/contrast_agnostic/models_unetr', 'args/continue_from_checkpoint': False, 'args/seed': 42, 'args/visualize_test_preds': False, 'data_root': '/home/GRAMES.POLYMTL.CA/lobouz/duke/projects/ivadomed/contrast-agnostic-seg/data_processed_sg_2023-03-10_NO_CROP/data_processed_clean/', 'net': None, 'loss_function': None, 'optimizer_class': 'AdamW'}
+2023-04-04 14:43:39,558 WARNING MsgRouterThr:326947 [router.py:message_loop():77] message_loop has been closed

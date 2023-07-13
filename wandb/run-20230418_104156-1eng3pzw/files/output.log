@@ -1,0 +1,84 @@
+GPU available: True, used: True
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+<class 'monai.transforms.utility.array.AddChannel'>: Class `AddChannel` has been deprecated since version 0.8. please use MetaTensor data type and monai.transforms.EnsureChannelFirst instead.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Loading dataset: 100%|███████████████████████████████████████████████████████████████████████████████████████████████| 148/148 [00:31<00:00,  4.76it/s]
+
+
+Loading dataset: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████| 12/12 [00:05<00:00,  2.32it/s]
+Global seed set to 42
+Initializing distributed: GLOBAL_RANK: 0, MEMBER: 1/1
+----------------------------------------------------------------------------------------------------
+distributed_backend=nccl
+All distributed processes registered. Starting with 1 processes
+----------------------------------------------------------------------------------------------------
+2023-04-18 10:42:36,958 - Added key: store_based_barrier_key:1 to store for rank: 0
+Checkpoint directory /home/GRAMES.POLYMTL.CA/lobouz/contrast_agnostic/models_unetr exists and is not empty.
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0,1,2,3]
+  | Name          | Type     | Params
+-------------------------------------------
+0 | net           | UNETR    | 92.6 M
+1 | loss_function | DiceLoss | 0
+-------------------------------------------
+92.6 M    Trainable params
+0         Non-trainable params
+92.6 M    Total params
+370.484   Total estimated model params size (MB)
+Current epoch: 0
+Current Mean Dice: 0.2195
+Best Mean Dice: 0.2195 at Epoch: 0
+----------------------------------------------------
+Exception ignored in: <function _MultiProcessingDataLoaderIter.__del__ at 0x7f00cd883430>
+Traceback (most recent call last):
+  File "/home/GRAMES.POLYMTL.CA/lobouz/miniconda3/envs/monai-unetr/lib/python3.8/site-packages/torch/utils/data/dataloader.py", line 1324, in __del__
+    self._shutdown_workers()
+  File "/home/GRAMES.POLYMTL.CA/lobouz/miniconda3/envs/monai-unetr/lib/python3.8/site-packages/torch/utils/data/dataloader.py", line 1297, in _shutdown_workers
+    w.join(timeout=_utils.MP_STATUS_CHECK_INTERVAL)
+  File "/home/GRAMES.POLYMTL.CA/lobouz/miniconda3/envs/monai-unetr/lib/python3.8/multiprocessing/process.py", line 149, in join
+    res = self._popen.wait(timeout)
+  File "/home/GRAMES.POLYMTL.CA/lobouz/miniconda3/envs/monai-unetr/lib/python3.8/multiprocessing/popen_fork.py", line 44, in wait
+    if not wait([self.sentinel], timeout):
+  File "/home/GRAMES.POLYMTL.CA/lobouz/miniconda3/envs/monai-unetr/lib/python3.8/multiprocessing/connection.py", line 931, in wait
+    ready = selector.select(timeout)
+  File "/home/GRAMES.POLYMTL.CA/lobouz/miniconda3/envs/monai-unetr/lib/python3.8/selectors.py", line 415, in select
+    fd_event_list = self._selector.poll(timeout)
+KeyboardInterrupt:
+Exception in thread Thread-51:
+Traceback (most recent call last):
+  File "/home/GRAMES.POLYMTL.CA/lobouz/miniconda3/envs/monai-unetr/lib/python3.8/threading.py", line 932, in _bootstrap_inner
+    self.run()
+  File "/home/GRAMES.POLYMTL.CA/lobouz/miniconda3/envs/monai-unetr/lib/python3.8/threading.py", line 870, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/GRAMES.POLYMTL.CA/lobouz/miniconda3/envs/monai-unetr/lib/python3.8/site-packages/torch/utils/data/_utils/pin_memory.py", line 25, in _pin_memory_loop
+    r = in_queue.get(timeout=MP_STATUS_CHECK_INTERVAL)
+  File "/home/GRAMES.POLYMTL.CA/lobouz/miniconda3/envs/monai-unetr/lib/python3.8/multiprocessing/queues.py", line 116, in get
+    return _ForkingPickler.loads(res)
+  File "/home/GRAMES.POLYMTL.CA/lobouz/miniconda3/envs/monai-unetr/lib/python3.8/site-packages/torch/multiprocessing/reductions.py", line 282, in rebuild_storage_fd
+    fd = df.detach()
+  File "/home/GRAMES.POLYMTL.CA/lobouz/miniconda3/envs/monai-unetr/lib/python3.8/multiprocessing/resource_sharer.py", line 57, in detach
+    with _resource_sharer.get_connection(self._id) as conn:
+  File "/home/GRAMES.POLYMTL.CA/lobouz/miniconda3/envs/monai-unetr/lib/python3.8/multiprocessing/resource_sharer.py", line 87, in get_connection
+    c = Client(address, authkey=process.current_process().authkey)
+  File "/home/GRAMES.POLYMTL.CA/lobouz/miniconda3/envs/monai-unetr/lib/python3.8/multiprocessing/connection.py", line 502, in Client
+    c = SocketClient(address)
+  File "/home/GRAMES.POLYMTL.CA/lobouz/miniconda3/envs/monai-unetr/lib/python3.8/multiprocessing/connection.py", line 630, in SocketClient
+    s.connect(address)
+FileNotFoundError: [Errno 2] No such file or directory
+Detected KeyboardInterrupt, attempting graceful shutdown...
+------- Training Done! -------
+------- Printing the Best Model Path! ------

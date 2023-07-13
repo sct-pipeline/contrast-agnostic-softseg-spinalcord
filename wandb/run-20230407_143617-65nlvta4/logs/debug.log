@@ -1,0 +1,27 @@
+2023-04-07 14:36:17,110 INFO    MainThread:702629 [wandb_setup.py:_flush():76] Configure stats pid to 702629
+2023-04-07 14:36:17,111 INFO    MainThread:702629 [wandb_setup.py:_flush():76] Loading settings from /home/GRAMES.POLYMTL.CA/lobouz/.config/wandb/settings
+2023-04-07 14:36:17,111 INFO    MainThread:702629 [wandb_setup.py:_flush():76] Loading settings from /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/settings
+2023-04-07 14:36:17,111 INFO    MainThread:702629 [wandb_setup.py:_flush():76] Loading settings from environment variables: {}
+2023-04-07 14:36:17,111 INFO    MainThread:702629 [wandb_setup.py:_flush():76] Applying setup settings: {'_disable_service': False}
+2023-04-07 14:36:17,111 INFO    MainThread:702629 [wandb_setup.py:_flush():76] Inferring run settings from compute environment: {'program_relpath': 'monai_main.py', 'program': 'monai_main.py'}
+2023-04-07 14:36:17,111 INFO    MainThread:702629 [wandb_init.py:_log_setup():506] Logging user logs to /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230407_143617-65nlvta4/logs/debug.log
+2023-04-07 14:36:17,111 INFO    MainThread:702629 [wandb_init.py:_log_setup():507] Logging internal logs to /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230407_143617-65nlvta4/logs/debug-internal.log
+2023-04-07 14:36:17,112 INFO    MainThread:702629 [wandb_init.py:init():546] calling init triggers
+2023-04-07 14:36:17,112 INFO    MainThread:702629 [wandb_init.py:init():552] wandb.init called with sweep_config: {}
+config: {'only_eval': False, 'model': 'unetr', 'dataset': 'spine-generic', 'dataset_json_name': 'dataset_dwi', 'init_filters': 16, 'feature_size': 16, 'hidden_size': 768, 'mlp_dim': 2048, 'num_heads': 12, 'loss_func': 'dice', 'num_gpus': 1, 'num_workers': 4, 'precision': 32, 'max_epochs': 1000, 'batch_size': 2, 'optimizer': 'adamw', 'learning_rate': 0.0001, 'patience': 200, 'T_0': 100, 'enable_progress_bar': False, 'check_val_every_n_epochs': 30, 'model_name': 'unetr', 'save_path': '/home/GRAMES.POLYMTL.CA/lobouz/contrast_agnostic/models_unetr', 'continue_from_checkpoint': False, 'seed': 42, 'visualize_test_preds': False}
+2023-04-07 14:36:17,112 INFO    MainThread:702629 [wandb_init.py:init():602] starting backend
+2023-04-07 14:36:17,112 INFO    MainThread:702629 [wandb_init.py:init():606] setting up manager
+2023-04-07 14:36:17,120 INFO    MainThread:702629 [backend.py:_multiprocessing_setup():106] multiprocessing start_methods=fork,spawn,forkserver, using: spawn
+2023-04-07 14:36:17,125 INFO    MainThread:702629 [wandb_init.py:init():613] backend started and connected
+2023-04-07 14:36:17,136 INFO    MainThread:702629 [wandb_init.py:init():701] updated telemetry
+2023-04-07 14:36:17,197 INFO    MainThread:702629 [wandb_init.py:init():741] communicating run to backend with 60.0 second timeout
+2023-04-07 14:36:17,505 INFO    MainThread:702629 [wandb_run.py:_on_init():2133] communicating current version
+2023-04-07 14:36:17,539 INFO    MainThread:702629 [wandb_run.py:_on_init():2142] got version response upgrade_message: "wandb version 0.14.1 is available!  To upgrade, please run:\n $ pip install wandb --upgrade"
+
+2023-04-07 14:36:17,540 INFO    MainThread:702629 [wandb_init.py:init():789] starting run threads in backend
+2023-04-07 14:36:20,406 INFO    MainThread:702629 [wandb_run.py:_console_start():2114] atexit reg
+2023-04-07 14:36:20,406 INFO    MainThread:702629 [wandb_run.py:_redirect():1969] redirect: SettingsConsole.WRAP_RAW
+2023-04-07 14:36:20,407 INFO    MainThread:702629 [wandb_run.py:_redirect():2034] Wrapping output streams.
+2023-04-07 14:36:20,407 INFO    MainThread:702629 [wandb_run.py:_redirect():2059] Redirects installed.
+2023-04-07 14:36:20,407 INFO    MainThread:702629 [wandb_init.py:init():831] run started, returning control to user process
+2023-04-07 14:36:25,279 WARNING MsgRouterThr:702629 [router.py:message_loop():77] message_loop has been closed

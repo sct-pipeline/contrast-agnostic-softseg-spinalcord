@@ -1,0 +1,616 @@
+2023-04-04 17:08:48,370 INFO    StreamThr :342256 [internal.py:wandb_internal():87] W&B internal server running at pid: 342256, started at: 2023-04-04 17:08:48.369897
+2023-04-04 17:08:48,373 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status
+2023-04-04 17:08:48,387 INFO    WriterThread:342256 [datastore.py:open_for_write():85] open: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/run-7en8bfgs.wandb
+2023-04-04 17:08:48,388 DEBUG   SenderThread:342256 [sender.py:send():336] send: header
+2023-04-04 17:08:48,458 DEBUG   SenderThread:342256 [sender.py:send():336] send: run
+2023-04-04 17:08:48,468 INFO    SenderThread:342256 [sender.py:_maybe_setup_resume():722] checking resume status for whats_ai/spine-generic/7en8bfgs
+2023-04-04 17:08:48,727 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: check_version
+2023-04-04 17:08:48,728 INFO    SenderThread:342256 [dir_watcher.py:__init__():219] watching files in: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files
+2023-04-04 17:08:48,728 INFO    SenderThread:342256 [sender.py:_start_run_threads():1078] run started: 7en8bfgs with start time 1680642528.374122
+2023-04-04 17:08:48,728 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: summary_record
+2023-04-04 17:08:48,729 INFO    SenderThread:342256 [sender.py:_save_file():1332] saving file wandb-summary.json with policy end
+2023-04-04 17:08:48,729 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: check_version
+2023-04-04 17:08:48,796 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: run_start
+2023-04-04 17:08:48,821 DEBUG   HandlerThread:342256 [system_info.py:__init__():31] System info init
+2023-04-04 17:08:48,822 DEBUG   HandlerThread:342256 [system_info.py:__init__():46] System info init done
+2023-04-04 17:08:48,822 INFO    HandlerThread:342256 [system_monitor.py:start():183] Starting system monitor
+2023-04-04 17:08:48,822 INFO    SystemMonitor:342256 [system_monitor.py:_start():147] Starting system asset monitoring threads
+2023-04-04 17:08:48,822 INFO    HandlerThread:342256 [system_monitor.py:probe():204] Collecting system info
+2023-04-04 17:08:48,823 INFO    SystemMonitor:342256 [interfaces.py:start():187] Started cpu monitoring
+2023-04-04 17:08:48,823 INFO    SystemMonitor:342256 [interfaces.py:start():187] Started disk monitoring
+2023-04-04 17:08:48,824 INFO    SystemMonitor:342256 [interfaces.py:start():187] Started gpu monitoring
+2023-04-04 17:08:48,826 INFO    SystemMonitor:342256 [interfaces.py:start():187] Started memory monitoring
+2023-04-04 17:08:48,826 INFO    SystemMonitor:342256 [interfaces.py:start():187] Started network monitoring
+2023-04-04 17:08:48,897 DEBUG   HandlerThread:342256 [system_info.py:probe():195] Probing system
+2023-04-04 17:08:48,906 DEBUG   HandlerThread:342256 [system_info.py:_probe_git():180] Probing git
+2023-04-04 17:08:48,926 DEBUG   HandlerThread:342256 [system_info.py:_probe_git():188] Probing git done
+2023-04-04 17:08:48,926 DEBUG   HandlerThread:342256 [system_info.py:probe():240] Probing system done
+2023-04-04 17:08:48,926 DEBUG   HandlerThread:342256 [system_monitor.py:probe():213] {'os': 'Linux-5.15.0-69-generic-x86_64-with-glibc2.17', 'python': '3.8.16', 'heartbeatAt': '2023-04-04T21:08:48.897634', 'startedAt': '2023-04-04T21:08:48.351996', 'docker': None, 'cuda': None, 'args': (), 'state': 'running', 'program': 'monai_main.py', 'codePath': 'monai_main.py', 'git': {'remote': 'https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord.git', 'commit': '4ee540a47b7bb60e46ba64b387a805eb724e77d5'}, 'email': None, 'root': '/home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord', 'host': 'romane.neuro.polymtl.ca', 'username': 'lobouz', 'executable': '/home/GRAMES.POLYMTL.CA/lobouz/miniconda3/envs/monai-unetr/bin/python', 'cpu_count': 32, 'cpu_count_logical': 64, 'cpu_freq': {'current': 1586.853296875, 'min': 1500.0, 'max': 2350.0}, 'cpu_freq_per_core': [{'current': 1497.029, 'min': 1500.0, 'max': 2350.0}, {'current': 1500.0, 'min': 1500.0, 'max': 2350.0}, {'current': 1500.0, 'min': 1500.0, 'max': 2350.0}, {'current': 1500.0, 'min': 1500.0, 'max': 2350.0}, {'current': 1500.0, 'min': 1500.0, 'max': 2350.0}, {'current': 1500.0, 'min': 1500.0, 'max': 2350.0}, {'current': 1500.0, 'min': 1500.0, 'max': 2350.0}, {'current': 1500.0, 'min': 1500.0, 'max': 2350.0}, {'current': 2000.0, 'min': 1500.0, 'max': 2350.0}, {'current': 1500.0, 'min': 1500.0, 'max': 2350.0}, {'current': 1500.0, 'min': 1500.0, 'max': 2350.0}, {'current': 1500.0, 'min': 1500.0, 'max': 2350.0}, {'current': 2044.462, 'min': 1500.0, 'max': 2350.0}, {'current': 1496.497, 'min': 1500.0, 'max': 2350.0}, {'current': 1500.0, 'min': 1500.0, 'max': 2350.0}, {'current': 1500.0, 'min': 1500.0, 'max': 2350.0}, {'current': 1500.0, 'min': 1500.0, 'max': 2350.0}, {'current': 1500.0, 'min': 1500.0, 'max': 2350.0}, {'current': 1500.0, 'min': 1500.0, 'max': 2350.0}, {'current': 1500.0, 'min': 1500.0, 'max': 2350.0}, {'current': 1500.0, 'min': 1500.0, 'max': 2350.0}, {'current': 1500.0, 'min': 1500.0, 'max': 2350.0}, {'current': 1500.0, 'min': 1500.0, 'max': 2350.0}, {'current': 1500.0, 'min': 1500.0, 'max': 2350.0}, {'current': 1449.898, 'min': 1500.0, 'max': 2350.0}, {'current': 1500.0, 'min': 1500.0, 'max': 2350.0}, {'current': 1500.0, 'min': 1500.0, 'max': 2350.0}, {'current': 1500.0, 'min': 1500.0, 'max': 2350.0}, {'current': 1500.0, 'min': 1500.0, 'max': 2350.0}, {'current': 1500.0, 'min': 1500.0, 'max': 2350.0}, {'current': 2350.0, 'min': 1500.0, 'max': 2350.0}, {'current': 1500.0, 'min': 1500.0, 'max': 2350.0}, {'current': 1500.0, 'min': 1500.0, 'max': 2350.0}, {'current': 1500.0, 'min': 1500.0, 'max': 2350.0}, {'current': 1500.0, 'min': 1500.0, 'max': 2350.0}, {'current': 1500.0, 'min': 1500.0, 'max': 2350.0}, {'current': 1500.0, 'min': 1500.0, 'max': 2350.0}, {'current': 1500.0, 'min': 1500.0, 'max': 2350.0}, {'current': 1500.0, 'min': 1500.0, 'max': 2350.0}, {'current': 1500.0, 'min': 1500.0, 'max': 2350.0}, {'current': 1500.0, 'min': 1500.0, 'max': 2350.0}, {'current': 1500.0, 'min': 1500.0, 'max': 2350.0}, {'current': 1500.0, 'min': 1500.0, 'max': 2350.0}, {'current': 1500.0, 'min': 1500.0, 'max': 2350.0}, {'current': 1500.0, 'min': 1500.0, 'max': 2350.0}, {'current': 1500.0, 'min': 1500.0, 'max': 2350.0}, {'current': 1500.0, 'min': 1500.0, 'max': 2350.0}, {'current': 1500.0, 'min': 1500.0, 'max': 2350.0}, {'current': 1500.0, 'min': 1500.0, 'max': 2350.0}, {'current': 1500.0, 'min': 1500.0, 'max': 2350.0}, {'current': 1500.0, 'min': 1500.0, 'max': 2350.0}, {'current': 1500.0, 'min': 1500.0, 'max': 2350.0}, {'current': 1500.0, 'min': 1500.0, 'max': 2350.0}, {'current': 1500.0, 'min': 1500.0, 'max': 2350.0}, {'current': 1500.0, 'min': 1500.0, 'max': 2350.0}, {'current': 1500.0, 'min': 1500.0, 'max': 2350.0}, {'current': 1500.0, 'min': 1500.0, 'max': 2350.0}, {'current': 1500.0, 'min': 1500.0, 'max': 2350.0}, {'current': 1500.0, 'min': 1500.0, 'max': 2350.0}, {'current': 1500.0, 'min': 1500.0, 'max': 2350.0}, {'current': 1500.0, 'min': 1500.0, 'max': 2350.0}, {'current': 1500.0, 'min': 1500.0, 'max': 2350.0}, {'current': 2350.0, 'min': 1500.0, 'max': 2350.0}, {'current': 1500.0, 'min': 1500.0, 'max': 2350.0}], 'disk': {'total': 4.836578369140625, 'used': 0.17177200317382812}, 'gpu': 'NVIDIA RTX A6000', 'gpu_count': 4, 'gpu_devices': [{'name': 'NVIDIA RTX A6000', 'memory_total': 51527024640}, {'name': 'NVIDIA RTX A6000', 'memory_total': 51527024640}, {'name': 'NVIDIA RTX A6000', 'memory_total': 51527024640}, {'name': 'NVIDIA RTX A6000', 'memory_total': 51527024640}], 'memory': {'total': 503.5670700073242}}
+2023-04-04 17:08:48,926 INFO    HandlerThread:342256 [system_monitor.py:probe():214] Finished collecting system info
+2023-04-04 17:08:48,926 INFO    HandlerThread:342256 [system_monitor.py:probe():217] Publishing system info
+2023-04-04 17:08:48,926 DEBUG   HandlerThread:342256 [system_info.py:_save_pip():51] Saving list of pip packages installed into the current environment
+2023-04-04 17:08:48,927 DEBUG   HandlerThread:342256 [system_info.py:_save_pip():67] Saving pip packages done
+2023-04-04 17:08:48,927 DEBUG   HandlerThread:342256 [system_info.py:_save_conda():74] Saving list of conda packages installed into the current environment
+2023-04-04 17:08:49,730 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_created():278] file/dir created: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/wandb-summary.json
+2023-04-04 17:08:49,731 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_created():278] file/dir created: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/conda-environment.yaml
+2023-04-04 17:08:49,731 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_created():278] file/dir created: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/requirements.txt
+2023-04-04 17:08:52,049 DEBUG   HandlerThread:342256 [system_info.py:_save_conda():86] Saving conda packages done
+2023-04-04 17:08:52,050 INFO    HandlerThread:342256 [system_monitor.py:probe():219] Finished publishing system info
+2023-04-04 17:08:52,059 DEBUG   SenderThread:342256 [sender.py:send():336] send: files
+2023-04-04 17:08:52,059 INFO    SenderThread:342256 [sender.py:_save_file():1332] saving file wandb-metadata.json with policy now
+2023-04-04 17:08:52,067 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:08:52,068 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:08:52,143 DEBUG   SenderThread:342256 [sender.py:send():336] send: telemetry
+2023-04-04 17:08:52,143 DEBUG   SenderThread:342256 [sender.py:send():336] send: metric
+2023-04-04 17:08:52,144 DEBUG   SenderThread:342256 [sender.py:send():336] send: telemetry
+2023-04-04 17:08:52,144 DEBUG   SenderThread:342256 [sender.py:send():336] send: metric
+2023-04-04 17:08:52,144 WARNING SenderThread:342256 [sender.py:send_metric():1283] Seen metric with glob (shouldn't happen)
+2023-04-04 17:08:52,431 INFO    wandb-upload_0:342256 [upload_job.py:push():138] Uploaded file /tmp/tmpnqj2ppg1wandb/cpcmf8bz-wandb-metadata.json
+2023-04-04 17:08:52,729 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/conda-environment.yaml
+2023-04-04 17:08:52,729 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_created():278] file/dir created: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:08:52,730 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_created():278] file/dir created: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/wandb-metadata.json
+2023-04-04 17:08:53,431 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:08:54,730 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:08:59,429 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:09:00,732 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:09:02,735 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:09:04,737 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:09:05,238 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:09:06,738 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:09:07,067 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:09:07,067 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:09:08,740 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:09:10,631 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:09:12,742 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:09:14,742 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:09:16,297 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:09:21,394 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:09:21,747 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/config.yaml
+2023-04-04 17:09:22,092 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:09:22,093 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:09:22,747 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:09:24,748 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:09:26,749 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:09:27,136 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:09:32,625 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:09:32,751 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:09:34,754 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:09:37,087 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:09:37,087 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:09:38,162 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:09:40,757 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:09:42,760 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:09:43,950 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:09:46,762 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:09:48,764 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:09:48,828 DEBUG   SystemMonitor:342256 [system_monitor.py:_start():161] Starting system metrics aggregation loop
+2023-04-04 17:09:48,833 DEBUG   SenderThread:342256 [sender.py:send():336] send: stats
+2023-04-04 17:09:49,834 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:09:50,765 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:09:52,087 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:09:52,087 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:09:52,766 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:09:54,766 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:09:55,115 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:09:58,768 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:10:00,884 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:10:02,769 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:10:04,770 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:10:06,772 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:10:06,773 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:10:07,128 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:10:07,129 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:10:10,776 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:10:11,950 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:10:12,776 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:10:14,778 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:10:16,779 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:10:17,931 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:10:18,833 DEBUG   SenderThread:342256 [sender.py:send():336] send: stats
+2023-04-04 17:10:22,107 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:10:22,107 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:10:22,783 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:10:23,611 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:10:24,783 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:10:26,784 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:10:29,222 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:10:34,787 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:10:34,924 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:10:36,788 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:10:37,107 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:10:37,107 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:10:40,166 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:10:42,793 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:10:45,632 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:10:48,836 DEBUG   SenderThread:342256 [sender.py:send():336] send: stats
+2023-04-04 17:10:50,838 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:10:52,530 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:10:52,531 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:10:56,613 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:11:01,614 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:11:06,615 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:11:07,780 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:11:07,781 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:11:11,864 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:11:16,865 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:11:18,837 DEBUG   SenderThread:342256 [sender.py:send():336] send: stats
+2023-04-04 17:11:20,807 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:11:22,180 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:11:22,689 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:11:22,689 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:11:27,768 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:11:32,769 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:11:37,699 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:11:37,700 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:11:37,779 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:11:42,816 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:11:43,434 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:11:48,435 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:11:48,840 DEBUG   SenderThread:342256 [sender.py:send():336] send: stats
+2023-04-04 17:11:53,321 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:11:53,322 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:11:54,403 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:11:59,404 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:12:04,405 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:12:09,406 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:12:09,918 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:12:09,920 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:12:10,826 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:12:14,986 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:12:18,842 DEBUG   SenderThread:342256 [sender.py:send():336] send: stats
+2023-04-04 17:12:20,845 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:12:25,048 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:12:25,049 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:12:26,164 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:12:26,833 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:12:28,834 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:12:32,092 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:12:37,093 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:12:41,790 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:12:41,791 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:12:42,855 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:12:47,856 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:12:48,846 DEBUG   SenderThread:342256 [sender.py:send():336] send: stats
+2023-04-04 17:12:53,848 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:12:58,595 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:12:58,596 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:12:59,666 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:13:04,667 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:13:09,668 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:13:14,669 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:13:15,955 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:13:15,955 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:13:18,846 DEBUG   SenderThread:342256 [sender.py:send():336] send: stats
+2023-04-04 17:13:19,848 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:13:24,848 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:13:29,849 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:13:33,522 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:13:33,523 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:13:34,861 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:13:35,779 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:13:40,780 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:13:45,781 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:13:47,876 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:13:47,876 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:13:48,848 DEBUG   SenderThread:342256 [sender.py:send():336] send: stats
+2023-04-04 17:13:50,850 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:13:55,851 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:14:00,852 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:14:02,875 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:14:02,875 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:14:05,944 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:14:10,944 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:14:15,945 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:14:18,853 DEBUG   SenderThread:342256 [sender.py:send():336] send: stats
+2023-04-04 17:14:18,983 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:14:18,983 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:14:20,878 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:14:21,388 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:14:26,389 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:14:31,390 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:14:35,576 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:14:35,577 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:14:36,654 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:14:41,655 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:14:46,656 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:14:48,853 DEBUG   SenderThread:342256 [sender.py:send():336] send: stats
+2023-04-04 17:14:51,590 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:14:51,591 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:14:51,663 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:14:56,663 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:14:58,892 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:15:02,062 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:15:07,063 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:15:08,735 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:15:08,735 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:15:12,803 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:15:17,804 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:15:18,855 DEBUG   SenderThread:342256 [sender.py:send():336] send: stats
+2023-04-04 17:15:18,900 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:15:22,857 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:15:25,904 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:15:25,905 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:15:27,979 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:15:32,979 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:15:37,980 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:15:42,462 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:15:42,463 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:15:43,567 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:15:48,568 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:15:48,857 DEBUG   SenderThread:342256 [sender.py:send():336] send: stats
+2023-04-04 17:15:53,858 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:15:58,859 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:16:00,378 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:16:00,378 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:16:04,465 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:16:09,466 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:16:14,467 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:16:16,213 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:16:16,214 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:16:18,859 DEBUG   SenderThread:342256 [sender.py:send():336] send: stats
+2023-04-04 17:16:19,860 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:16:24,861 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:16:29,862 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:16:31,213 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:16:31,214 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:16:35,279 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:16:40,280 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:16:45,281 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:16:48,124 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:16:48,124 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:16:48,861 DEBUG   SenderThread:342256 [sender.py:send():336] send: stats
+2023-04-04 17:16:50,864 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:16:55,864 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:17:00,865 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:17:04,931 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:17:04,932 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:17:06,008 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:17:11,009 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:17:16,010 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:17:18,863 DEBUG   SenderThread:342256 [sender.py:send():336] send: stats
+2023-04-04 17:17:21,217 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:17:21,241 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:17:21,241 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:17:26,315 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:17:28,952 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:17:31,854 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:17:36,180 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:17:36,180 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:17:37,250 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:17:42,626 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:17:47,627 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:17:48,865 DEBUG   SenderThread:342256 [sender.py:send():336] send: stats
+2023-04-04 17:17:51,180 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:17:51,182 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:17:53,249 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:17:58,250 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:17:58,963 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:18:03,696 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:18:07,542 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:18:07,543 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:18:09,625 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:18:15,369 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:18:18,871 DEBUG   SenderThread:342256 [sender.py:send():336] send: stats
+2023-04-04 17:18:20,872 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:18:23,022 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:18:23,022 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:18:26,108 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:18:31,553 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:18:36,554 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:18:38,627 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:18:38,628 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:18:41,704 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:18:47,509 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:18:48,872 DEBUG   SenderThread:342256 [sender.py:send():336] send: stats
+2023-04-04 17:18:52,983 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:18:53,508 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:18:54,613 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:18:54,613 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:18:58,689 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:19:00,986 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:19:03,822 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:19:08,823 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:19:10,350 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:19:10,351 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:19:14,429 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:19:18,873 DEBUG   SenderThread:342256 [sender.py:send():336] send: stats
+2023-04-04 17:19:19,875 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:19:24,875 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:19:25,565 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:19:25,566 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:19:30,640 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:19:35,858 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:19:38,000 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:19:40,579 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:19:40,580 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:19:41,658 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:19:46,659 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:19:48,875 DEBUG   SenderThread:342256 [sender.py:send():336] send: stats
+2023-04-04 17:19:51,877 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:19:56,585 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:19:56,585 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:19:57,662 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:20:02,663 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:20:07,997 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:20:11,780 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:20:11,780 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:20:13,861 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:20:18,877 DEBUG   SenderThread:342256 [sender.py:send():336] send: stats
+2023-04-04 17:20:18,880 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:20:23,879 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:20:28,880 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:20:29,382 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:20:29,383 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:20:32,020 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:20:34,092 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:20:39,093 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:20:44,094 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:20:45,455 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:20:45,455 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:20:48,879 DEBUG   SenderThread:342256 [sender.py:send():336] send: stats
+2023-04-04 17:20:49,303 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:20:50,026 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:20:54,304 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:20:58,909 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:20:58,909 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:20:59,989 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:21:04,990 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:21:10,438 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:21:15,439 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:21:16,353 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:21:16,354 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:21:18,881 DEBUG   SenderThread:342256 [sender.py:send():336] send: stats
+2023-04-04 17:21:20,883 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:21:26,736 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:21:29,507 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:21:29,507 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:21:32,578 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:21:34,042 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:21:37,735 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:21:42,736 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:21:45,534 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:21:45,534 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:21:48,616 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:21:48,883 DEBUG   SenderThread:342256 [sender.py:send():336] send: stats
+2023-04-04 17:21:54,592 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:21:59,593 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:22:01,339 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:22:01,340 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:22:04,053 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:22:05,408 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:22:11,150 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:22:16,151 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:22:16,802 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:22:16,802 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:22:18,885 DEBUG   SenderThread:342256 [sender.py:send():336] send: stats
+2023-04-04 17:22:21,888 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:22:27,159 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:22:32,160 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:22:32,250 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:22:32,261 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:22:37,332 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:22:42,350 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:22:47,351 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:22:48,448 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:22:48,448 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:22:48,887 DEBUG   SenderThread:342256 [sender.py:send():336] send: stats
+2023-04-04 17:22:52,889 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:22:57,980 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:23:02,079 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:23:03,241 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:23:03,448 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:23:03,449 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:23:08,081 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:23:08,639 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:23:13,736 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:23:18,487 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:23:18,488 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:23:18,890 DEBUG   SenderThread:342256 [sender.py:send():336] send: stats
+2023-04-04 17:23:18,891 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:23:23,892 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:23:29,809 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:23:34,450 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:23:34,450 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:23:35,515 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:23:40,815 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:23:45,816 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:23:48,927 DEBUG   SenderThread:342256 [sender.py:send():336] send: stats
+2023-04-04 17:23:49,905 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:23:49,905 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:23:50,983 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:23:52,111 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:23:56,463 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:24:01,465 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:24:04,916 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:24:04,916 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:24:06,990 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:24:12,103 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:24:16,108 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:24:17,505 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:24:18,894 DEBUG   SenderThread:342256 [sender.py:send():336] send: stats
+2023-04-04 17:24:20,439 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:24:20,440 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:24:22,508 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:24:28,111 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:24:33,112 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:24:35,970 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:24:35,971 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:24:39,045 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:24:44,186 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:24:48,898 DEBUG   SenderThread:342256 [sender.py:send():336] send: stats
+2023-04-04 17:24:49,900 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:24:51,049 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:24:51,050 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:24:55,123 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:25:00,127 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:25:00,516 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:25:05,517 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:25:06,049 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:25:06,050 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:25:08,130 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:25:11,120 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:25:16,343 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:25:18,898 DEBUG   SenderThread:342256 [sender.py:send():336] send: stats
+2023-04-04 17:25:21,258 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:25:21,259 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:25:22,329 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:25:26,137 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:25:27,341 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:25:32,139 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:25:32,866 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:25:36,815 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:25:36,815 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:25:37,884 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:25:42,146 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:25:43,601 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:25:48,602 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:25:48,900 DEBUG   SenderThread:342256 [sender.py:send():336] send: stats
+2023-04-04 17:25:51,933 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:25:51,934 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:25:54,007 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:25:54,151 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:25:59,627 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:26:04,940 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:26:06,155 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:26:07,078 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: stop_status
+2023-04-04 17:26:07,078 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: stop_status
+2023-04-04 17:26:10,151 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:26:16,119 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:26:16,158 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:26:18,905 DEBUG   SenderThread:342256 [sender.py:send():336] send: stats
+2023-04-04 17:26:18,917 DEBUG   SenderThread:342256 [sender.py:send():336] send: exit
+2023-04-04 17:26:18,917 INFO    SenderThread:342256 [sender.py:send_exit():559] handling exit code: 1
+2023-04-04 17:26:18,917 INFO    SenderThread:342256 [sender.py:send_exit():561] handling runtime: 1050
+2023-04-04 17:26:18,919 INFO    SenderThread:342256 [sender.py:_save_file():1332] saving file wandb-summary.json with policy end
+2023-04-04 17:26:18,919 INFO    SenderThread:342256 [sender.py:send_exit():567] send defer
+2023-04-04 17:26:18,919 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: defer
+2023-04-04 17:26:18,920 INFO    HandlerThread:342256 [handler.py:handle_request_defer():170] handle defer: 0
+2023-04-04 17:26:18,920 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: defer
+2023-04-04 17:26:18,920 INFO    SenderThread:342256 [sender.py:send_request_defer():583] handle sender defer: 0
+2023-04-04 17:26:18,920 INFO    SenderThread:342256 [sender.py:transition_state():587] send defer: 1
+2023-04-04 17:26:18,920 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: defer
+2023-04-04 17:26:18,920 INFO    HandlerThread:342256 [handler.py:handle_request_defer():170] handle defer: 1
+2023-04-04 17:26:18,920 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: defer
+2023-04-04 17:26:18,920 INFO    SenderThread:342256 [sender.py:send_request_defer():583] handle sender defer: 1
+2023-04-04 17:26:18,920 INFO    SenderThread:342256 [sender.py:transition_state():587] send defer: 2
+2023-04-04 17:26:18,920 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: defer
+2023-04-04 17:26:18,920 INFO    HandlerThread:342256 [handler.py:handle_request_defer():170] handle defer: 2
+2023-04-04 17:26:18,920 INFO    HandlerThread:342256 [system_monitor.py:finish():193] Stopping system monitor
+2023-04-04 17:26:18,922 DEBUG   SystemMonitor:342256 [system_monitor.py:_start():168] Finished system metrics aggregation loop
+2023-04-04 17:26:18,922 DEBUG   SystemMonitor:342256 [system_monitor.py:_start():172] Publishing last batch of metrics
+2023-04-04 17:26:18,924 INFO    HandlerThread:342256 [interfaces.py:finish():199] Joined cpu monitor
+2023-04-04 17:26:18,924 INFO    HandlerThread:342256 [interfaces.py:finish():199] Joined disk monitor
+2023-04-04 17:26:19,159 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/wandb-summary.json
+2023-04-04 17:26:19,475 INFO    HandlerThread:342256 [interfaces.py:finish():199] Joined gpu monitor
+2023-04-04 17:26:19,475 INFO    HandlerThread:342256 [interfaces.py:finish():199] Joined memory monitor
+2023-04-04 17:26:19,475 INFO    HandlerThread:342256 [interfaces.py:finish():199] Joined network monitor
+2023-04-04 17:26:19,476 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: defer
+2023-04-04 17:26:19,476 INFO    SenderThread:342256 [sender.py:send_request_defer():583] handle sender defer: 2
+2023-04-04 17:26:19,476 INFO    SenderThread:342256 [sender.py:transition_state():587] send defer: 3
+2023-04-04 17:26:19,476 DEBUG   SenderThread:342256 [sender.py:send():336] send: stats
+2023-04-04 17:26:19,476 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: defer
+2023-04-04 17:26:19,476 INFO    HandlerThread:342256 [handler.py:handle_request_defer():170] handle defer: 3
+2023-04-04 17:26:19,476 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: defer
+2023-04-04 17:26:19,476 INFO    SenderThread:342256 [sender.py:send_request_defer():583] handle sender defer: 3
+2023-04-04 17:26:19,476 INFO    SenderThread:342256 [sender.py:transition_state():587] send defer: 4
+2023-04-04 17:26:19,477 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: defer
+2023-04-04 17:26:19,477 INFO    HandlerThread:342256 [handler.py:handle_request_defer():170] handle defer: 4
+2023-04-04 17:26:19,477 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: defer
+2023-04-04 17:26:19,477 INFO    SenderThread:342256 [sender.py:send_request_defer():583] handle sender defer: 4
+2023-04-04 17:26:19,477 INFO    SenderThread:342256 [sender.py:transition_state():587] send defer: 5
+2023-04-04 17:26:19,477 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: defer
+2023-04-04 17:26:19,477 INFO    HandlerThread:342256 [handler.py:handle_request_defer():170] handle defer: 5
+2023-04-04 17:26:19,477 DEBUG   SenderThread:342256 [sender.py:send():336] send: summary
+2023-04-04 17:26:19,478 INFO    SenderThread:342256 [sender.py:_save_file():1332] saving file wandb-summary.json with policy end
+2023-04-04 17:26:19,478 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: defer
+2023-04-04 17:26:19,478 INFO    SenderThread:342256 [sender.py:send_request_defer():583] handle sender defer: 5
+2023-04-04 17:26:19,478 INFO    SenderThread:342256 [sender.py:transition_state():587] send defer: 6
+2023-04-04 17:26:19,478 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: defer
+2023-04-04 17:26:19,478 INFO    HandlerThread:342256 [handler.py:handle_request_defer():170] handle defer: 6
+2023-04-04 17:26:19,478 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: defer
+2023-04-04 17:26:19,478 INFO    SenderThread:342256 [sender.py:send_request_defer():583] handle sender defer: 6
+2023-04-04 17:26:19,478 INFO    SenderThread:342256 [sender.py:transition_state():587] send defer: 7
+2023-04-04 17:26:19,478 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: status_report
+2023-04-04 17:26:19,478 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: defer
+2023-04-04 17:26:19,479 INFO    HandlerThread:342256 [handler.py:handle_request_defer():170] handle defer: 7
+2023-04-04 17:26:19,479 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: defer
+2023-04-04 17:26:19,479 INFO    SenderThread:342256 [sender.py:send_request_defer():583] handle sender defer: 7
+2023-04-04 17:26:19,918 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: poll_exit
+2023-04-04 17:26:19,941 INFO    SenderThread:342256 [sender.py:transition_state():587] send defer: 8
+2023-04-04 17:26:19,942 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: poll_exit
+2023-04-04 17:26:19,942 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: defer
+2023-04-04 17:26:19,943 INFO    HandlerThread:342256 [handler.py:handle_request_defer():170] handle defer: 8
+2023-04-04 17:26:19,944 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: defer
+2023-04-04 17:26:19,944 INFO    SenderThread:342256 [sender.py:send_request_defer():583] handle sender defer: 8
+2023-04-04 17:26:19,960 INFO    SenderThread:342256 [sender.py:transition_state():587] send defer: 9
+2023-04-04 17:26:19,961 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: defer
+2023-04-04 17:26:19,961 DEBUG   SenderThread:342256 [sender.py:send():336] send: artifact
+2023-04-04 17:26:19,962 INFO    HandlerThread:342256 [handler.py:handle_request_defer():170] handle defer: 9
+2023-04-04 17:26:20,160 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:26:20,160 INFO    Thread-13 :342256 [dir_watcher.py:_on_file_modified():295] file/dir modified: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/wandb-summary.json
+2023-04-04 17:26:20,394 INFO    SenderThread:342256 [sender.py:send_artifact():1428] sent artifact job-https___github.com_sct-pipeline_contrast-agnostic-softseg-spinalcord.git_monai_main.py - {'id': 'QXJ0aWZhY3Q6NDEzNjgyMTY1', 'digest': '0b29e85636fce435d4a8f96fd61802f4', 'state': 'COMMITTED', 'aliases': [{'artifactCollectionName': 'job-https___github.com_sct-pipeline_contrast-agnostic-softseg-spinalcord.git_monai_main.py', 'alias': 'latest'}, {'artifactCollectionName': 'job-https___github.com_sct-pipeline_contrast-agnostic-softseg-spinalcord.git_monai_main.py', 'alias': 'v4'}], 'artifactSequence': {'id': 'QXJ0aWZhY3RDb2xsZWN0aW9uOjU5NzE3NTQ3', 'latestArtifact': {'id': 'QXJ0aWZhY3Q6NDEzNjgyMTY1', 'versionIndex': 4}}, 'version': 'v4'}
+2023-04-04 17:26:20,394 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: defer
+2023-04-04 17:26:20,394 INFO    SenderThread:342256 [sender.py:send_request_defer():583] handle sender defer: 9
+2023-04-04 17:26:20,394 INFO    SenderThread:342256 [dir_watcher.py:finish():365] shutting down directory watcher
+2023-04-04 17:26:20,918 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: poll_exit
+2023-04-04 17:26:21,161 INFO    SenderThread:342256 [dir_watcher.py:finish():395] scan: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files
+2023-04-04 17:26:21,161 INFO    SenderThread:342256 [dir_watcher.py:finish():409] scan save: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/conda-environment.yaml conda-environment.yaml
+2023-04-04 17:26:21,161 INFO    SenderThread:342256 [dir_watcher.py:finish():409] scan save: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/wandb-metadata.json wandb-metadata.json
+2023-04-04 17:26:21,161 INFO    SenderThread:342256 [dir_watcher.py:finish():409] scan save: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/config.yaml config.yaml
+2023-04-04 17:26:21,162 INFO    SenderThread:342256 [dir_watcher.py:finish():409] scan save: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/requirements.txt requirements.txt
+2023-04-04 17:26:21,170 INFO    SenderThread:342256 [dir_watcher.py:finish():409] scan save: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log output.log
+2023-04-04 17:26:21,175 INFO    SenderThread:342256 [dir_watcher.py:finish():409] scan save: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/wandb-summary.json wandb-summary.json
+2023-04-04 17:26:21,179 INFO    SenderThread:342256 [sender.py:transition_state():587] send defer: 10
+2023-04-04 17:26:21,179 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: poll_exit
+2023-04-04 17:26:21,180 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: defer
+2023-04-04 17:26:21,180 INFO    HandlerThread:342256 [handler.py:handle_request_defer():170] handle defer: 10
+2023-04-04 17:26:21,184 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: defer
+2023-04-04 17:26:21,184 INFO    SenderThread:342256 [sender.py:send_request_defer():583] handle sender defer: 10
+2023-04-04 17:26:21,184 INFO    SenderThread:342256 [file_pusher.py:finish():164] shutting down file pusher
+2023-04-04 17:26:21,506 INFO    wandb-upload_0:342256 [upload_job.py:push():138] Uploaded file /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/conda-environment.yaml
+2023-04-04 17:26:21,508 INFO    wandb-upload_4:342256 [upload_job.py:push():138] Uploaded file /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/wandb-summary.json
+2023-04-04 17:26:21,514 INFO    wandb-upload_3:342256 [upload_job.py:push():138] Uploaded file /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/output.log
+2023-04-04 17:26:21,519 INFO    wandb-upload_2:342256 [upload_job.py:push():138] Uploaded file /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/requirements.txt
+2023-04-04 17:26:21,525 INFO    wandb-upload_1:342256 [upload_job.py:push():138] Uploaded file /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/files/config.yaml
+2023-04-04 17:26:21,725 INFO    Thread-12 :342256 [sender.py:transition_state():587] send defer: 11
+2023-04-04 17:26:21,726 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: defer
+2023-04-04 17:26:21,726 INFO    HandlerThread:342256 [handler.py:handle_request_defer():170] handle defer: 11
+2023-04-04 17:26:21,726 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: defer
+2023-04-04 17:26:21,726 INFO    SenderThread:342256 [sender.py:send_request_defer():583] handle sender defer: 11
+2023-04-04 17:26:21,726 INFO    SenderThread:342256 [file_pusher.py:join():169] waiting for file pusher
+2023-04-04 17:26:21,726 INFO    SenderThread:342256 [sender.py:transition_state():587] send defer: 12
+2023-04-04 17:26:21,727 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: defer
+2023-04-04 17:26:21,727 INFO    HandlerThread:342256 [handler.py:handle_request_defer():170] handle defer: 12
+2023-04-04 17:26:21,727 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: defer
+2023-04-04 17:26:21,727 INFO    SenderThread:342256 [sender.py:send_request_defer():583] handle sender defer: 12
+2023-04-04 17:26:21,919 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: poll_exit
+2023-04-04 17:26:21,953 INFO    SenderThread:342256 [sender.py:transition_state():587] send defer: 13
+2023-04-04 17:26:21,953 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: poll_exit
+2023-04-04 17:26:21,953 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: defer
+2023-04-04 17:26:21,953 INFO    HandlerThread:342256 [handler.py:handle_request_defer():170] handle defer: 13
+2023-04-04 17:26:21,954 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: defer
+2023-04-04 17:26:21,954 INFO    SenderThread:342256 [sender.py:send_request_defer():583] handle sender defer: 13
+2023-04-04 17:26:21,954 INFO    SenderThread:342256 [sender.py:transition_state():587] send defer: 14
+2023-04-04 17:26:21,954 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: defer
+2023-04-04 17:26:21,954 INFO    HandlerThread:342256 [handler.py:handle_request_defer():170] handle defer: 14
+2023-04-04 17:26:21,955 DEBUG   SenderThread:342256 [sender.py:send():336] send: final
+2023-04-04 17:26:21,955 DEBUG   SenderThread:342256 [sender.py:send():336] send: footer
+2023-04-04 17:26:21,955 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: defer
+2023-04-04 17:26:21,955 INFO    SenderThread:342256 [sender.py:send_request_defer():583] handle sender defer: 14
+2023-04-04 17:26:21,956 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: poll_exit
+2023-04-04 17:26:21,957 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: poll_exit
+2023-04-04 17:26:21,957 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: poll_exit
+2023-04-04 17:26:21,958 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: poll_exit
+2023-04-04 17:26:21,958 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: server_info
+2023-04-04 17:26:21,959 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: get_summary
+2023-04-04 17:26:21,959 DEBUG   SenderThread:342256 [sender.py:send_request():363] send_request: server_info
+2023-04-04 17:26:21,962 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: sampled_history
+2023-04-04 17:26:22,029 INFO    MainThread:342256 [wandb_run.py:_footer_history_summary_info():3422] rendering history
+2023-04-04 17:26:22,030 INFO    MainThread:342256 [wandb_run.py:_footer_history_summary_info():3454] rendering summary
+2023-04-04 17:26:22,030 INFO    MainThread:342256 [wandb_run.py:_footer_sync_info():3380] logging synced files
+2023-04-04 17:26:22,030 DEBUG   HandlerThread:342256 [handler.py:handle_request():144] handle_request: shutdown
+2023-04-04 17:26:22,030 INFO    HandlerThread:342256 [handler.py:finish():842] shutting down handler
+2023-04-04 17:26:22,958 INFO    WriterThread:342256 [datastore.py:close():298] close: /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230404_170848-7en8bfgs/run-7en8bfgs.wandb
+2023-04-04 17:26:23,029 INFO    SenderThread:342256 [sender.py:finish():1504] shutting down sender
+2023-04-04 17:26:23,030 INFO    SenderThread:342256 [file_pusher.py:finish():164] shutting down file pusher
+2023-04-04 17:26:23,030 INFO    SenderThread:342256 [file_pusher.py:join():169] waiting for file pusher

@@ -1,0 +1,38 @@
+2023-04-11 15:52:17,655 INFO    MainThread:1010718 [wandb_setup.py:_flush():76] Configure stats pid to 1010718
+2023-04-11 15:52:17,655 INFO    MainThread:1010718 [wandb_setup.py:_flush():76] Loading settings from /home/GRAMES.POLYMTL.CA/lobouz/.config/wandb/settings
+2023-04-11 15:52:17,655 INFO    MainThread:1010718 [wandb_setup.py:_flush():76] Loading settings from /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/settings
+2023-04-11 15:52:17,655 INFO    MainThread:1010718 [wandb_setup.py:_flush():76] Loading settings from environment variables: {}
+2023-04-11 15:52:17,655 INFO    MainThread:1010718 [wandb_setup.py:_flush():76] Applying setup settings: {'_disable_service': False}
+2023-04-11 15:52:17,655 INFO    MainThread:1010718 [wandb_setup.py:_flush():76] Inferring run settings from compute environment: {'program_relpath': 'monai_main.py', 'program': 'monai_main.py'}
+2023-04-11 15:52:17,656 INFO    MainThread:1010718 [wandb_init.py:_log_setup():506] Logging user logs to /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230411_155217-drb2y9qe/logs/debug.log
+2023-04-11 15:52:17,656 INFO    MainThread:1010718 [wandb_init.py:_log_setup():507] Logging internal logs to /home/GRAMES.POLYMTL.CA/lobouz/github/contrast-agnostic-softseg-spinalcord/wandb/run-20230411_155217-drb2y9qe/logs/debug-internal.log
+2023-04-11 15:52:17,656 INFO    MainThread:1010718 [wandb_init.py:init():546] calling init triggers
+2023-04-11 15:52:17,656 INFO    MainThread:1010718 [wandb_init.py:init():552] wandb.init called with sweep_config: {}
+config: {'only_eval': False, 'model': 'unetr', 'dataset': 'spine-generic_crop', 'dataset_json_name': 'dataset_binary', 'init_filters': 16, 'feature_size': 16, 'hidden_size': 768, 'mlp_dim': 3072, 'num_heads': 12, 'out_channel': 2, 'loss_func': 'dice', 'num_gpus': 1, 'num_workers': 4, 'precision': 32, 'max_epochs': 2500, 'batch_size': 2, 'optimizer': 'adamw', 'learning_rate': 0.0001, 'patience': 200, 'T_0': 100, 'enable_progress_bar': False, 'check_val_every_n_epochs': 30, 'model_name': 'unetr', 'save_path': '/home/GRAMES.POLYMTL.CA/lobouz/contrast_agnostic/models_unetr', 'continue_from_checkpoint': False, 'seed': 42, 'visualize_test_preds': False}
+2023-04-11 15:52:17,656 INFO    MainThread:1010718 [wandb_init.py:init():602] starting backend
+2023-04-11 15:52:17,656 INFO    MainThread:1010718 [wandb_init.py:init():606] setting up manager
+2023-04-11 15:52:17,665 INFO    MainThread:1010718 [backend.py:_multiprocessing_setup():106] multiprocessing start_methods=fork,spawn,forkserver, using: spawn
+2023-04-11 15:52:17,671 INFO    MainThread:1010718 [wandb_init.py:init():613] backend started and connected
+2023-04-11 15:52:17,684 INFO    MainThread:1010718 [wandb_init.py:init():701] updated telemetry
+2023-04-11 15:52:17,737 INFO    MainThread:1010718 [wandb_init.py:init():741] communicating run to backend with 60.0 second timeout
+2023-04-11 15:52:18,031 INFO    MainThread:1010718 [wandb_run.py:_on_init():2133] communicating current version
+2023-04-11 15:52:18,063 INFO    MainThread:1010718 [wandb_run.py:_on_init():2142] got version response upgrade_message: "wandb version 0.14.2 is available!  To upgrade, please run:\n $ pip install wandb --upgrade"
+
+2023-04-11 15:52:18,064 INFO    MainThread:1010718 [wandb_init.py:init():789] starting run threads in backend
+2023-04-11 15:52:20,164 WARNING MainThread:1010718 [wandb_init.py:init():1165] interrupted
+Traceback (most recent call last):
+  File "/home/GRAMES.POLYMTL.CA/lobouz/miniconda3/envs/monai-unetr/lib/python3.8/site-packages/wandb/sdk/wandb_init.py", line 1144, in init
+    run = wi.init()
+  File "/home/GRAMES.POLYMTL.CA/lobouz/miniconda3/envs/monai-unetr/lib/python3.8/site-packages/wandb/sdk/wandb_init.py", line 801, in init
+    run_start_result = run_start_handle.wait(timeout=30)
+  File "/home/GRAMES.POLYMTL.CA/lobouz/miniconda3/envs/monai-unetr/lib/python3.8/site-packages/wandb/sdk/lib/mailbox.py", line 283, in wait
+    found, abandoned = self._slot._get_and_clear(timeout=wait_timeout)
+  File "/home/GRAMES.POLYMTL.CA/lobouz/miniconda3/envs/monai-unetr/lib/python3.8/site-packages/wandb/sdk/lib/mailbox.py", line 130, in _get_and_clear
+    if self._wait(timeout=timeout):
+  File "/home/GRAMES.POLYMTL.CA/lobouz/miniconda3/envs/monai-unetr/lib/python3.8/site-packages/wandb/sdk/lib/mailbox.py", line 126, in _wait
+    return self._event.wait(timeout=timeout)
+  File "/home/GRAMES.POLYMTL.CA/lobouz/miniconda3/envs/monai-unetr/lib/python3.8/threading.py", line 558, in wait
+    signaled = self._cond.wait(timeout)
+  File "/home/GRAMES.POLYMTL.CA/lobouz/miniconda3/envs/monai-unetr/lib/python3.8/threading.py", line 306, in wait
+    gotit = waiter.acquire(True, timeout)
+KeyboardInterrupt
