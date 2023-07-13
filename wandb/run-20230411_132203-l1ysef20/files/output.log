@@ -1,9 +1,0 @@
-GPU available: True (cuda), used: True
-TPU available: False, using: 0 TPU cores
-IPU available: False, using: 0 IPUs
-HPU available: False, using: 0 HPUs
-<class 'monai.transforms.utility.array.AddChannel'>: Class `AddChannel` has been deprecated since version 0.8. please use MetaTensor data type and monai.transforms.EnsureChannelFirst instead.
-Loading dataset:   0%|                                                                                                         | 0/740 [00:05<?, ?it/s]
-Detected KeyboardInterrupt, attempting graceful shutdown...
-------- Training Done! -------
-------- Printing the Best Model Path! ------
