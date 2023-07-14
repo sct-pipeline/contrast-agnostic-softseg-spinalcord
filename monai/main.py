@@ -161,9 +161,9 @@ class Model(pl.LightningModule):
 
         inputs, labels = batch["image"], batch["label"]
 
-        # filter empty input patches
-        if not inputs.any():
-            print("Encountered empty input patch. Skipping...")
+        # filter empty label patches
+        if not labels.any():
+            print("Encountered empty label patch. Skipping...")
             return None
 
         output = self.forward(inputs)
@@ -427,9 +427,9 @@ def main(args):
                         args.init_filters * 16
                     ),
                     strides=(2, 2, 2, 2),
-                    num_res_units=2,
+                    num_res_units=4,
                 )
-        save_exp_id =f"{args.model}_nf={args.init_filters}_nrs=2_lr={args.learning_rate}"
+        save_exp_id =f"{args.model}_nf={args.init_filters}_nrs=4_lr={args.learning_rate}"
     elif args.model in ["unetr", "UNETR"]:
         # define image size to be fed to the model
         img_size = (96, 96, 96)
