@@ -84,6 +84,7 @@ def main(args):
 
     checkpoint = torch.load(chkp_path, map_location=torch.device('cpu'))["state_dict"]
     # NOTE: remove the 'net.' prefix from the keys because of how the model was initialized in lightning
+    # https://discuss.pytorch.org/t/missing-keys-unexpected-keys-in-state-dict-when-loading-self-trained-model/22379/14
     for key in list(checkpoint.keys()):
         if 'net.' in key:
             checkpoint[key.replace('net.', '')] = checkpoint[key]
