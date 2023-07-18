@@ -110,8 +110,8 @@ class Model(pl.LightningModule):
             val_files = val_files[:2]
             test_files = test_files[:6]
         
-        self.train_ds = CacheDataset(data=train_files, transform=transforms_train, cache_rate=0.25, num_workers=0)
-        self.val_ds = CacheDataset(data=val_files, transform=transforms_val, cache_rate=0.25, num_workers=0)
+        self.train_ds = CacheDataset(data=train_files, transform=transforms_train, cache_rate=0.25, num_workers=4)
+        self.val_ds = CacheDataset(data=val_files, transform=transforms_val, cache_rate=0.25, num_workers=4)
 
         # define test transforms
         transforms_test = test_transforms(lbl_key='label')
@@ -125,7 +125,7 @@ class Model(pl.LightningModule):
                     meta_keys=["pred_meta_dict", "label_meta_dict"],
                     nearest_interp=False, to_tensor=True),
             ])
-        self.test_ds = CacheDataset(data=test_files, transform=transforms_test, cache_rate=0.1, num_workers=0)
+        self.test_ds = CacheDataset(data=test_files, transform=transforms_test, cache_rate=0.1, num_workers=4)
 
 
     # --------------------------------
@@ -133,15 +133,15 @@ class Model(pl.LightningModule):
     # --------------------------------
     def train_dataloader(self):
         # NOTE: if num_samples=4 in RandCropByPosNegLabeld and batch_size=2, then 2 x 4 images are generated for network training
-        return DataLoader(self.train_ds, batch_size=self.args.batch_size, shuffle=True, num_workers=0, 
+        return DataLoader(self.train_ds, batch_size=self.args.batch_size, shuffle=True, num_workers=4, 
                             pin_memory=True,) # collate_fn=pad_list_data_collate)
         # list_data_collate is only useful when each input in the batch has different shape
 
     def val_dataloader(self):
-        return DataLoader(self.val_ds, batch_size=1, shuffle=False, num_workers=0, pin_memory=True)
+        return DataLoader(self.val_ds, batch_size=1, shuffle=False, num_workers=4, pin_memory=True)
     
     def test_dataloader(self):
-        return DataLoader(self.test_ds, batch_size=1, shuffle=False, num_workers=0, pin_memory=True)
+        return DataLoader(self.test_ds, batch_size=1, shuffle=False, num_workers=4, pin_memory=True)
 
     
     # --------------------------------
@@ -403,6 +403,9 @@ class Model(pl.LightningModule):
 # MAIN
 # --------------------------------
 def main(args):
+
+    torch.multiprocessing.set_sharing_strategy('file_system')
+
     # Setting the seed
     pl.seed_everything(args.seed, workers=True)
 
@@ -549,7 +552,6 @@ def main(args):
 
 
 if __name__ == "__main__":
-    # torch.multiprocessing.set_sharing_strategy('file_system')
 
     parser = argparse.ArgumentParser(description='Script for training custom models for SCI Lesion Segmentation.')
     # Arguments for model, data, and training and saving
@@ -573,7 +575,7 @@ if __name__ == "__main__":
 
     # optimizations
     parser.add_argument('-me', '--max_epochs', default=1000, type=int, help='Number of epochs for the training process')
-    parser.add_argument('-bs', '--batch_size', default=2, type=int, help='Batch size of the training and validation processes')
+    parser.add_argument('-bs', '--batch_size', default=4, type=int, help='Batch size of the training and validation processes')
     parser.add_argument('-opt', '--optimizer', 
                         choices=['adamw', 'AdamW', 'SGD', 'sgd'], 
                         default='adamw', type=str, help='Optimizer to use')
