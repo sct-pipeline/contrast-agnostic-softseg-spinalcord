@@ -20,7 +20,6 @@ from monai.networks.nets import UNet, DynUNet, BasicUNet, UNETR
 from monai.data import (DataLoader, Dataset, CacheDataset, load_decathlon_datalist, decollate_batch)
 from monai.transforms import (Compose, EnsureType, EnsureTyped, Invertd, SaveImaged, SaveImage)
 
-
 # create a "model"-agnostic class with PL to use different models
 class Model(pl.LightningModule):
     def __init__(self, args, data_root, fold_num, net, loss_function, optimizer_class, 
