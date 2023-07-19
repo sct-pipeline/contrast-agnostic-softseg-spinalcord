@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 
 from utils import precision_score, recall_score, dice_score, plot_slices, PolyLRScheduler
 from losses import SoftDiceLoss
-from transforms import train_transforms, val_transforms, test_transforms
+from transforms import train_transforms, val_transforms
 
 from monai.utils import set_determinism
 from monai.inferers import sliding_window_inference
@@ -49,8 +49,7 @@ class Model(pl.LightningModule):
         self.best_val_dice, self.best_val_epoch = 0, 0
 
         # define cropping and padding dimensions
-        # NOTE: taken from nnUNet_plans.json
-        self.voxel_cropping_size = (64, 128, 128)   # (80, 192, 160) 
+        self.voxel_cropping_size = (64, 128, 128)   # (80, 192, 160) taken from nnUNet_plans.json
         self.inference_roi_size = (64, 128, 128)   # (80, 192, 160)
 
         # define post-processing transforms for validation, nothing fancy just making sure that it's a tensor (default)
@@ -114,7 +113,7 @@ class Model(pl.LightningModule):
         self.val_ds = CacheDataset(data=val_files, transform=transforms_val, cache_rate=0.25, num_workers=4)
 
         # define test transforms
-        transforms_test = test_transforms(lbl_key='label')
+        transforms_test = val_transforms(lbl_key='label')
         
         # define post-processing transforms for testing; taken (with explanations) from 
         # https://github.com/Project-MONAI/tutorials/blob/main/3d_segmentation/torch/unet_inference_dict.py#L66
@@ -214,7 +213,8 @@ class Model(pl.LightningModule):
             # plot the training images
             fig = plot_slices(image=self.train_step_outputs[0]["train_image"],
                               gt=self.train_step_outputs[0]["train_gt"],
-                              pred=self.train_step_outputs[0]["train_pred"],)
+                              pred=self.train_step_outputs[0]["train_pred"],
+                              debug=args.debug)
             wandb.log({"training images": wandb.Image(fig)})
 
             # free up memory
@@ -429,7 +429,7 @@ def main(args):
                     strides=(2, 2, 2, 2),
                     num_res_units=4,
                 )
-        save_exp_id =f"{args.model}_nf={args.init_filters}_nrs=4_lr={args.learning_rate}"
+        save_exp_id =f"{args.model}_nf={args.init_filters}_nrs=4_lr={args.learning_rate}_bs={args.batch_size}"
     elif args.model in ["unetr", "UNETR"]:
         # define image size to be fed to the model
         img_size = (96, 96, 96)
@@ -493,7 +493,7 @@ def main(args):
         #     exp_logger = pl.loggers.CSVLogger(save_dir=args.save_path, name="my_exp_name")
         
         checkpoint_callback = pl.callbacks.ModelCheckpoint(
-            dirpath=save_path, filename=save_exp_id, monitor='val_loss', 
+            dirpath=save_path, filename='best_model', monitor='val_loss', 
             save_top_k=1, mode="min", save_last=False, save_weights_only=True)
         
         lr_monitor = pl.callbacks.LearningRateMonitor(logging_interval='epoch')
@@ -515,6 +515,9 @@ def main(args):
         # Train!
         trainer.fit(pl_model)        
         logger.info(f" Training Done!")
+
+        # Saving training script to wandb
+        wandb.save("main.py")
 
         # TODO: Come back to testing when hyperparamters have been fixed after cross-validation
         # Test!
