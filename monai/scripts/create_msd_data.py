@@ -18,18 +18,19 @@ root = "/home/GRAMES.POLYMTL.CA/u114716/datasets/spine-generic_uncropped"
 parser = argparse.ArgumentParser(description='Code for creating k-fold splits of the spine-generic dataset.')
 
 parser.add_argument('--seed', default=42, type=int, help="Seed for reproducibility")
-parser.add_argument('-ncvf', '--num-cv-folds', default=5, type=int, 
+parser.add_argument('-ncvf', '--num-cv-folds', default=0, type=int, 
             help="[1-k] To create a k-fold dataset for cross validation, 0 for single file with all subjects")
-parser.add_argument('-pd', '--path-data', default=root, type=str, help='Path to the data set directory')
+parser.add_argument('-pd', '--path-data-SG', default=root, type=str, help='Path to the data set directory')
 parser.add_argument('-pj', '--path-joblib', help='Path to joblib file from ivadomed containing the dataset splits.',
                     default=None, type=str)
 parser.add_argument('-po', '--path-out', type=str, help='Path to the output directory where dataset json is saved')
 parser.add_argument("--datasets-paths", required=True, nargs="*", help="List of paths to all the datasets to aggregate in the JSON.")
-
+parser.add_argument('-dn', '--dataset-name-v', default="aggregated_dataset_v0", type=str, help='Name of the dataset built with version.')
+parser.add_argument('-dd', '--dataset-description', default="Aggregated dataset", type=str, help='Description of the dataset built (ideally all dataset names).')
 args = parser.parse_args()
 
 
-root = args.path_data
+root = args.path_data_SG
 seed = args.seed
 num_cv_folds = args.num_cv_folds    # for 100 subjects, performs a 60-20-20 split with num_cv_folds
 
@@ -173,13 +174,20 @@ else:
         train_subjects, val_subjects = train_test_split(train_subjects, test_size=val_ratio / (train_ratio + val_ratio),
                                                         random_state=args.seed, )
 
-    logger.info(f"Number of training subjects: {len(train_subjects)}")
-    logger.info(f"Number of validation subjects: {len(val_subjects)}")
-    logger.info(f"Number of testing subjects: {len(test_subjects)}")
+    logger.info(f"(Prior aggregation) Number of training subjects: {len(train_subjects)}")
+    logger.info(f"(Prior aggregation) Number of validation subjects: {len(val_subjects)}")
+    logger.info(f"(Prior aggregation) Number of testing subjects: {len(test_subjects)}")
+
+    # Add train and val data with 80:20 split from all other datasets
+
+
+    logger.info(f"(Post aggregation) Number of training subjects: {len(train_subjects)}")
+    logger.info(f"(Post aggregation) Number of validation subjects: {len(val_subjects)}")
+    logger.info(f"(Post aggregation) Number of testing subjects: {len(test_subjects)}")
 
     # keys to be defined in the dataset_0.json
     params = {}
-    params["description"] = "aggregated_"
+    params["description"] = args.dataset_description
     params["labels"] = {
         "0": "background",
         "1": "soft-sc-seg"
@@ -188,12 +196,12 @@ else:
     params["modality"] = {
         "0": "MRI"
         }
-    params["name"] = "spine-generic"
+    params["name"] = agrs.dataset_name_v
     params["numTest"] = len(test_subjects)
     params["numTraining"] = len(train_subjects)
     params["numValidation"] = len(val_subjects)
     params["seed"] = args.seed
-    params["reference"] = "University of Zurich"
+    params["reference"] = "TBD"
     params["tensorImageSize"] = "3D"
 
     train_subjects_dict = {"train": train_subjects}
