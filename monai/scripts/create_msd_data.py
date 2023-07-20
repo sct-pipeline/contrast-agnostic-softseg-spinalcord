@@ -222,9 +222,9 @@ else:
     # define the variables for iteration
     contrasts_list = ['T1w', 'T2w', 'T2star', 'acq-axial_T2w', 'acq-sag_T2w', 'flip-1_mt-on_MTS', 'flip-2_mt-off_MTS', 'dwi', 'UNIT1','acq-cspineAxial_T2w', 'task-motor_bold',
                       'task-thermal_bold', 'task-rest_bold', 'task-BilatMotorThermal_bold', 'task-tactile_bold']
-    label_type_list = ['label-SC_seg', 'seg-manual', 'label-SC_mask-manual']
+    label_type_list = ['label-SC_seg', 'seg-manual', 'label-SC_mask-manual', 'label-SC_mask1']
     label_names = ['labels','manual_labels']
-    anat_types = ['anat', 'func']
+    anat_types = ['anat', 'func'] 
     sessions = ['ses-M0', 'ses-01']
     for subjects_dict in tqdm(all_subjects_list, desc="Iterating through train/val/test splits"):
 
@@ -278,7 +278,7 @@ else:
                     temp_list.append(temp_data_dwi)
 
                 # Loop through all other datasets
-                # This loop currently works with (confirmed): Basel-MP2RAGE, inspired, sci-colorado, canproco, fmri_sc_seg, dcm-zurich
+                # This loop currently works with (confirmed): Basel-MP2RAGE, inspired, sci-colorado, canproco, fmri_sc_seg, dcm-zurich, sci-zurich, gmseg-challenge-2016, 
                 for root_others in args.datasets_paths:
                     # loop over contrasts
                     for contrast in contrasts_list:
