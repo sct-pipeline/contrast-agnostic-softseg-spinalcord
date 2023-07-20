@@ -8,6 +8,11 @@ from utils import FoldGenerator
 from loguru import logger
 from sklearn.model_selection import train_test_split
 
+# For now this script will always use the joblib test set from spine generic for comparison. All other datasets are directly sent to the training set.
+
+# TODO: Add loop for multiple datasets only to add in training
+# TODO: Edit loop to custom train and test set from the datasets
+
 root = "/home/GRAMES.POLYMTL.CA/u114716/datasets/spine-generic_uncropped"
 
 parser = argparse.ArgumentParser(description='Code for creating k-fold splits of the spine-generic dataset.')
@@ -19,7 +24,7 @@ parser.add_argument('-pd', '--path-data', default=root, type=str, help='Path to 
 parser.add_argument('-pj', '--path-joblib', help='Path to joblib file from ivadomed containing the dataset splits.',
                     default=None, type=str)
 parser.add_argument('-po', '--path-out', type=str, help='Path to the output directory where dataset json is saved')
-parser.add_argument("--datasets_paths", required=True, nargs="*", help="Paths.")
+parser.add_argument("--datasets-paths", required=True, nargs="*", help="List of paths to all the datasets to aggregate in the JSON.")
 
 args = parser.parse_args()
 
