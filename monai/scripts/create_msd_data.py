@@ -218,9 +218,10 @@ else:
     test_subjects_dict =  {"test": test_subjects}
     all_subjects_list = [train_subjects_dict, val_subjects_dict, test_subjects_dict]
 
-    # define the contrasts
-    contrasts_list = ['T1w', 'T2w', 'T2star', 'flip-1_mt-on_MTS', 'flip-2_mt-off_MTS', 'dwi', 'UNIT1']
+    # define the variables for iteration
+    contrasts_list = ['T1w', 'T2w', 'T2star', 'flip-1_mt-on_MTS', 'flip-2_mt-off_MTS', 'dwi', 'UNIT1','acq-cspineAxial_T2w']
     label_type_list = ['label-SC_seg']
+    label_names = ['labels','manual_labels']
     for subjects_dict in tqdm(all_subjects_list, desc="Iterating through train/val/test splits"):
 
         for name, subs_list in subjects_dict.items():
@@ -273,15 +274,18 @@ else:
                     temp_list.append(temp_data_dwi)
 
                 # Loop through all other datasets
+                # This loop currently works with (confirmed): Basel-MP2RAGE, inspired, 
                 for root_others in args.datasets_paths:
                     # loop over contrasts
                     for contrast in contrasts_list:
                         # Loop over different label types for SC seg
                         for label_type in label_type_list:
-                            temp_data_UNIT1["image"] = os.path.join(root_others, subject, 'anat', f"{subject}_{contrast}.nii.gz")
-                            temp_data_UNIT1["label"] = os.path.join(root_others, "derivatives", "labels", subject, 'anat', f"{subject}_{contrast}_{label_type}.nii.gz")
-                            if os.path.exists(temp_data_UNIT1["label"]) and os.path.exists(temp_data_UNIT1["image"]):
-                                temp_list.append(temp_data_UNIT1)
+                            # Loop over label names
+                            for label_name in label_names:
+                                temp_data_UNIT1["image"] = os.path.join(root_others, subject, 'anat', f"{subject}_{contrast}.nii.gz")
+                                temp_data_UNIT1["label"] = os.path.join(root_others, "derivatives", label_name, subject, 'anat', f"{subject}_{contrast}_{label_type}.nii.gz")
+                                if os.path.exists(temp_data_UNIT1["label"]) and os.path.exists(temp_data_UNIT1["image"]):
+                                    temp_list.append(temp_data_UNIT1)
             
             params[name] = temp_list
             logger.info(f"Number of images in {name} set: {len(temp_list)}")
