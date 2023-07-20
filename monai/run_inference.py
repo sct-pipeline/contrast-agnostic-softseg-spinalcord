@@ -12,10 +12,10 @@ from monai.data import (DataLoader, CacheDataset, load_decathlon_datalist, decol
 from monai.transforms import (Compose, EnsureTyped, Invertd, SaveImage)
 from monai.networks.nets import UNet
 
-from transforms import test_transforms
+from transforms import val_transforms
 from utils import precision_score, recall_score, dice_score
 
-DEBUG = True
+DEBUG = False
 INIT_FILTERS=8
 INFERENCE_ROI_SIZE = (64, 128, 128)   # (80, 192, 160)
 DEVICE = "cpu"
@@ -27,9 +27,11 @@ def get_parser():
 
     parser.add_argument("--path-json", type=str, required=True, 
                         help="Path to the json file containing the test dataset in MSD format")
-    parser.add_argument("--chkp-path", type=str, required=True, help="Path to the checkpoint file")
+    parser.add_argument("--chkp-path", type=str, required=True, help="Path to the checkpoint folder")
     parser.add_argument("--path-out", type=str, required=True, 
                         help="Path to the output folder where to store the predictions and associated metrics")
+    parser.add_argument("-dname", "--dataset-name", type=str, default="spine-generic",
+                        help="Name of the dataset to run inference on")
     
     return parser
 
@@ -37,19 +39,19 @@ def get_parser():
 # --------------------------------
 # DATA
 # --------------------------------
-def prepare_data(root):
+def prepare_data(root, dataset_name="spine-generic"):
     # set deterministic training for reproducibility
     # set_determinism(seed=self.args.seed)
             
     # load the dataset
-    dataset = os.path.join(root, f"dataset.json")
+    dataset = os.path.join(root, f"{dataset_name}_dataset.json")
     test_files = load_decathlon_datalist(dataset, True, "test")
 
     if DEBUG: # args.debug:
         test_files = test_files[:3]
     
     # define test transforms
-    transforms_test = test_transforms(lbl_key='label')
+    transforms_test = val_transforms(lbl_key='label')
     
     # define post-processing transforms for testing; taken (with explanations) from 
     # https://github.com/Project-MONAI/tutorials/blob/main/3d_segmentation/torch/unet_inference_dict.py#L66
@@ -72,13 +74,14 @@ def main(args):
 
     # define root path for finding datalists
     dataset_root = args.path_json
+    dataset_name = args.dataset_name
 
     # TODO: change the name of the checkpoint file to best_model.ckpt
-    chkp_path = os.path.join(args.chkp_path, "unet_nf=8_nrs=4_lr=0.001_20230713-1206.ckpt")
+    chkp_path = os.path.join(args.chkp_path, "best_model.ckpt")
 
     results_path = args.path_out
-    folder_name = chkp_path.split("/")[-2]
-    results_path = os.path.join(results_path, folder_name)
+    model_name = chkp_path.split("/")[-2]
+    results_path = os.path.join(results_path, dataset_name, model_name)
     if not os.path.exists(results_path):
         os.makedirs(results_path, exist_ok=True)
 
@@ -108,7 +111,7 @@ def main(args):
     net.to(DEVICE)
 
     # define the dataset and dataloader
-    test_ds, test_post_pred = prepare_data(dataset_root)
+    test_ds, test_post_pred = prepare_data(dataset_root, dataset_name)
     test_loader = DataLoader(test_ds, batch_size=1, shuffle=False, num_workers=4, pin_memory=True)
 
     # define list to collect the test metrics
