@@ -13,18 +13,18 @@ from sklearn.model_selection import train_test_split
 # TODO: Add loop for multiple datasets only to add in training
 # TODO: Edit loop to custom train and test set from the datasets
 
-root = "/home/GRAMES.POLYMTL.CA/u114716/datasets/spine-generic_uncropped"
+root = "/home/GRAMES.POLYMTL.CA/lobouz/duke/projects/ivadomed/contrast-agnostic-seg/data_processed_sg_2023-03-10_NO_CROP/data_processed_clean"
 
 parser = argparse.ArgumentParser(description='Code for creating k-fold splits of the spine-generic dataset.')
 
-parser.add_argument('--seed', default=42, type=int, help="Seed for reproducibility")
+parser.add_argument('--seed', default=15, type=int, help="Seed for reproducibility")
 parser.add_argument('-ncvf', '--num-cv-folds', default=0, type=int, 
             help="[1-k] To create a k-fold dataset for cross validation, 0 for single file with all subjects")
 parser.add_argument('-pd', '--path-data-SG', default=root, type=str, help='Path to the data set directory')
 parser.add_argument('-pj', '--path-joblib', help='Path to joblib file from ivadomed containing the dataset splits.',
                     default=None, type=str)
-parser.add_argument('-po', '--path-out', type=str, help='Path to the output directory where dataset json is saved')
-parser.add_argument("--datasets-paths", required=True, nargs="*", help="List of paths to all the datasets to aggregate in the JSON.")
+parser.add_argument('-po', '--path-out', default="/home/GRAMES.POLYMTL.CA/lobouz/data_tmp", type=str, help='Path to the output directory where dataset json is saved')
+parser.add_argument('-dp', "--datasets-paths", nargs="*", help="List of paths to all the datasets to aggregate in the JSON.")
 parser.add_argument('-dn', '--dataset-name-v', default="aggregated_dataset_v0", type=str, help='Name of the dataset built with version.')
 parser.add_argument('-dd', '--dataset-description', default="Aggregated dataset", type=str, help='Description of the dataset built (ideally all dataset names).')
 args = parser.parse_args()
@@ -179,7 +179,16 @@ else:
     logger.info(f"(Prior aggregation) Number of testing subjects: {len(test_subjects)}")
 
     # Add train and val data with 80:20 split from all other datasets
+    for idx, dataset_to_add in enumerate(args.datasets_paths):
+        # Get the subjects
+        subjects_to_add = [subject for subject in os.listdir(dataset_to_add) if subject.startswith('sub-')]
+        logger.info(f"Total number of subjects in the dataset {idx} directory: {len(subjects_to_add)}")
 
+        # Aggregate in val and train with 80:20 split
+        train_ratio, val_ratio = 0.8, 0.2
+        train_subjects_tmp, val_subjects_tmp = train_test_split(subjects_to_add, test_size=val_ratio / (train_ratio + val_ratio), random_state=args.seed)
+        train_subjects.extend(train_subjects_tmp)
+        val_subjects.extend(val_subjects_tmp)
 
     logger.info(f"(Post aggregation) Number of training subjects: {len(train_subjects)}")
     logger.info(f"(Post aggregation) Number of validation subjects: {len(val_subjects)}")
@@ -196,7 +205,7 @@ else:
     params["modality"] = {
         "0": "MRI"
         }
-    params["name"] = agrs.dataset_name_v
+    params["name"] = args.dataset_name_v
     params["numTest"] = len(test_subjects)
     params["numTraining"] = len(train_subjects)
     params["numValidation"] = len(val_subjects)
@@ -210,8 +219,8 @@ else:
     all_subjects_list = [train_subjects_dict, val_subjects_dict, test_subjects_dict]
 
     # define the contrasts
-    contrasts_list = ['T1w', 'T2w', 'T2star', 'flip-1_mt-on_MTS', 'flip-2_mt-off_MTS', 'dwi']
-
+    contrasts_list = ['T1w', 'T2w', 'T2star', 'flip-1_mt-on_MTS', 'flip-2_mt-off_MTS', 'dwi', 'UNIT1']
+    label_type_list = ['label-SC_seg']
     for subjects_dict in tqdm(all_subjects_list, desc="Iterating through train/val/test splits"):
 
         for name, subs_list in subjects_dict.items():
@@ -225,6 +234,7 @@ else:
                 temp_data_mton_mts = {}
                 temp_data_mtoff_mts = {}
                 temp_data_dwi = {}
+                temp_data_UNIT1 = {}
 
                 # t1w
                 temp_data_t1w["image"] = os.path.join(root, subject, 'anat', f"{subject}_T1w.nii.gz")
@@ -261,6 +271,17 @@ else:
                 temp_data_dwi["label"] = os.path.join(root, "derivatives", "labels_softseg", subject, 'dwi', f"{subject}_rec-average_dwi_softseg.nii.gz")
                 if os.path.exists(temp_data_dwi["label"]) and os.path.exists(temp_data_dwi["image"]):
                     temp_list.append(temp_data_dwi)
+
+                # Loop through all other datasets
+                for root_others in args.datasets_paths:
+                    # loop over contrasts
+                    for contrast in contrasts_list:
+                        # Loop over different label types for SC seg
+                        for label_type in label_type_list:
+                            temp_data_UNIT1["image"] = os.path.join(root_others, subject, 'anat', f"{subject}_{contrast}.nii.gz")
+                            temp_data_UNIT1["label"] = os.path.join(root_others, "derivatives", "labels", subject, 'anat', f"{subject}_{contrast}_{label_type}.nii.gz")
+                            if os.path.exists(temp_data_UNIT1["label"]) and os.path.exists(temp_data_UNIT1["image"]):
+                                temp_list.append(temp_data_UNIT1)
             
             params[name] = temp_list
             logger.info(f"Number of images in {name} set: {len(temp_list)}")
