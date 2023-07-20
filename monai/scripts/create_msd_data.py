@@ -220,11 +220,12 @@ else:
 
 
     # define the variables for iteration
-    contrasts_list = ['T1w', 'T2w', 'T2star', 'flip-1_mt-on_MTS', 'flip-2_mt-off_MTS', 'dwi', 'UNIT1','acq-cspineAxial_T2w', 'task-motor_bold',
+    contrasts_list = ['T1w', 'T2w', 'T2star', 'acq-axial_T2w', 'acq-sag_T2w', 'flip-1_mt-on_MTS', 'flip-2_mt-off_MTS', 'dwi', 'UNIT1','acq-cspineAxial_T2w', 'task-motor_bold',
                       'task-thermal_bold', 'task-rest_bold', 'task-BilatMotorThermal_bold', 'task-tactile_bold']
-    label_type_list = ['label-SC_seg', 'seg-manual']
+    label_type_list = ['label-SC_seg', 'seg-manual', 'label-SC_mask-manual']
     label_names = ['labels','manual_labels']
     anat_types = ['anat', 'func']
+    sessions = ['ses-M0', 'ses-01']
     for subjects_dict in tqdm(all_subjects_list, desc="Iterating through train/val/test splits"):
 
         for name, subs_list in subjects_dict.items():
@@ -277,7 +278,7 @@ else:
                     temp_list.append(temp_data_dwi)
 
                 # Loop through all other datasets
-                # This loop currently works with (confirmed): Basel-MP2RAGE, inspired, sci-colorado, canproco
+                # This loop currently works with (confirmed): Basel-MP2RAGE, inspired, sci-colorado, canproco, fmri_sc_seg, dcm-zurich
                 for root_others in args.datasets_paths:
                     # loop over contrasts
                     for contrast in contrasts_list:
@@ -293,10 +294,11 @@ else:
                                         temp_list.append(temp_data_UNIT1)
 
                                     # Manual addition for session
-                                    temp_data_UNIT1["image"] = os.path.join(root_others, subject, 'ses-M0', anat_type, f"{subject}_ses-M0_{contrast}.nii.gz")
-                                    temp_data_UNIT1["label"] = os.path.join(root_others, "derivatives", label_name, subject, 'ses-M0', anat_type, f"{subject}_ses-M0_{contrast}_{label_type}.nii.gz")
-                                    if os.path.exists(temp_data_UNIT1["label"]) and os.path.exists(temp_data_UNIT1["image"]):
-                                        temp_list.append(temp_data_UNIT1)
+                                    for session in sessions:
+                                        temp_data_UNIT1["image"] = os.path.join(root_others, subject, session, anat_type, f"{subject}_{session}_{contrast}.nii.gz")
+                                        temp_data_UNIT1["label"] = os.path.join(root_others, "derivatives", label_name, subject, session, anat_type, f"{subject}_{session}_{contrast}_{label_type}.nii.gz")
+                                        if os.path.exists(temp_data_UNIT1["label"]) and os.path.exists(temp_data_UNIT1["image"]):
+                                            temp_list.append(temp_data_UNIT1)
             
             params[name] = temp_list
             logger.info(f"Number of images in {name} set: {len(temp_list)}")
