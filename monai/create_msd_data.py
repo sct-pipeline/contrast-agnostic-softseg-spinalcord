@@ -8,8 +8,6 @@ from utils import FoldGenerator
 from loguru import logger
 from sklearn.model_selection import train_test_split
 
-# TODO: split the data using ivadomed joblib file
-
 root = "/home/GRAMES.POLYMTL.CA/u114716/datasets/spine-generic_uncropped"
 
 parser = argparse.ArgumentParser(description='Code for creating k-fold splits of the spine-generic dataset.')
