@@ -11,13 +11,13 @@ import torch.nn.functional as F
 import matplotlib.pyplot as plt
 
 from utils import precision_score, recall_score, dice_score, plot_slices, PolyLRScheduler
-from losses import SoftDiceLoss
+from losses import SoftDiceLoss, DiceCrossEntropyLoss
 from transforms import train_transforms, val_transforms
 
 from monai.utils import set_determinism
 from monai.inferers import sliding_window_inference
-from monai.networks.nets import UNet, DynUNet, BasicUNet, UNETR
-from monai.data import (DataLoader, Dataset, CacheDataset, load_decathlon_datalist, decollate_batch)
+from monai.networks.nets import UNet, BasicUNet, UNETR, AttentionUnet
+    from monai.data import (DataLoader, Dataset, CacheDataset, load_decathlon_datalist, decollate_batch)
 from monai.transforms import (Compose, EnsureType, EnsureTyped, Invertd, SaveImaged, SaveImage)
 
 # create a "model"-agnostic class with PL to use different models
@@ -71,15 +71,15 @@ class Model(pl.LightningModule):
         # x, context_features = self.encoder(x)
         # preds = self.decoder(x, context_features)
         
-        out = self.net(x)
-        # NOTE: MONAI's models only output the logits, not the output after the final activation function
-        # https://docs.monai.io/en/0.9.0/_modules/monai/networks/nets/unetr.html#UNETR.forward refers to the 
-        # UnetOutBlock (https://docs.monai.io/en/0.9.0/_modules/monai/networks/blocks/dynunet_block.html#UnetOutBlock) 
-        # as the final block applied to the input, which is just a convolutional layer with no activation function
-        # Hence, we are used Normalized ReLU to normalize the logits to the final output
-        normalized_out = F.relu(out) / F.relu(out).max() if bool(F.relu(out).max()) else F.relu(out)
+        out = self.net(x)  
+        # # NOTE: MONAI's models only output the logits, not the output after the final activation function
+        # # https://docs.monai.io/en/0.9.0/_modules/monai/networks/nets/unetr.html#UNETR.forward refers to the 
+        # # UnetOutBlock (https://docs.monai.io/en/0.9.0/_modules/monai/networks/blocks/dynunet_block.html#UnetOutBlock) 
+        # # as the final block applied to the input, which is just a convolutional layer with no activation function
+        # # Hence, we are used Normalized ReLU to normalize the logits to the final output
+        # normalized_out = F.relu(out) / F.relu(out).max() if bool(F.relu(out).max()) else F.relu(out)
 
-        return normalized_out
+        return out  # returns logits
 
 
     # --------------------------------
@@ -146,7 +146,10 @@ class Model(pl.LightningModule):
     # OPTIMIZATION
     # --------------------------------
     def configure_optimizers(self):
-        optimizer = self.optimizer_class(self.parameters(), lr=self.lr, weight_decay=1e-5)
+        if self.args.optimizer == "sgd":
+            optimizer = self.optimizer_class(self.parameters(), lr=self.lr, momentum=0.99, weight_decay=1e-5, nesterov=True)
+        else:
+            optimizer = self.optimizer_class(self.parameters(), lr=self.lr, weight_decay=1e-5)
         # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.5)
         scheduler = PolyLRScheduler(optimizer, self.lr, max_steps=self.args.max_epochs)
         return [optimizer], [scheduler]
@@ -164,7 +167,13 @@ class Model(pl.LightningModule):
             print("Encountered empty input patch. Skipping...")
             return None
 
-        output = self.forward(inputs)
+        output = self.forward(inputs)   # logits
+
+        # calculate training loss
+        loss = self.loss_function(output, labels)
+
+        # get probabilities from logits
+        output = F.relu(output) / F.relu(output).max() if bool(F.relu(output).max()) else F.relu(output)
 
         # calculate training loss
         loss = self.loss_function(output, labels)
@@ -236,6 +245,9 @@ class Model(pl.LightningModule):
         # calculate validation loss
         loss = self.loss_function(outputs, labels)
         
+        # get probabilities from logits
+        outputs = F.relu(outputs) / F.relu(outputs).max() if bool(F.relu(outputs).max()) else F.relu(outputs)
+
         # post-process for calculating the evaluation metric
         post_outputs = [self.val_post_pred(i) for i in decollate_batch(outputs)]
         post_labels = [self.val_post_label(i) for i in decollate_batch(labels)]
@@ -317,6 +329,9 @@ class Model(pl.LightningModule):
                                                  sw_batch_size=4, predictor=self.forward, overlap=0.5)
         # print(f"batch['pred'].shape: {batch['pred'].shape}")
 
+        # normalize the logits
+        batch["pred"] = F.relu(batch["pred"]) / F.relu(batch["pred"]).max() if bool(F.relu(batch["pred"]).max()) else F.relu(batch["pred"])
+        
         # # upon fsleyes visualization, observed that very small values need to be set to zero, but NOT fully binarizing the pred
         # batch["pred"][batch["pred"] < 0.099] = 0.0
 
@@ -409,7 +424,7 @@ def main(args):
     pl.seed_everything(args.seed, workers=True)
 
     # define root path for finding datalists
-    dataset_root = "/home/GRAMES.POLYMTL.CA/lobouz/brainhack_data/nnUNet_data/nnUNet_raw/Dataset1_sg_basel_sci_canpr_fmri_insp_zur_agg"
+    dataset_root = "/home/GRAMES.POLYMTL.CA/lobouz/data_tmp/"
 
     # define optimizer
     if args.optimizer in ["adamw", "AdamW", "Adamw"]:
@@ -431,7 +446,7 @@ def main(args):
                     strides=(2, 2, 2, 2),
                     num_res_units=2,
                 )
-        save_exp_id =f"{args.model}_nf={args.init_filters}_nrs=4_lr={args.learning_rate}_bs={args.batch_size}"
+        save_exp_id =f"{args.model}_nf={args.init_filters}_nrs=4_opt={args.optimizer}_lr={args.learning_rate}_bs={args.batch_size}"
     elif args.model in ["unetr", "UNETR"]:
         # define image size to be fed to the model
         img_size = (96, 96, 96)
@@ -451,7 +466,20 @@ def main(args):
                 )
         save_exp_id = f"{args.model}_lr={args.learning_rate}" \
                         f"_fs={args.feature_size}_hs={args.hidden_size}_mlpd={args.mlp_dim}_nh={args.num_heads}"
-
+    elif args.model == "attentionunet":
+        net = AttentionUnet(spatial_dims=3,
+                            in_channels=1, out_channels=1,
+                            channels=(
+                                    args.init_filters, 
+                                    args.init_filters * 2, 
+                                    args.init_filters * 4, 
+                                    args.init_filters * 8, 
+                                    args.init_filters * 16
+                                ),
+                            strides=(2, 2, 2, 2),
+                            # dropout=0.2,
+                        )
+        save_exp_id = f"attn-unet_nf={args.init_filters}_opt={args.optimizer}_lr={args.learning_rate}_bs={args.batch_size}"
     # define loss function
     loss_func = SoftDiceLoss(p=1, smooth=1.0)
 
@@ -558,7 +586,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Script for training custom models for SCI Lesion Segmentation.')
     # Arguments for model, data, and training and saving
     parser.add_argument('-m', '--model', 
-                        choices=['unet', 'UNet', 'unetr', 'UNETR', 'segresnet', 'SegResNet'], 
+                        choices=['unet', 'UNet', 'unetr', 'UNETR', 'attentionunet'], 
                         default='unet', type=str, help='Model type to be used')
     # dataset
     parser.add_argument('-nspv', '--num_samples_per_volume', default=4, type=int, help="Number of samples to crop per volume")    
@@ -594,7 +622,7 @@ if __name__ == "__main__":
                         type=str, help='Path to the saved models directory')
     parser.add_argument('-c', '--continue_from_checkpoint', default=False, action='store_true', 
                             help='Load model from checkpoint and continue training')
-    parser.add_argument('-se', '--seed', default=42, type=int, help='Set seeds for reproducibility')
+    parser.add_argument('-se', '--seed', default=15, type=int, help='Set seeds for reproducibility')
     parser.add_argument('-debug', default=False, action='store_true', help='if true, results are not logged to wandb')
     parser.add_argument('-stp', '--save_test_preds', default=False, action='store_true',
                             help='if true, test predictions are saved in `save_path`')
