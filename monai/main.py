@@ -11,15 +11,17 @@ import torch.nn.functional as F
 import matplotlib.pyplot as plt
 
 from utils import precision_score, recall_score, dice_score, plot_slices, PolyLRScheduler
-from losses import SoftDiceLoss
+from losses import SoftDiceLoss, DiceCrossEntropyLoss
 from transforms import train_transforms, val_transforms
 
 from monai.utils import set_determinism
 from monai.inferers import sliding_window_inference
-from monai.networks.nets import UNet, DynUNet, BasicUNet, UNETR
+from monai.networks.nets import UNet, BasicUNet, UNETR, AttentionUnet
 from monai.data import (DataLoader, Dataset, CacheDataset, load_decathlon_datalist, decollate_batch)
 from monai.transforms import (Compose, EnsureType, EnsureTyped, Invertd, SaveImaged, SaveImage)
 
+# TODO: change back to adam, bs=4 and start with lr=1e-3 this time, nrs=2
+# TODO: try one model with compound loss function
 
 # create a "model"-agnostic class with PL to use different models
 class Model(pl.LightningModule):
@@ -147,7 +149,10 @@ class Model(pl.LightningModule):
     # OPTIMIZATION
     # --------------------------------
     def configure_optimizers(self):
-        optimizer = self.optimizer_class(self.parameters(), lr=self.lr, weight_decay=1e-5)
+        if self.args.optimizer == "sgd":
+            optimizer = self.optimizer_class(self.parameters(), lr=self.lr, momentum=0.99, weight_decay=1e-5, nesterov=True)
+        else:
+            optimizer = self.optimizer_class(self.parameters(), lr=self.lr, weight_decay=1e-5)
         # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.5)
         scheduler = PolyLRScheduler(optimizer, self.lr, max_steps=self.args.max_epochs)
         return [optimizer], [scheduler]
@@ -438,7 +443,7 @@ def main(args):
                     strides=(2, 2, 2, 2),
                     num_res_units=4,
                 )
-        save_exp_id =f"{args.model}_nf={args.init_filters}_nrs=4_lr={args.learning_rate}_bs={args.batch_size}"
+        save_exp_id =f"{args.model}_nf={args.init_filters}_nrs=4_opt={args.optimizer}_lr={args.learning_rate}_bs={args.batch_size}"
     elif args.model in ["unetr", "UNETR"]:
         # define image size to be fed to the model
         img_size = (96, 96, 96)
@@ -458,6 +463,21 @@ def main(args):
                 )
         save_exp_id = f"{args.model}_lr={args.learning_rate}" \
                         f"_fs={args.feature_size}_hs={args.hidden_size}_mlpd={args.mlp_dim}_nh={args.num_heads}"
+
+    elif args.model == "attentionunet":
+        net = AttentionUnet(spatial_dims=3,
+                            in_channels=1, out_channels=1,
+                            channels=(
+                                    args.init_filters, 
+                                    args.init_filters * 2, 
+                                    args.init_filters * 4, 
+                                    args.init_filters * 8, 
+                                    args.init_filters * 16
+                                ),
+                            strides=(2, 2, 2, 2),
+                            # dropout=0.2,
+                        )
+        save_exp_id = f"attn-unet_nf={args.init_filters}_opt={args.optimizer}_lr={args.learning_rate}_bs={args.batch_size}"
 
     # define loss function
     loss_func = SoftDiceLoss(p=1, smooth=1.0)
@@ -565,7 +585,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Script for training custom models for SCI Lesion Segmentation.')
     # Arguments for model, data, and training and saving
     parser.add_argument('-m', '--model', 
-                        choices=['unet', 'UNet', 'unetr', 'UNETR', 'segresnet', 'SegResNet'], 
+                        choices=['unet', 'UNet', 'unetr', 'UNETR', 'attentionunet'], 
                         default='unet', type=str, help='Model type to be used')
     # dataset
     parser.add_argument('-nspv', '--num_samples_per_volume', default=4, type=int, help="Number of samples to crop per volume")    
