@@ -72,15 +72,15 @@ class Model(pl.LightningModule):
         # x, context_features = self.encoder(x)
         # preds = self.decoder(x, context_features)
         
-        out = self.net(x)
-        # NOTE: MONAI's models only output the logits, not the output after the final activation function
-        # https://docs.monai.io/en/0.9.0/_modules/monai/networks/nets/unetr.html#UNETR.forward refers to the 
-        # UnetOutBlock (https://docs.monai.io/en/0.9.0/_modules/monai/networks/blocks/dynunet_block.html#UnetOutBlock) 
-        # as the final block applied to the input, which is just a convolutional layer with no activation function
-        # Hence, we are used Normalized ReLU to normalize the logits to the final output
-        normalized_out = F.relu(out) / F.relu(out).max() if bool(F.relu(out).max()) else F.relu(out)
+        out = self.net(x)  
+        # # NOTE: MONAI's models only output the logits, not the output after the final activation function
+        # # https://docs.monai.io/en/0.9.0/_modules/monai/networks/nets/unetr.html#UNETR.forward refers to the 
+        # # UnetOutBlock (https://docs.monai.io/en/0.9.0/_modules/monai/networks/blocks/dynunet_block.html#UnetOutBlock) 
+        # # as the final block applied to the input, which is just a convolutional layer with no activation function
+        # # Hence, we are used Normalized ReLU to normalize the logits to the final output
+        # normalized_out = F.relu(out) / F.relu(out).max() if bool(F.relu(out).max()) else F.relu(out)
 
-        return normalized_out
+        return out  # returns logits
 
 
     # --------------------------------
@@ -165,10 +165,13 @@ class Model(pl.LightningModule):
             print("Encountered empty label patch. Skipping...")
             return None
 
-        output = self.forward(inputs)
+        output = self.forward(inputs)   # logits
 
         # calculate training loss
         loss = self.loss_function(output, labels)
+
+        # get probabilities from logits
+        output = F.relu(output) / F.relu(output).max() if bool(F.relu(output).max()) else F.relu(output)
 
         # calculate train dice
         # NOTE: this is done on patches (and not entire 3D volume) because SlidingWindowInference is not used here
@@ -236,6 +239,9 @@ class Model(pl.LightningModule):
         
         # calculate validation loss
         loss = self.loss_function(outputs, labels)
+
+        # get probabilities from logits
+        outputs = F.relu(outputs) / F.relu(outputs).max() if bool(F.relu(outputs).max()) else F.relu(outputs)
         
         # post-process for calculating the evaluation metric
         post_outputs = [self.val_post_pred(i) for i in decollate_batch(outputs)]
@@ -317,6 +323,9 @@ class Model(pl.LightningModule):
         batch["pred"] = sliding_window_inference(test_input, self.inference_roi_size, 
                                                  sw_batch_size=4, predictor=self.forward, overlap=0.5)
         # print(f"batch['pred'].shape: {batch['pred'].shape}")
+        
+        # normalize the logits
+        batch["pred"] = F.relu(batch["pred"]) / F.relu(batch["pred"]).max() if bool(F.relu(batch["pred"]).max()) else F.relu(batch["pred"])
 
         # # upon fsleyes visualization, observed that very small values need to be set to zero, but NOT fully binarizing the pred
         # batch["pred"][batch["pred"] < 0.099] = 0.0
