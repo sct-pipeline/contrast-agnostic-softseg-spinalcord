@@ -7,6 +7,7 @@ import joblib
 from utils import FoldGenerator
 from loguru import logger
 from sklearn.model_selection import train_test_split
+import re
 
 # For now this script will always use the joblib test set from spine generic for comparison. All other datasets are directly sent to the training set.
 
@@ -222,10 +223,10 @@ else:
     # define the variables for iteration
     contrasts_list = ['T1w', 'T2w', 'T2star', 'acq-axial_T2w', 'acq-sag_T2w', 'flip-1_mt-on_MTS', 'flip-2_mt-off_MTS', 'dwi', 'UNIT1','acq-cspineAxial_T2w', 'task-motor_bold',
                       'task-thermal_bold', 'task-rest_bold', 'task-BilatMotorThermal_bold', 'task-tactile_bold']
-    label_type_list = ['label-SC_seg', 'seg-manual', 'label-SC_mask-manual', 'label-SC_mask1']
+    label_type_list = ['label-SC_seg', 'seg-manual', 'label-SC_mask-manual', 'label-SC_mask1', 'sc-mask']
     label_names = ['labels','manual_labels']
     anat_types = ['anat', 'func'] 
-    sessions = ['ses-M0', 'ses-01']
+
     for subjects_dict in tqdm(all_subjects_list, desc="Iterating through train/val/test splits"):
 
         for name, subs_list in subjects_dict.items():
@@ -239,7 +240,7 @@ else:
                 temp_data_mton_mts = {}
                 temp_data_mtoff_mts = {}
                 temp_data_dwi = {}
-                temp_data_UNIT1 = {}
+                temp_data_other_datasets = {}
 
                 # t1w
                 temp_data_t1w["image"] = os.path.join(root, subject, 'anat', f"{subject}_T1w.nii.gz")
@@ -278,7 +279,10 @@ else:
                     temp_list.append(temp_data_dwi)
 
                 # Loop through all other datasets
-                # This loop currently works with (confirmed): Basel-MP2RAGE, inspired, sci-colorado, canproco, fmri_sc_seg, dcm-zurich, sci-zurich, gmseg-challenge-2016, 
+                # This loop currently works with (confirmed): Basel-MP2RAGE, inspired, sci-colorado, canproco, 
+                # fmri_sc_seg, dcm-zurich, sci-zurich, gmseg-challenge-2016, sci-paris, bavaria-quebec-spine-ms,
+                # beijing-tumor, 
+
                 for root_others in args.datasets_paths:
                     # loop over contrasts
                     for contrast in contrasts_list:
@@ -288,17 +292,22 @@ else:
                             for label_name in label_names:
                                 # Loop over anat types
                                 for anat_type in anat_types:
-                                    temp_data_UNIT1["image"] = os.path.join(root_others, subject, anat_type, f"{subject}_{contrast}.nii.gz")
-                                    temp_data_UNIT1["label"] = os.path.join(root_others, "derivatives", label_name, subject, anat_type, f"{subject}_{contrast}_{label_type}.nii.gz")
-                                    if os.path.exists(temp_data_UNIT1["label"]) and os.path.exists(temp_data_UNIT1["image"]):
-                                        temp_list.append(temp_data_UNIT1)
+                                    # Find session name if applicable
+                                    session = ''
+                                    if os.path.exists(root_others+'/'+subject):
+                                        session = [name for name in os.listdir(root_others+'/'+subject)][0]
 
-                                    # Manual addition for session
-                                    for session in sessions:
-                                        temp_data_UNIT1["image"] = os.path.join(root_others, subject, session, anat_type, f"{subject}_{session}_{contrast}.nii.gz")
-                                        temp_data_UNIT1["label"] = os.path.join(root_others, "derivatives", label_name, subject, session, anat_type, f"{subject}_{session}_{contrast}_{label_type}.nii.gz")
-                                        if os.path.exists(temp_data_UNIT1["label"]) and os.path.exists(temp_data_UNIT1["image"]):
-                                            temp_list.append(temp_data_UNIT1)
+                                    if 'ses' in session:
+                                        temp_data_other_datasets["image"] = os.path.join(root_others, subject, session, anat_type, f"{subject}_{session}_{contrast}.nii.gz")
+                                        temp_data_other_datasets["label"] = os.path.join(root_others, "derivatives", label_name, subject, session, anat_type, f"{subject}_{session}_{contrast}_{label_type}.nii.gz")
+                                        if os.path.exists(temp_data_other_datasets["label"]) and os.path.exists(temp_data_other_datasets["image"]):
+                                            temp_list.append(temp_data_other_datasets)
+
+                                    else:
+                                        temp_data_other_datasets["image"] = os.path.join(root_others, subject, anat_type, f"{subject}_{contrast}.nii.gz")
+                                        temp_data_other_datasets["label"] = os.path.join(root_others, "derivatives", label_name, subject, anat_type, f"{subject}_{contrast}_{label_type}.nii.gz")
+                                        if os.path.exists(temp_data_other_datasets["label"]) and os.path.exists(temp_data_other_datasets["image"]):
+                                            temp_list.append(temp_data_other_datasets)
             
             params[name] = temp_list
             logger.info(f"Number of images in {name} set: {len(temp_list)}")
