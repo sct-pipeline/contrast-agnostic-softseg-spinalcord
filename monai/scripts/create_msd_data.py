@@ -221,8 +221,9 @@ else:
 
 
     # define the variables for iteration
-    contrasts_list = ['T1w', 'T2w', 'T2star', 'acq-axial_T2w', 'acq-sag_T2w', 'flip-1_mt-on_MTS', 'flip-2_mt-off_MTS', 'dwi', 'UNIT1','acq-cspineAxial_T2w', 'task-motor_bold',
-                      'task-thermal_bold', 'task-rest_bold', 'task-BilatMotorThermal_bold', 'task-tactile_bold']
+    contrasts_list = ['T1w', 'T2w', 'T2star', 'acq-axial_T2w', 'acq-sag_T2w', 'acq-ax_T2star', 'acq-sagstir_T2w' 'flip-1_mt-on_MTS', 'flip-2_mt-off_MTS', 'dwi', 'UNIT1','acq-cspineAxial_T2w', 'task-motor_bold',
+                      'task-thermal_bold', 'task-rest_bold', 'task-BilatMotorThermal_bold', 'task-tactile_bold', 'acq-sagthor_T2w', 'acq-sagcerv_T2w',
+                      'acq-inf_T2star', 'acq-sup_T2star', 'acq-b0Mean_dwi', 'acq-sup_T2w', 'acq-MTon_MTR', 'acq-T1w_MTR', ]
     label_type_list = ['label-SC_seg', 'seg-manual', 'label-SC_mask-manual', 'label-SC_mask1', 'sc-mask']
     label_names = ['labels','manual_labels']
     anat_types = ['anat', 'func'] 
@@ -281,7 +282,7 @@ else:
                 # Loop through all other datasets
                 # This loop currently works with (confirmed): Basel-MP2RAGE, inspired, sci-colorado, canproco, 
                 # fmri_sc_seg, dcm-zurich, sci-zurich, gmseg-challenge-2016, sci-paris, bavaria-quebec-spine-ms,
-                # beijing-tumor, 
+                # beijing-tumor, uk-biobank-processed, sct-testing-large
 
                 for root_others in args.datasets_paths:
                     # loop over contrasts
