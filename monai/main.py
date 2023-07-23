@@ -17,7 +17,7 @@ from transforms import train_transforms, val_transforms
 from monai.utils import set_determinism
 from monai.inferers import sliding_window_inference
 from monai.networks.nets import UNet, BasicUNet, UNETR, AttentionUnet
-    from monai.data import (DataLoader, Dataset, CacheDataset, load_decathlon_datalist, decollate_batch)
+from monai.data import (DataLoader, Dataset, CacheDataset, load_decathlon_datalist, decollate_batch)
 from monai.transforms import (Compose, EnsureType, EnsureTyped, Invertd, SaveImaged, SaveImage)
 
 # create a "model"-agnostic class with PL to use different models

@@ -221,10 +221,10 @@ else:
 
 
     # define the variables for iteration
-    contrasts_list = ['T1w', 'T2w', 'T2star', 'acq-axial_T2w', 'acq-sag_T2w', 'acq-ax_T2star', 'acq-sagstir_T2w' 'flip-1_mt-on_MTS', 'flip-2_mt-off_MTS', 'dwi', 'UNIT1','acq-cspineAxial_T2w', 'task-motor_bold',
+    contrasts_list = ['T1w', 'T2w', 'T2star', 'acq-axial_T2w', 'acq-ax_T2w', 'acq-sag_T2w', 'acq-ax_T2star', 'acq-sagstir_T2w' 'flip-1_mt-on_MTS', 'flip-2_mt-off_MTS', 'dwi', 'UNIT1','acq-cspineAxial_T2w', 'task-motor_bold',
                       'task-thermal_bold', 'task-rest_bold', 'task-BilatMotorThermal_bold', 'task-tactile_bold', 'acq-sagthor_T2w', 'acq-sagcerv_T2w',
                       'acq-inf_T2star', 'acq-sup_T2star', 'acq-b0Mean_dwi', 'acq-sup_T2w', 'acq-MTon_MTR', 'acq-T1w_MTR', ]
-    label_type_list = ['label-SC_seg', 'seg-manual', 'label-SC_mask-manual', 'label-SC_mask1', 'sc-mask']
+    label_type_list = ['label-SC_seg', 'seg-manual', 'label-SC_mask-manual', 'label-SC_mask1', 'sc-mask', 'seg']
     label_names = ['labels','manual_labels']
     anat_types = ['anat', 'func'] 
 
@@ -241,7 +241,6 @@ else:
                 temp_data_mton_mts = {}
                 temp_data_mtoff_mts = {}
                 temp_data_dwi = {}
-                temp_data_other_datasets = {}
 
                 # t1w
                 temp_data_t1w["image"] = os.path.join(root, subject, 'anat', f"{subject}_T1w.nii.gz")
@@ -282,7 +281,7 @@ else:
                 # Loop through all other datasets
                 # This loop currently works with (confirmed): Basel-MP2RAGE, inspired, sci-colorado, canproco, 
                 # fmri_sc_seg, dcm-zurich, sci-zurich, gmseg-challenge-2016, sci-paris, bavaria-quebec-spine-ms,
-                # beijing-tumor, uk-biobank-processed, sct-testing-large
+                # beijing-tumor, uk-biobank-processed, sct-testing-large, whole-spine, lumbar-epfl
 
                 for root_others in args.datasets_paths:
                     # loop over contrasts
@@ -293,17 +292,24 @@ else:
                             for label_name in label_names:
                                 # Loop over anat types
                                 for anat_type in anat_types:
+                                    temp_data_other_datasets = {}
                                     # Find session name if applicable
                                     session = ''
                                     if os.path.exists(root_others+'/'+subject):
                                         session = [name for name in os.listdir(root_others+'/'+subject)][0]
-
                                     if 'ses' in session:
-                                        temp_data_other_datasets["image"] = os.path.join(root_others, subject, session, anat_type, f"{subject}_{session}_{contrast}.nii.gz")
-                                        temp_data_other_datasets["label"] = os.path.join(root_others, "derivatives", label_name, subject, session, anat_type, f"{subject}_{session}_{contrast}_{label_type}.nii.gz")
-                                        if os.path.exists(temp_data_other_datasets["label"]) and os.path.exists(temp_data_other_datasets["image"]):
-                                            temp_list.append(temp_data_other_datasets)
+                                        # for bavaria since it has reverse contrast and label in name e.g. sub-m023917_ses-20130506_acq-ax_seg-manual_T2w.nii.gz
+                                        if "bavaria" in root_others:
+                                            temp_data_other_datasets["image"] = os.path.join(root_others, subject, session, anat_type, f"{subject}_{session}_{contrast}.nii.gz")
+                                            temp_data_other_datasets["label"] = os.path.join(root_others, "derivatives", label_name, subject, session, anat_type, f"{subject}_{session}_{contrast.replace('_T2w', '')}_{label_type}_T2w.nii.gz")
+                                            if os.path.exists(temp_data_other_datasets["label"]) and os.path.exists(temp_data_other_datasets["image"]):
+                                                temp_list.append(temp_data_other_datasets)
+                                        else:
 
+                                            temp_data_other_datasets["image"] = os.path.join(root_others, subject, session, anat_type, f"{subject}_{session}_{contrast}.nii.gz")
+                                            temp_data_other_datasets["label"] = os.path.join(root_others, "derivatives", label_name, subject, session, anat_type, f"{subject}_{session}_{contrast}_{label_type}.nii.gz")
+                                            if os.path.exists(temp_data_other_datasets["label"]) and os.path.exists(temp_data_other_datasets["image"]):
+                                                temp_list.append(temp_data_other_datasets)
                                     else:
                                         temp_data_other_datasets["image"] = os.path.join(root_others, subject, anat_type, f"{subject}_{contrast}.nii.gz")
                                         temp_data_other_datasets["label"] = os.path.join(root_others, "derivatives", label_name, subject, anat_type, f"{subject}_{contrast}_{label_type}.nii.gz")

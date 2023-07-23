@@ -2,7 +2,8 @@
 from monai.transforms import (SpatialPadd, Compose, CropForegroundd, LoadImaged, RandFlipd, 
             RandCropByPosNegLabeld, Spacingd, RandRotate90d, ToTensord, NormalizeIntensityd, 
             EnsureType, RandWeightedCropd, HistogramNormalized, EnsureTyped, Invertd, SaveImaged,
-            EnsureChannelFirstd, CenterSpatialCropd, RandSpatialCropSamplesd, Orientationd)
+            EnsureChannelFirstd, CenterSpatialCropd, RandSpatialCropSamplesd, Orientationd, 
+            Rand3DElasticd, RandBiasFieldd)
 
 # median image size in voxels - taken from nnUNet
 # median_size = (123, 255, 214)
