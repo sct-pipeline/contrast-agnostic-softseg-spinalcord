@@ -8,16 +8,14 @@ from utils import FoldGenerator
 from loguru import logger
 from sklearn.model_selection import train_test_split
 
-# TODO: split the data using ivadomed joblib file
-
-root = "/home/GRAMES.POLYMTL.CA/u114716/datasets/spine-generic_uncropped"
+# root = "/home/GRAMES.POLYMTL.CA/u114716/datasets/spine-generic_uncropped"
 
 parser = argparse.ArgumentParser(description='Code for creating k-fold splits of the spine-generic dataset.')
 
 parser.add_argument('--seed', default=42, type=int, help="Seed for reproducibility")
 parser.add_argument('-ncvf', '--num-cv-folds', default=5, type=int, 
             help="[1-k] To create a k-fold dataset for cross validation, 0 for single file with all subjects")
-parser.add_argument('-pd', '--path-data', default=root, type=str, help='Path to the data set directory')
+parser.add_argument('-pd', '--path-data', required=True, type=str, help='Path to the data set directory')
 parser.add_argument('-pj', '--path-joblib', help='Path to joblib file from ivadomed containing the dataset splits.',
                     default=None, type=str)
 parser.add_argument('-po', '--path-out', type=str, help='Path to the output directory where dataset json is saved')
