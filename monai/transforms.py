@@ -48,11 +48,9 @@ def val_transforms(lbl_key="label"):
     return Compose([
             LoadImaged(keys=["image", lbl_key]),
             EnsureChannelFirstd(keys=["image", lbl_key]),
-            Orientationd(keys=["image", lbl_key], axcodes="RPI"),
-            Spacingd(keys=["image", lbl_key], pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "bilinear"),),
+            # Orientationd(keys=["image", lbl_key], axcodes="RPI"),
             CropForegroundd(keys=["image", lbl_key], source_key="image"),
+            NormalizeIntensityd(keys=["image"], nonzero=False, channel_wise=False),
+            Spacingd(keys=["image", lbl_key], pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "bilinear"),),
             # SpatialPadd(keys=["image", lbl_key], spatial_size=(123, 255, 214), method="symmetric"),
-            # HistogramNormalized(keys=["image"], mask=None),
-            NormalizeIntensityd(keys=["image"], nonzero=False, channel_wise=True),
-            # ToTensord(keys=["image", lbl_key]),
         ])
