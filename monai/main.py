@@ -98,7 +98,7 @@ class Model(pl.LightningModule):
         transforms_val = val_transforms(lbl_key='label')
         
         # load the dataset
-        dataset = os.path.join(self.root, self.args.json_data_name)
+        dataset = os.path.join(self.root, self.args.dataset_json_name+".json")
         train_files = load_decathlon_datalist(dataset, True, "train")
         val_files = load_decathlon_datalist(dataset, True, "validation")
         test_files = load_decathlon_datalist(dataset, True, "test")
@@ -621,7 +621,7 @@ if __name__ == "__main__":
                         default=f"/home/GRAMES.POLYMTL.CA/lobouz/data_tmp/", 
                         type=str, help='Path to the saved dataset json file and name')
     parser.add_argument('-djn', '--dataset_json_name', 
-                        default=f"dataset.json", 
+                        default=f"dataset", 
                         type=str, help='Path to the saved dataset json file and name')
     parser.add_argument('-c', '--continue_from_checkpoint', default=False, action='store_true', 
                             help='Load model from checkpoint and continue training')
