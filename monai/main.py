@@ -48,8 +48,8 @@ class Model(pl.LightningModule):
         self.best_val_dice, self.best_val_epoch = 0, 0
 
         # define cropping and padding dimensions
-        self.voxel_cropping_size = (64, 128, 128) # (80, 192, 160) taken from nnUNet_plans.json 
-        self.inference_roi_size = (64, 128, 128)   # (80, 192, 160)
+        self.voxel_cropping_size = (160, 224, 96)   # (80, 192, 160) taken from nnUNet_plans.json
+        self.inference_roi_size = (160, 224, 96) 
 
         # define post-processing transforms for validation, nothing fancy just making sure that it's a tensor (default)
         self.val_post_pred = Compose([EnsureType()]) 
@@ -104,8 +104,8 @@ class Model(pl.LightningModule):
         test_files = load_decathlon_datalist(dataset, True, "test")
 
         if args.debug:
-            train_files = train_files[:2]
-            val_files = val_files[:2]
+            train_files = train_files[:10]
+            val_files = val_files[:10]
             test_files = test_files[:6]
         
         self.train_ds = CacheDataset(data=train_files, transform=transforms_train, cache_rate=0.25, num_workers=4)
@@ -443,7 +443,10 @@ def main(args):
                     strides=(2, 2, 2, 2),
                     num_res_units=2,
                 )
-        save_exp_id =f"{args.model}_nf={args.init_filters}_nrs=4_opt={args.optimizer}_lr={args.learning_rate}_bs={args.batch_size}"
+        patch_size = "160x224x96"
+
+        save_exp_id =f"{args.model}_nf={args.init_filters}_nrs=4_opt={args.optimizer}_lr={args.learning_rate}" \
+                        f"_diceCE_bs={args.batch_size}_{patch_size}"
     elif args.model in ["unetr", "UNETR"]:
         # define image size to be fed to the model
         img_size = (96, 96, 96)
@@ -463,22 +466,11 @@ def main(args):
                 )
         save_exp_id = f"{args.model}_lr={args.learning_rate}" \
                         f"_fs={args.feature_size}_hs={args.hidden_size}_mlpd={args.mlp_dim}_nh={args.num_heads}"
-    elif args.model == "attentionunet":
-        net = AttentionUnet(spatial_dims=3,
-                            in_channels=1, out_channels=1,
-                            channels=(
-                                    args.init_filters, 
-                                    args.init_filters * 2, 
-                                    args.init_filters * 4, 
-                                    args.init_filters * 8, 
-                                    args.init_filters * 16
-                                ),
-                            strides=(2, 2, 2, 2),
-                            # dropout=0.2,
-                        )
+
         save_exp_id = f"attn-unet_nf={args.init_filters}_opt={args.optimizer}_lr={args.learning_rate}_bs={args.batch_size}"
     # define loss function
-    loss_func = SoftDiceLoss(p=1, smooth=1.0)
+        # loss_func = SoftDiceLoss(p=1, smooth=1.0)
+    loss_func = DiceCrossEntropyLoss(weight_ce=1.0, weight_dice=1.0)
 
     # TODO: move this inside the for loop when using more folds
     timestamp = datetime.now().strftime(f"%Y%m%d-%H%M")   # prints in YYYYMMDD-HHMMSS format
