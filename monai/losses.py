@@ -34,33 +34,15 @@ class SoftDiceLoss(nn.Module):
         return loss
 
 
-class RobustCrossEntropyLoss(nn.CrossEntropyLoss):
-    """
-    this is just a compatibility layer because my target tensor is float and has an extra dimension
-
-    input must be logits, not probabilities!
-    adapted from: https://github.com/MIC-DKFZ/nnUNet/blob/master/nnunetv2/training/loss/robust_ce_loss.py
-    """
-    def forward(self, input: Tensor, target: Tensor) -> Tensor:
-        
-        # binarize soft labels with threshold 0.5 before using cross-entropy
-        target = torch.where(target > 0.5, torch.ones_like(target), torch.zeros_like(target))
-
-        if len(target.shape) == len(input.shape):
-            assert target.shape[1] == 1
-            target = target[:, 0]
-        
-        return super().forward(input, target.long())
-
-
 class DiceCrossEntropyLoss(nn.Module):
     def __init__(self, weight_ce=1.0, weight_dice=1.0):
-        super(DiceCrossEntropyLoss).__init__()
+        super(DiceCrossEntropyLoss, self).__init__()
         self.ce_weight = weight_ce
         self.dice_weight = weight_dice
 
         self.dice_loss = SoftDiceLoss()
-        self.ce_loss = RobustCrossEntropyLoss()
+        # self.ce_loss = RobustCrossEntropyLoss()
+        self.ce_loss = nn.CrossEntropyLoss()
 
     def forward(self, preds, labels):
         '''
