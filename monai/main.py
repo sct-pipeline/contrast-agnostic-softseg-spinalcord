@@ -98,7 +98,7 @@ class Model(pl.LightningModule):
         transforms_val = val_transforms(lbl_key='label')
         
         # load the dataset
-        dataset = os.path.join(self.root, f"dataset.json")
+        dataset = os.path.join(self.root, self.args.json_data_name)
         train_files = load_decathlon_datalist(dataset, True, "train")
         val_files = load_decathlon_datalist(dataset, True, "validation")
         test_files = load_decathlon_datalist(dataset, True, "test")
@@ -423,9 +423,6 @@ def main(args):
     # Setting the seed
     pl.seed_everything(args.seed, workers=True)
 
-    # define root path for finding datalists
-    dataset_root = "/home/GRAMES.POLYMTL.CA/lobouz/data_tmp/"
-
     # define optimizer
     if args.optimizer in ["adamw", "AdamW", "Adamw"]:
         optimizer_class = torch.optim.AdamW
@@ -505,7 +502,7 @@ def main(args):
         # save_exp_id = f"{save_exp_id}_fold={fold}_{timestamp}"
 
         # i.e. train by loading weights from scratch
-        pl_model = Model(args, data_root=dataset_root, fold_num=fold, 
+        pl_model = Model(args, data_root=args.dataset_path, fold_num=fold, 
                          optimizer_class=optimizer_class, loss_function=loss_func, net=net, 
                          exp_id=save_exp_id, results_path=results_path)
 
@@ -620,6 +617,12 @@ if __name__ == "__main__":
     parser.add_argument('-sp', '--save_path', 
                         default=f"/home/GRAMES.POLYMTL.CA/lobouz/contrast-agnostic/saved_models", 
                         type=str, help='Path to the saved models directory')
+    parser.add_argument('-dp', '--dataset_path', 
+                        default=f"/home/GRAMES.POLYMTL.CA/lobouz/data_tmp/", 
+                        type=str, help='Path to the saved dataset json file and name')
+    parser.add_argument('-djn', '--dataset_json_name', 
+                        default=f"dataset.json", 
+                        type=str, help='Path to the saved dataset json file and name')
     parser.add_argument('-c', '--continue_from_checkpoint', default=False, action='store_true', 
                             help='Load model from checkpoint and continue training')
     parser.add_argument('-se', '--seed', default=15, type=int, help='Set seeds for reproducibility')

@@ -25,9 +25,11 @@ parser.add_argument('-pd', '--path-data-SG', default=root, type=str, help='Path 
 parser.add_argument('-pj', '--path-joblib', help='Path to joblib file from ivadomed containing the dataset splits.',
                     default=None, type=str)
 parser.add_argument('-po', '--path-out', default="/home/GRAMES.POLYMTL.CA/lobouz/data_tmp", type=str, help='Path to the output directory where dataset json is saved')
-parser.add_argument('-dp', "--datasets-paths", nargs="*", help="List of paths to all the datasets to aggregate in the JSON.")
-parser.add_argument('-dn', '--dataset-name-v', default="aggregated_dataset_v0", type=str, help='Name of the dataset built with version.')
+parser.add_argument('-dp', "--datasets-paths", nargs="*", default=None, help="List of paths to all the datasets to aggregate in the JSON.")
+parser.add_argument('-dn', '--dataset-name-v', default="v0", type=str, help='Name of the dataset built with version.')
 parser.add_argument('-dd', '--dataset-description', default="Aggregated dataset", type=str, help='Description of the dataset built (ideally all dataset names).')
+parser.add_argument('-djn', '--dataset_json_name', default=f"dataset",
+                        type=str, help='Path to the saved dataset json file and name')
 args = parser.parse_args()
 
 
@@ -179,17 +181,18 @@ else:
     logger.info(f"(Prior aggregation) Number of validation subjects: {len(val_subjects)}")
     logger.info(f"(Prior aggregation) Number of testing subjects: {len(test_subjects)}")
 
-    # Add train and val data with 80:20 split from all other datasets
-    for idx, dataset_to_add in enumerate(args.datasets_paths):
-        # Get the subjects
-        subjects_to_add = [subject for subject in os.listdir(dataset_to_add) if subject.startswith('sub-')]
-        logger.info(f"Total number of subjects in the dataset {idx} directory: {len(subjects_to_add)}")
+    if args.datasets_paths:
+        # Add train and val data with 80:20 split from all other datasets
+        for idx, dataset_to_add in enumerate(args.datasets_paths):
+            # Get the subjects
+            subjects_to_add = [subject for subject in os.listdir(dataset_to_add) if subject.startswith('sub-')]
+            logger.info(f"Total number of subjects in the dataset {idx} directory: {len(subjects_to_add)}")
 
-        # Aggregate in val and train with 80:20 split
-        train_ratio, val_ratio = 0.8, 0.2
-        train_subjects_tmp, val_subjects_tmp = train_test_split(subjects_to_add, test_size=val_ratio / (train_ratio + val_ratio), random_state=args.seed)
-        train_subjects.extend(train_subjects_tmp)
-        val_subjects.extend(val_subjects_tmp)
+            # Aggregate in val and train with 80:20 split
+            train_ratio, val_ratio = 0.8, 0.2
+            train_subjects_tmp, val_subjects_tmp = train_test_split(subjects_to_add, test_size=val_ratio / (train_ratio + val_ratio), random_state=args.seed)
+            train_subjects.extend(train_subjects_tmp)
+            val_subjects.extend(val_subjects_tmp)
 
     logger.info(f"(Post aggregation) Number of training subjects: {len(train_subjects)}")
     logger.info(f"(Post aggregation) Number of validation subjects: {len(val_subjects)}")
@@ -206,7 +209,7 @@ else:
     params["modality"] = {
         "0": "MRI"
         }
-    params["name"] = args.dataset_name_v
+    params["name"] = args.dataset_json_name+"_"+args.dataset_name_v
     params["numTest"] = len(test_subjects)
     params["numTraining"] = len(train_subjects)
     params["numValidation"] = len(val_subjects)
@@ -282,45 +285,45 @@ else:
                 # This loop currently works with (confirmed): Basel-MP2RAGE, inspired, sci-colorado, canproco, 
                 # fmri_sc_seg, dcm-zurich, sci-zurich, gmseg-challenge-2016, sci-paris, bavaria-quebec-spine-ms,
                 # beijing-tumor, uk-biobank-processed, sct-testing-large, whole-spine, lumbar-epfl
+                if args.datasets_paths:
+                    for root_others in args.datasets_paths:
+                        # loop over contrasts
+                        for contrast in contrasts_list:
+                            # Loop over different label types for SC seg
+                            for label_type in label_type_list:
+                                # Loop over label names
+                                for label_name in label_names:
+                                    # Loop over anat types
+                                    for anat_type in anat_types:
+                                        temp_data_other_datasets = {}
+                                        # Find session name if applicable
+                                        session = ''
+                                        if os.path.exists(root_others+'/'+subject):
+                                            session = [name for name in os.listdir(root_others+'/'+subject)][0]
+                                        if 'ses' in session:
+                                            # for bavaria since it has reverse contrast and label in name e.g. sub-m023917_ses-20130506_acq-ax_seg-manual_T2w.nii.gz
+                                            if "bavaria" in root_others:
+                                                temp_data_other_datasets["image"] = os.path.join(root_others, subject, session, anat_type, f"{subject}_{session}_{contrast}.nii.gz")
+                                                temp_data_other_datasets["label"] = os.path.join(root_others, "derivatives", label_name, subject, session, anat_type, f"{subject}_{session}_{contrast.replace('_T2w', '')}_{label_type}_T2w.nii.gz")
+                                                if os.path.exists(temp_data_other_datasets["label"]) and os.path.exists(temp_data_other_datasets["image"]):
+                                                    temp_list.append(temp_data_other_datasets)
+                                            else:
 
-                for root_others in args.datasets_paths:
-                    # loop over contrasts
-                    for contrast in contrasts_list:
-                        # Loop over different label types for SC seg
-                        for label_type in label_type_list:
-                            # Loop over label names
-                            for label_name in label_names:
-                                # Loop over anat types
-                                for anat_type in anat_types:
-                                    temp_data_other_datasets = {}
-                                    # Find session name if applicable
-                                    session = ''
-                                    if os.path.exists(root_others+'/'+subject):
-                                        session = [name for name in os.listdir(root_others+'/'+subject)][0]
-                                    if 'ses' in session:
-                                        # for bavaria since it has reverse contrast and label in name e.g. sub-m023917_ses-20130506_acq-ax_seg-manual_T2w.nii.gz
-                                        if "bavaria" in root_others:
-                                            temp_data_other_datasets["image"] = os.path.join(root_others, subject, session, anat_type, f"{subject}_{session}_{contrast}.nii.gz")
-                                            temp_data_other_datasets["label"] = os.path.join(root_others, "derivatives", label_name, subject, session, anat_type, f"{subject}_{session}_{contrast.replace('_T2w', '')}_{label_type}_T2w.nii.gz")
-                                            if os.path.exists(temp_data_other_datasets["label"]) and os.path.exists(temp_data_other_datasets["image"]):
-                                                temp_list.append(temp_data_other_datasets)
+                                                temp_data_other_datasets["image"] = os.path.join(root_others, subject, session, anat_type, f"{subject}_{session}_{contrast}.nii.gz")
+                                                temp_data_other_datasets["label"] = os.path.join(root_others, "derivatives", label_name, subject, session, anat_type, f"{subject}_{session}_{contrast}_{label_type}.nii.gz")
+                                                if os.path.exists(temp_data_other_datasets["label"]) and os.path.exists(temp_data_other_datasets["image"]):
+                                                    temp_list.append(temp_data_other_datasets)
                                         else:
-
-                                            temp_data_other_datasets["image"] = os.path.join(root_others, subject, session, anat_type, f"{subject}_{session}_{contrast}.nii.gz")
-                                            temp_data_other_datasets["label"] = os.path.join(root_others, "derivatives", label_name, subject, session, anat_type, f"{subject}_{session}_{contrast}_{label_type}.nii.gz")
+                                            temp_data_other_datasets["image"] = os.path.join(root_others, subject, anat_type, f"{subject}_{contrast}.nii.gz")
+                                            temp_data_other_datasets["label"] = os.path.join(root_others, "derivatives", label_name, subject, anat_type, f"{subject}_{contrast}_{label_type}.nii.gz")
                                             if os.path.exists(temp_data_other_datasets["label"]) and os.path.exists(temp_data_other_datasets["image"]):
                                                 temp_list.append(temp_data_other_datasets)
-                                    else:
-                                        temp_data_other_datasets["image"] = os.path.join(root_others, subject, anat_type, f"{subject}_{contrast}.nii.gz")
-                                        temp_data_other_datasets["label"] = os.path.join(root_others, "derivatives", label_name, subject, anat_type, f"{subject}_{contrast}_{label_type}.nii.gz")
-                                        if os.path.exists(temp_data_other_datasets["label"]) and os.path.exists(temp_data_other_datasets["image"]):
-                                            temp_list.append(temp_data_other_datasets)
-            
+                
             params[name] = temp_list
             logger.info(f"Number of images in {name} set: {len(temp_list)}")
 
     final_json = json.dumps(params, indent=4, sort_keys=True)
-    jsonFile = open(args.path_out + "/" + f"dataset.json", "w")
+    jsonFile = open(args.path_out + "/" + args.dataset_json_name+".json", "w")
     jsonFile.write(final_json)
     jsonFile.close()
 
