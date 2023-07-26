@@ -23,7 +23,7 @@ def train_transforms(crop_size, num_samples_pv, lbl_key="label"):
             NormalizeIntensityd(keys=["image"], nonzero=False, channel_wise=False),
             Spacingd(keys=["image", "label"], pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "bilinear"),),
             # data-augmentation
-            SpatialPadd(keys=["image", lbl_key], spatial_size=(192, 228, 106), method="symmetric"),
+            SpatialPadd(keys=["image", lbl_key], spatial_size=(64, 128, 128), method="symmetric"),# (192, 228, 106)
             # SpatialPadd(keys=["image", lbl_key], spatial_size=(123, 255, 214), method="symmetric"),
             # RandSpatialCropSamplesd(keys=["image", lbl_key], roi_size=crop_size, num_samples=num_samples_pv, random_center=True, random_size=False),
             # NOTE: used with neg together to calculate the ratio pos / (pos + neg) for the probability to pick a 

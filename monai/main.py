@@ -48,8 +48,8 @@ class Model(pl.LightningModule):
         self.best_val_dice, self.best_val_epoch = 0, 0
 
         # define cropping and padding dimensions
-        self.voxel_cropping_size = (160, 224, 96)   # (80, 192, 160) taken from nnUNet_plans.json
-        self.inference_roi_size = (160, 224, 96) 
+        self.voxel_cropping_size = (64, 128, 128)#(160, 224, 96)   # (80, 192, 160) taken from nnUNet_plans.json
+        self.inference_roi_size = (64, 128, 128)#(160, 224, 96) 
 
         # define post-processing transforms for validation, nothing fancy just making sure that it's a tensor (default)
         self.val_post_pred = Compose([EnsureType()]) 
@@ -443,7 +443,7 @@ def main(args):
                     strides=(2, 2, 2, 2),
                     num_res_units=2,
                 )
-        patch_size = "160x224x96"
+        patch_size = "64x128x128"
 
         save_exp_id =f"{args.model}_nf={args.init_filters}_nrs=4_opt={args.optimizer}_lr={args.learning_rate}" \
                         f"_diceCE_bs={args.batch_size}_{patch_size}"
@@ -571,7 +571,10 @@ def main(args):
 
 
 if __name__ == "__main__":
-
+    '''
+    Example of a command used for all our datasets for spinal cord segmentation available as of 2023-07-25
+    CUDA_VISIBLE_DEVICE=0 python main.pu -m unet -nspv 4 -ncv 1 -initf 8 -bs 4 -lr 1e-3 -cve 4 -stp -epb -djn "dataset_sg_b_ins_sc_can_fmri_dzu_szu_gms_spar_bav_beijt_ukb_scttest_ws_lumepfl" 
+    '''
     parser = argparse.ArgumentParser(description='Script for training custom models for SCI Lesion Segmentation.')
     # Arguments for model, data, and training and saving
     parser.add_argument('-m', '--model', 
