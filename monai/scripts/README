@@ -1,3 +1,14 @@
+1. Create your json dataset for training.
+    Run the create_msd_data.py script following the arguments and command example in the file.
+2. Train.
+    Run the main.py script following the arguments and command example in the file.
+        Edit the file with your paths and w&b account.
+        Tweak the hyperparamters to best fit your data.
+
+
+---- Below is the old version ----
+
+
 # Dataset convert
 
 This is not an ideal procedure, rather a temporary one.
