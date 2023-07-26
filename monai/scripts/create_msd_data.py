@@ -10,9 +10,12 @@ from sklearn.model_selection import train_test_split
 import re
 
 # For now this script will always use the joblib test set from spine generic for comparison. All other datasets are directly sent to the training set.
-
-# TODO: Add loop for multiple datasets only to add in training
 # TODO: Edit loop to custom train and test set from the datasets
+
+'''
+Example of a command used for all our datasets for spinal cord segmentation available as of 2023-07-25
+python create_msd_data.py -dp '/home/GRAMES.POLYMTL.CA/lobouz/data_tmp/basel-mp2rage' '/home/GRAMES.POLYMTL.CA/lobouz/data_tmp/inspired' '/home/GRAMES.POLYMTL.CA/lobouz/data_tmp/sci-colorado' '/home/GRAMES.POLYMTL.CA/lobouz/data_tmp/canproco' '/home/GRAMES.POLYMTL.CA/lobouz/duke/temp/rohan/fmri_sc_seg/datasets/data_superset' '/home/GRAMES.POLYMTL.CA/lobouz/data_tmp/dcm-zurich' '/home/GRAMES.POLYMTL.CA/lobouz/data_tmp/sci-zurich' '/home/GRAMES.POLYMTL.CA/lobouz/data_tmp/gmseg-challenge-2016' '/home/GRAMES.POLYMTL.CA/lobouz/data_tmp/sci-paris' '/home/GRAMES.POLYMTL.CA/lobouz/data_tmp/bavaria-quebec-spine-ms' '/home/GRAMES.POLYMTL.CA/lobouz/data_tmp/beijing-tumor' '/home/GRAMES.POLYMTL.CA/lobouz/data_tmp/uk-biobank-processed' '/home/GRAMES.POLYMTL.CA/lobouz/data_tmp/sct-testing-large' '/home/GRAMES.POLYMTL.CA/lobouz/data_tmp/whole-spine' '/home/GRAMES.POLYMTL.CA/lobouz/data_tmp/lumbar-epfl' -dd "Basel-MP2RAGE, inspired, sci-colorado, canproco, fmri_sc_seg, dcm-zurich, sci-zurich, gmseg-challenge-2016, sci-paris, bavaria-quebec-spine-ms, beijing-tumor, uk-biobank-processed, sct-testing-large, whole-spine, lumbar-epfl" -djn "dataset_sg_b_ins_sc_can_fmri_dzu_szu_gms_spar_bav_beijt_ukb_scttest_ws_lumepfl”
+'''
 
 root = "/home/GRAMES.POLYMTL.CA/lobouz/duke/projects/ivadomed/contrast-agnostic-seg/data_processed_sg_2023-03-10_NO_CROP/data_processed_clean"
 
