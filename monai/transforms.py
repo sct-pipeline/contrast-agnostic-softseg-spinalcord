@@ -35,7 +35,7 @@ def train_transforms(crop_size, num_samples_pv, lbl_key="label"):
             Rand3DElasticd(keys=["image", lbl_key], sigma_range=(3.5, 5.5), magnitude_range=(25, 35), prob=0.25),
             RandBiasFieldd(keys=["image", lbl_key], coeff_range=(0.0, 0.5), degree=3, prob=0.25),
             RandAdjustContrastd(keys=["image"], gamma=(0.7, 1.5), prob=0.2),
-            RandFlipd(keys=["image", lbl_key], spatial_axis=None, prob=0.5,),
+            RandFlipd(keys=["image", lbl_key], spatial_axis=None, prob=0.2,),
             RandRotated(keys=["image", lbl_key], mode=("bilinear", "bilinear"), prob=0.2,
                         range_x=(-30. / 360 * 2. * np.pi, 30. / 360 * 2. * np.pi),  # NOTE: -pi/6 to pi/6
                         range_y=(-30. / 360 * 2. * np.pi, 30. / 360 * 2. * np.pi), 
