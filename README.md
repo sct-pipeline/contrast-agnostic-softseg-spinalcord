@@ -49,6 +49,22 @@ Specify the path of preprocessed dataset with the flag `-path-data`.
 sct_run_batch -jobs -1 -path-data <PATH_DATA> -path-output <PATH-OUTPUT> -script process_data.sh -script-args exclude.yml
 ```
 
+or use a config file:
+
+```
+config_process_data.json: 
+{
+  "path_data"   : "~/data_nvme_sebeda/datasets/data-multi-subject/",
+  "path_output" : "~/data_nvme_sebeda/data_processed_sg_2023-08-04_NO_CROP",
+  "script"      : "process_data.sh",
+  "jobs"        : 50,
+  "exclude_list":  ["sub-brnoUhb02", "sub-brnoUhb03", "sub-brnoUhb07", "sub-brnoUhb08", "sub-brnoUhb08", "sub-brnoUhb08", "sub-ucdavis01", "sub-ucdavis02", "sub-ucdavis03", "sub-ucdavis04", "sub-ucdavis05", "sub-ucdavis06", "sub-ucdavis07", "sub-beijingVerio01", "sub-beijingVerio02", "sub-beijingVerio03", "sub-beijingVerio04", "sub-beijingGE01", "sub-beijingGE02", "sub-beijingGE03", "sub-beijingGE04", "sub-ubc01", "sub-oxfordOhba02"]
+}
+```
+```
+sct_run_batch -config config_process_data.json
+```
+
 A `process_data_clean` folder is created in <PATH-OUTPUT> where the cropped data and derivatives are included. Here, only the images that have a manual segmentation and soft segmentation are transfered.
 
 ### Quality control
