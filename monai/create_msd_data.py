@@ -152,7 +152,7 @@ else:
     if args.path_joblib is not None:
         # load information from the joblib to match train and test subjects
         joblib_file = os.path.join(args.path_joblib, 'split_datasets_all_seed=15.joblib')
-        splits = joblib.load("split_datasets_all_seed=15.joblib")
+        splits = joblib.load(joblib_file)
         # get the subjects from the joblib file
         train_subjects = sorted(list(set([sub.split('_')[0] for sub in splits['train']])))
         val_subjects = sorted(list(set([sub.split('_')[0] for sub in splits['valid']])))
