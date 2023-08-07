@@ -3,7 +3,7 @@ import numpy as np
 from monai.transforms import (SpatialPadd, Compose, CropForegroundd, LoadImaged, RandFlipd, 
             RandCropByPosNegLabeld, Spacingd, RandRotated, NormalizeIntensityd, 
             RandWeightedCropd, RandAdjustContrastd, EnsureChannelFirstd, RandGaussianNoised, 
-            Orientationd, Rand3DElasticd, RandBiasFieldd)
+            RandGaussianSmoothd, Orientationd, Rand3DElasticd, RandBiasFieldd)
 
 # median image size in voxels - taken from nnUNet
 # median_size = (123, 255, 214)     # so pad with this size
@@ -31,11 +31,12 @@ def train_transforms(crop_size, num_samples_pv, lbl_key="label"):
                                    spatial_size=crop_size, pos=3, neg=1, num_samples=num_samples_pv, 
                                    # if num_samples=4, then 4 samples/image are randomly generated
                                    image_key="image", image_threshold=0.),
-            RandGaussianNoised(keys=["image"], mean=0.0, std=0.1, prob=0.1),
-            Rand3DElasticd(keys=["image", lbl_key], sigma_range=(3.5, 5.5), magnitude_range=(25, 35), prob=0.25),
-            RandBiasFieldd(keys=["image", lbl_key], coeff_range=(0.0, 0.5), degree=3, prob=0.25),
-            RandAdjustContrastd(keys=["image"], gamma=(0.7, 1.5), prob=0.2),
-            RandFlipd(keys=["image", lbl_key], spatial_axis=None, prob=0.2,),
+            # RandGaussianNoised(keys=["image"], mean=0.0, std=0.1, prob=0.1),
+            Rand3DElasticd(keys=["image", lbl_key], sigma_range=(3.5, 5.5), magnitude_range=(25, 35), prob=0.5),
+            RandAdjustContrastd(keys=["image"], gamma=(0.7, 1.5), prob=0.4),    # this is monai's RandomGamma
+            RandBiasFieldd(keys=["image"], coeff_range=(0.0, 0.5), degree=3, prob=0.3),
+            RandGaussianSmoothd(keys=["image"], sigma_x=(0.0, 2.0), sigma_y=(0.0, 2.0), sigma_z=(0.0, 2.0), prob=0.3),
+            RandFlipd(keys=["image", lbl_key], spatial_axis=None, prob=0.4,),
             RandRotated(keys=["image", lbl_key], mode=("bilinear", "nearest"), prob=0.2,
                         range_x=(-30. / 360 * 2. * np.pi, 30. / 360 * 2. * np.pi),  # NOTE: -pi/6 to pi/6
                         range_y=(-30. / 360 * 2. * np.pi, 30. / 360 * 2. * np.pi), 
@@ -48,7 +49,7 @@ def val_transforms(lbl_key="label"):
     return Compose([
             LoadImaged(keys=["image", lbl_key]),
             EnsureChannelFirstd(keys=["image", lbl_key]),
-            # Orientationd(keys=["image", lbl_key], axcodes="RPI"),
+            Orientationd(keys=["image", lbl_key], axcodes="RPI"),
             CropForegroundd(keys=["image", lbl_key], source_key="image"),
             NormalizeIntensityd(keys=["image"], nonzero=False, channel_wise=False),
             Spacingd(keys=["image", lbl_key], pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "nearest"),),
