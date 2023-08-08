@@ -95,8 +95,6 @@ label_if_does_not_exist(){
   # Update global variable with segmentation file name
   FILELABEL="${file}_labels-disc"
   FILELABELMANUAL="${PATH_DATA}/derivatives/labels/${SUBJECT}/${FILELABEL}-manual.nii.gz"
-  # Binarize softsegmentation to create labeled softseg
-  #sct_maths -i ${file_seg}.nii.gz -bin 0.5 -o ${file_seg}_bin.nii.gz
   echo "Looking for manual label: $FILELABELMANUAL"
   if [[ -e $FILELABELMANUAL ]]; then
     echo "Found! Using manual labels."
@@ -386,14 +384,19 @@ for file_path in "${inc_contrasts[@]}";do
   # Generate QC report
   sct_qc -i ${file_path}.nii.gz -s ${file_path}_softseg.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
   
-  # Bring T2w disc labels to native space
-  sct_apply_transfo -i ./anat/${file_t2_discs}.nii.gz -d ${file_path}.nii.gz -w ${warping_field_inv}.nii.gz -x label -o ${file_path}_seg_labeled_discs.nii.gz
-  # Set sform to qform (there are disparencies)
-  sct_image -i ${file_path}_seg_labeled_discs.nii.gz -set-sform-to-qform
-  sct_image -i ${fileseg}.nii.gz -set-sform-to-qform
-  sct_image -i ${file_path}.nii.gz -set-sform-to-qform
-  # Generate labeled segmentation from warp disc labels
-  sct_label_vertebrae -i ${file_path}.nii.gz -s ${fileseg}.nii.gz -discfile ${file_path}_seg_labeled_discs.nii.gz -c t2 -ofolder $type
+  # For T1w contrast, use existing disc file labels
+  if [[ $file_path == *"T1w"* ]];then
+    label_if_does_not_exist ${file_path}.nii.gz ${fileseg}.nii.gz
+  else
+    # Bring T2w disc labels to native space
+    sct_apply_transfo -i ./anat/${file_t2_discs}.nii.gz -d ${file_path}.nii.gz -w ${warping_field_inv}.nii.gz -x label -o ${file_path}_seg_labeled_discs.nii.gz
+    # Set sform to qform (there are disparencies)
+    sct_image -i ${file_path}_seg_labeled_discs.nii.gz -set-sform-to-qform
+    sct_image -i ${fileseg}.nii.gz -set-sform-to-qform
+    sct_image -i ${file_path}.nii.gz -set-sform-to-qform
+    # Generate labeled segmentation from warp disc labels
+    sct_label_vertebrae -i ${file_path}.nii.gz -s ${fileseg}.nii.gz -discfile ${file_path}_seg_labeled_discs.nii.gz -c t2 -ofolder $type
+  fi
   # Generate QC report to assess vertebral labeling
   sct_qc -i ${file_path}.nii.gz -s ${fileseg}_labeled.nii.gz -p sct_label_vertebrae -qc ${PATH_QC} -qc-subject ${SUBJECT}
 
