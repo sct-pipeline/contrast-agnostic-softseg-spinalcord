@@ -20,6 +20,7 @@ from monai.networks.nets import UNet, BasicUNet, UNETR, AttentionUnet
 from monai.data import (DataLoader, Dataset, CacheDataset, load_decathlon_datalist, decollate_batch)
 from monai.transforms import (Compose, EnsureType, EnsureTyped, Invertd, SaveImaged, SaveImage)
 
+
 # create a "model"-agnostic class with PL to use different models
 class Model(pl.LightningModule):
     def __init__(self, args, data_root, fold_num, net, loss_function, optimizer_class, 
@@ -108,8 +109,8 @@ class Model(pl.LightningModule):
             val_files = val_files[:10]
             test_files = test_files[:6]
         
-        self.train_ds = CacheDataset(data=train_files, transform=transforms_train, cache_rate=0.25, num_workers=4)
-        self.val_ds = CacheDataset(data=val_files, transform=transforms_val, cache_rate=0.25, num_workers=4)
+        self.train_ds = Dataset(data=train_files, transform=transforms_train)#, cache_rate=0.25, num_workers=4)
+        self.val_ds = Dataset(data=val_files, transform=transforms_val)#, cache_rate=0.25, num_workers=4)
 
         # define test transforms
         transforms_test = val_transforms(lbl_key='label')
@@ -123,7 +124,7 @@ class Model(pl.LightningModule):
                     meta_keys=["pred_meta_dict", "label_meta_dict"],
                     nearest_interp=False, to_tensor=True),
             ])
-        self.test_ds = CacheDataset(data=test_files, transform=transforms_test, cache_rate=0.1, num_workers=4)
+        self.test_ds = Dataset(data=test_files, transform=transforms_test)#, cache_rate=0.1, num_workers=4)
 
 
     # --------------------------------
@@ -467,7 +468,6 @@ def main(args):
         save_exp_id = f"{args.model}_lr={args.learning_rate}" \
                         f"_fs={args.feature_size}_hs={args.hidden_size}_mlpd={args.mlp_dim}_nh={args.num_heads}"
 
-        save_exp_id = f"attn-unet_nf={args.init_filters}_opt={args.optimizer}_lr={args.learning_rate}_bs={args.batch_size}"
     # define loss function
         # loss_func = SoftDiceLoss(p=1, smooth=1.0)
     loss_func = DiceCrossEntropyLoss(weight_ce=1.0, weight_dice=1.0)
@@ -497,6 +497,7 @@ def main(args):
         pl_model = Model(args, data_root=args.dataset_path, fold_num=fold, 
                          optimizer_class=optimizer_class, loss_function=loss_func, net=net, 
                          exp_id=save_exp_id, results_path=results_path)
+        pl_model.use_multiprocessing = False
 
         # don't use wandb logger if in debug mode
         # if not args.debug:
@@ -530,9 +531,11 @@ def main(args):
             precision=32,   # TODO: see if 16-bit precision is stable
             # deterministic=True,
             enable_progress_bar=args.enable_progress_bar)
+        
+        pl.use_multiprocessing = False
 
         # Train!
-        trainer.fit(pl_model)        
+        trainer.fit(pl_model)     
         logger.info(f" Training Done!")
 
         # Saving training script to wandb
