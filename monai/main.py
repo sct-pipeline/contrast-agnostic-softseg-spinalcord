@@ -132,15 +132,15 @@ class Model(pl.LightningModule):
     # --------------------------------
     def train_dataloader(self):
         # NOTE: if num_samples=4 in RandCropByPosNegLabeld and batch_size=2, then 2 x 4 images are generated for network training
-        return DataLoader(self.train_ds, batch_size=self.args.batch_size, shuffle=True, num_workers=4, 
+        return DataLoader(self.train_ds, batch_size=self.args.batch_size, shuffle=True, num_workers=self.args.num_workers, 
                             pin_memory=True,) # collate_fn=pad_list_data_collate)
         # list_data_collate is only useful when each input in the batch has different shape
 
     def val_dataloader(self):
-        return DataLoader(self.val_ds, batch_size=1, shuffle=False, num_workers=4, pin_memory=True)
+        return DataLoader(self.val_ds, batch_size=1, shuffle=False, num_workers=self.args.num_workers, pin_memory=True)
     
     def test_dataloader(self):
-        return DataLoader(self.test_ds, batch_size=1, shuffle=False, num_workers=4, pin_memory=True)
+        return DataLoader(self.test_ds, batch_size=1, shuffle=False, num_workers=self.args.num_workers, pin_memory=True)
 
     
     # --------------------------------
@@ -523,14 +523,15 @@ def main(args):
 
         # initialise Lightning's trainer.
         trainer = pl.Trainer(
-            devices=1, accelerator="gpu", # strategy="ddp",
+            gpus=torch.cuda.device_count(),
+            num_nodes=int(os.environ.get("SLURM_JOB_NUM_NODES")), 
+            accelerator="ddp", # strategy="ddp",
             logger=exp_logger,
             callbacks=[checkpoint_callback, lr_monitor, early_stopping],
             check_val_every_n_epoch=args.check_val_every_n_epochs,
             max_epochs=args.max_epochs, 
-            precision=32,   # TODO: see if 16-bit precision is stable
-            # deterministic=True,
-            enable_progress_bar=args.enable_progress_bar)
+            precision=32, 
+            progress_bar_refresh_rate=0)
         
         pl.use_multiprocessing = False
 
@@ -613,10 +614,10 @@ if __name__ == "__main__":
     parser.add_argument('-cve', '--check_val_every_n_epochs', default=1, type=int, help='num of epochs to wait before validation')
     # saving
     parser.add_argument('-sp', '--save_path', 
-                        default=f"/home/GRAMES.POLYMTL.CA/lobouz/contrast-agnostic/saved_models", 
+                        default=f"/home/louisfb/projects/def-jcohen/louisfb/contrast-agnostic/saved_models", 
                         type=str, help='Path to the saved models directory')
     parser.add_argument('-dp', '--dataset_path', 
-                        default=f"/home/GRAMES.POLYMTL.CA/lobouz/data_tmp/", 
+                        default=f"/home/louisfb/projects/def-jcohen/louisfb/data/data_tmp/", 
                         type=str, help='Path to the saved dataset json file and name')
     parser.add_argument('-djn', '--dataset_json_name', 
                         default=f"dataset", 
@@ -624,12 +625,13 @@ if __name__ == "__main__":
     parser.add_argument('-c', '--continue_from_checkpoint', default=False, action='store_true', 
                             help='Load model from checkpoint and continue training')
     parser.add_argument('-se', '--seed', default=15, type=int, help='Set seeds for reproducibility')
+    parser.add_argument('-nw', '--num_workers', default=4, type=int, help='Number of workers.')
     parser.add_argument('-debug', default=False, action='store_true', help='if true, results are not logged to wandb')
     parser.add_argument('-stp', '--save_test_preds', default=False, action='store_true',
                             help='if true, test predictions are saved in `save_path`')
     # testing
     parser.add_argument('-rd', '--results_dir', 
-                    default=f"/home/GRAMES.POLYMTL.CA/lobouz/contrast-agnostic/results", 
+                    default=f"/home/louisfb/projects/def-jcohen/louisfb/contrast-agnostic/results", 
                     type=str, help='Path to the model prediction results directory')
 
 

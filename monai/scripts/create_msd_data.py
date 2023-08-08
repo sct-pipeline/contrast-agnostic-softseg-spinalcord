@@ -18,7 +18,7 @@ python create_msd_data.py -dp '/home/GRAMES.POLYMTL.CA/lobouz/data_tmp/basel-mp2
 Here's a presentation with slide 4 showing the Data used in the command above: https://docs.google.com/presentation/d/1Exy8d4GgKRRvKwkYzlzjaRMc4XLc_sfS/edit?usp=sharing&ouid=105202404838209440630&rtpof=true&sd=true
 '''
 
-root = "/home/GRAMES.POLYMTL.CA/lobouz/duke/projects/ivadomed/contrast-agnostic-seg/data_processed_sg_2023-03-10_NO_CROP/data_processed_clean"
+root = "/home/louisfb/projects/def-jcohen/louisfb/data/data_tmp/spine_generic_processed_clean"
 
 parser = argparse.ArgumentParser(description='Code for creating k-fold splits of the spine-generic dataset.')
 
@@ -28,7 +28,7 @@ parser.add_argument('-ncvf', '--num-cv-folds', default=0, type=int,
 parser.add_argument('-pd', '--path-data-SG', default=root, type=str, help='Path to the data set directory')
 parser.add_argument('-pj', '--path-joblib', help='Path to joblib file from ivadomed containing the dataset splits.',
                     default=None, type=str)
-parser.add_argument('-po', '--path-out', default="/home/GRAMES.POLYMTL.CA/lobouz/data_tmp", type=str, help='Path to the output directory where dataset json is saved')
+parser.add_argument('-po', '--path-out', default="/home/louisfb/projects/def-jcohen/louisfb/data/data_tmp", type=str, help='Path to the output directory where dataset json is saved')
 parser.add_argument('-dp', "--datasets-paths", nargs="*", default=None, help="List of paths to all the datasets to aggregate in the JSON.")
 parser.add_argument('-dn', '--dataset-name-v', default="v0", type=str, help='Name of the dataset built with version.')
 parser.add_argument('-dd', '--dataset-description', default="Aggregated dataset", type=str, help='Description of the dataset built (ideally all dataset names).')
