@@ -386,7 +386,7 @@ for file_path in "${inc_contrasts[@]}";do
   
   # For T1w contrast, use existing disc file labels
   if [[ $file_path == *"T1w"* ]];then
-    label_if_does_not_exist ${file_path}.nii.gz ${fileseg}.nii.gz
+    label_if_does_not_exist ${file_path} ${fileseg}
   else
     # Bring T2w disc labels to native space
     sct_apply_transfo -i ./anat/${file_t2_discs}.nii.gz -d ${file_path}.nii.gz -w ${warping_field_inv}.nii.gz -x label -o ${file_path}_seg_labeled_discs.nii.gz
