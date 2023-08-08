@@ -46,6 +46,7 @@ Specify the path of preprocessed dataset with the flag `-path-data`.
 ### Launch processing
 
 ```
+cd processing_spine_generic
 sct_run_batch -jobs -1 -path-data <PATH_DATA> -path-output <PATH-OUTPUT> -script process_data.sh -script-args exclude.yml
 ```
 
@@ -132,7 +133,8 @@ To compute CSA at C2-C3 vertebral levels on the prediction masks obtained from t
 For every trained model, you can run:
 
 ```
-sct_run_batch -jobs -1 -path-data /data_processed_clean/ -path-output <PATH_OUTPUT> -script compute_csa.sh -script-args <PATH_PRED_MASKS>
+cd csa_evaluation
+sct_run_batch -jobs -1 -path-data /data_processed_clean/ -path-output <PATH_OUTPUT> -script compute_csa_ivadomed.sh -script-args <PATH_PRED_MASKS>
 ```
 The CSA results will be under `<PATH_OUTPUT>/results`.
 
@@ -146,5 +148,6 @@ python gen_charts.py --contrasts T1w T2w T2star rec-average_dwi \
 ## Run qc report on prediction masks
 
 ~~~
-sct_run_batch -path-data <PATH_DATA> -path-out <PATH-OUT> -script-args <PATH_PRED_MASK> -jobs 20 -script run_qc_prediction.sh
+cd processing_other_datasets
+sct_run_batch -path-data <PATH_DATA> -path-out <PATH-OUT> -script-args <PATH_PRED_MASK> -jobs 20 -script run_qc_prediction_ivadomed.sh
 ~~~
