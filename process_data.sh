@@ -441,19 +441,6 @@ for file_path in "${inc_contrasts[@]}";do
   # Hard segmentation
   sct_process_segmentation -i ${PATH_DATA}/derivatives/labels/${SUBJECT}/${fileseg}.nii.gz -vert 2,3 -vertfile ${fileseglabel}.nii.gz -o ${PATH_RESULTS}/csa_hard_GT_${contrast_seg}.csv -append 1
   
-  # Only use segmentations and soft segmentations in the derivatives.
-  # Dilate spinal cord segmentation
-  #sct_maths -i ${PATH_DATA}/derivatives/labels/${SUBJECT}/${fileseg}.nii.gz -dilate 7 -shape ball -o ${fileseg}_dilate.nii.gz
-  # Crop image 
-  #sct_crop_image -i ${file_path}.nii.gz -m ${fileseg}_dilate.nii.gz -o ${file_path}_crop.nii.gz
-  # Crop softseg
-  #sct_crop_image -i ${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/${filesoftseg}.nii.gz -m ${fileseg}_dilate.nii.gz -o ${filesoftseg}_crop.nii.gz
-  # Crop seg
-  #sct_crop_image -i ${PATH_DATA}/derivatives/labels/${SUBJECT}/${fileseg}.nii.gz -m ${fileseg}_dilate.nii.gz -o ${fileseg}_crop.nii.gz
-  # Crop disc labels
-  #sct_crop_image -i ${fileseglabel}_discs.nii.gz -m ${fileseg}_dilate.nii.gz -o ${file_path}_discs_crop.nii.gz
-
-
   mkdir -p $PATH_DATA_PROCESSED_CLEAN $PATH_DATA_PROCESSED_CLEAN/${SUBJECT}/$type $PATH_DATA_PROCESSED_CLEAN/derivatives/labels/${SUBJECT}/$type
   mkdir -p $PATH_DATA_PROCESSED_CLEAN/derivatives/labels_softseg/${SUBJECT}/$type
 
