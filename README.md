@@ -20,6 +20,7 @@ This repo creates a series of preparations for comparing the newly trained ivado
     * [6.1.Analyse CSA IVADOMED only](#61analyse-csa-ivadomed-only)
 * [7.Run-qc-report-on-prediction-masks-from-other-datasets](#7run-qc-report-on-prediction-masks-from-other-datasets)  
     * [7.1.Example running QC on prediction masks from nnUnet from other datasets](#71example-running-qc-on-prediction-masks-from-nnunet-from-other-datasets)
+* [8.Active-learning-procedure](#8active-learning-procedure)
 
 ## 1.Dependencies
 
@@ -86,7 +87,7 @@ A `process_data_clean` folder is created in <PATH-OUTPUT> where the cropped data
 
 ### 3.2.Quality control
 
-After running the analysis, check your Quality Control (qc) report by opening the file <PATH-OUTPUT>/qc/index.html. Use the "search" feature of the QC report to quickly jump to segmentations or labeling issues.
+After running the analysis, check your Quality Control (QC) report by opening the file <PATH-OUTPUT>/qc/index.html. Use the "search" feature of the QC report to quickly jump to segmentations or labeling issues.
 
 **1. Segmentations**
 
@@ -183,7 +184,7 @@ python gen_charts.py --contrasts T1w T2w T2star rec-average_dwi \
        --baseline_folder ../duke/projects/ivadomed/contrast-agnostic-seg/archive_derivatives_softsegs-seg/contrast-agnostic-centerofmass-preprocess-clean-all-2022-10-22\results_MTS_renamed
 ```
   
-## 7.Run qc report on prediction masks from other datasets
+## 7. Run QC report on prediction masks from other datasets
 
 1. Got inside the `scripts` folder:
 ~~~
@@ -206,3 +207,17 @@ sct_run_batch -jobs 20 -path-data ~/data_nvme_sebeda/datasets/dcm-zurich/ \
                        -script run_qc_prediction_dcm_zurich_sag.sh \
                        -script-args ~/duke/temp/muena/contrast-agnostic/pure-inference/Dataset725_dcmZurichSagittalRPI/test713_softAvg/
 ~~~
+
+## 8.Active learning procedure
+To extend the training set to other contrasts and to pathologies, we applided the segmentation model to other datasets, manually corrected the segmentations and added them to the training set.
+
+Here is the detailed procedure:
+
+1. Run inference on other datasets for the selected models and generate the QC report from prediction masks.
+2. Select ~20 interesting images per dataset (using the QC report).
+3. Correct the inference on the selected subjects if needed (you can use [`manual-correction`](https://github.com/spinalcordtoolbox/manual-correction) script).
+4. Add the inferred segmentations to the `derivatives/labels_contrast_agnostic` folder of each dataset.
+5. Add inferred segmentations to the training set (keep the same testing spine generic subjects) & retrain a model.
+6. Compute CSA on spine generic testing set and see STD vs before
+
+
