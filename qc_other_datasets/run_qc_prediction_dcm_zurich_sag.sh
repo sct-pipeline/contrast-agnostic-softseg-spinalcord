@@ -1,8 +1,8 @@
 #!/bin/bash
 #
-# Run QC report on prediction masks
+# Run QC report on prediction masks for dcm-zurich dataset sagittal T2w images
 # Usage:
-#   ./run_qc_prediction_sci_colorado.sh <SUBJECT>
+#   ./run_qc_prediction_dcm_zurich.sh <SUBJECT>
 #
 #
 # Authors: Sandrine Bédard
@@ -75,29 +75,26 @@ file_sub="${SUBJECT//[\/]/_}"
 
 for file_pred in ${PATH_PRED_SEG}/*; do
     if [[ $file_pred == *$file_sub* ]];then
-        echo " File found, running QC report $file_pred"
-        # Find if anat or dwi
-        file_seg_basename=${file_pred##*/}
-        echo $file_seg_basename
-        type=$(find_contrast $file_pred)
-        prefix="tSCIColoradoSCSeg_"  # TODO change accroding to prediction names
-        file_image=${file_seg_basename#"$prefix"}
-        file_image="${file_image::-11}"  # Remove X.nii.gz since the number X varies
-        # split with "-"
-        arrIN=(${file_image//-/ })
-        contrast="_T2w"
-        file_image=${arrIN[0]}"-"${arrIN[1]}"${contrast}.nii.gz"
-        echo $file_image
-        # rsync prediction mask
-        file_pred_new_name=${type}/${arrIN[0]}"-"${arrIN[1]}"${contrast}_pred.nii.gz"
-        rsync -avzh $file_pred $file_pred_new_name
-        # Create QC for pred mask
-<<<<<<< HEAD:qc_other_datasets/run_qc_prediction_sci_colorado.sh
-        sct_qc -i ${type}/${file_image} -s $file_pred_new_name -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
-=======
-      sct_maths -i ${type}/${file_seg_basename} -bin 0.5 -o ${type}/${file_seg_basename}
-      sct_qc -i ${type}/${file_image} -s ${type}/${file_seg_basename} -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
->>>>>>> sb/remove_crop_preprocessing:qc_other_datasets/run_qc_prediction_ivadomed.sh
+      echo " File found, running QC report $file_pred"
+      # Find if anat or dwi
+      file_seg_basename=${file_pred##*/}
+      echo $file_seg_basename
+      type=$(find_contrast $file_pred)
+      prefix="dcmZurichSagittalRPI_"  # TODO change accroding to prediction names
+      file_image=${file_seg_basename#"$prefix"}
+      file_image="${file_image::-11}"  # Remove X.nii.gz since the number X varies
+      # split with "-"
+      arrIN=(${file_image//-/ })
+      contrast="_acq-sagittal_T2w"
+      file_image=${arrIN[0]}"-"${arrIN[1]}"${contrast}.nii.gz"
+      echo $file_image
+      # rsync prediction mask
+      file_pred_new_name=${type}/${arrIN[0]}"-"${arrIN[1]}"${contrast}_pred.nii.gz"
+      rsync -avzh $file_pred $file_pred_new_name
+      # Create QC for pred mask
+      sct_qc -i ${type}/${file_image} -s $file_pred_new_name -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
+      sct_qc -i ${type}/${file_image} -s $file_pred_new_name -p sct_label_vertebrae -qc ${PATH_QC} -qc-subject ${SUBJECT}
+
     fi
 done
 
