@@ -70,7 +70,7 @@ A `process_data_clean` folder is created in <PATH-OUTPUT> where the cropped data
 
 ### 3.2.Quality control
 
-After running the analysis, check your Quality Control (qc) report by opening the file <PATH-OUTPUT>/qc/index.html. Use the "search" feature of the QC report to quickly jump to segmentations or labeling issues.
+After running the analysis, check your Quality Control (QC) report by opening the file <PATH-OUTPUT>/qc/index.html. Use the "search" feature of the QC report to quickly jump to segmentations or labeling issues.
 
 **1. Segmentations**
 
