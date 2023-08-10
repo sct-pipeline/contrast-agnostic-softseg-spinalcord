@@ -196,7 +196,7 @@ To extend the training set to other contrasts and to pathologies, we applided th
 
 Here is the detailed procedure:
 
-1. Run inference on other datasets for the selected models and QC report.
+1. Run inference on other datasets for the selected models and generate the QC report from prediction masks.
 2. Select ~20 interesting images per datasets (in QC).
 3. Correct the inference on the selected subject if needed.
 4. Add the inferred segmentations to each dataset (under derivatives/labels_contrast_agnostic).
