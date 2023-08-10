@@ -198,7 +198,7 @@ Here is the detailed procedure:
 
 1. Run inference on other datasets for the selected models and generate the QC report from prediction masks.
 2. Select ~20 interesting images per dataset (using the QC report).
-3. Correct the inference on the selected subject if needed.
+3. Correct the inference on the selected subjects if needed (you can use [`manual-correction`](https://github.com/spinalcordtoolbox/manual-correction) script).
 4. Add the inferred segmentations to each dataset (under derivatives/labels_contrast_agnostic).
 5. Add inferred segmentations to the training set (keep the same testing spine generic subjects) & retrain a model.
 6. Compute CSA on spine generic testing set and see STD vs before
