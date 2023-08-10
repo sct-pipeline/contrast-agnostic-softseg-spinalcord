@@ -92,7 +92,12 @@ for file_pred in ${PATH_PRED_SEG}/*; do
         file_pred_new_name=${type}/${arrIN[0]}"-"${arrIN[1]}"${contrast}_pred.nii.gz"
         rsync -avzh $file_pred $file_pred_new_name
         # Create QC for pred mask
+<<<<<<< HEAD:qc_other_datasets/run_qc_prediction_sci_colorado.sh
         sct_qc -i ${type}/${file_image} -s $file_pred_new_name -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
+=======
+      sct_maths -i ${type}/${file_seg_basename} -bin 0.5 -o ${type}/${file_seg_basename}
+      sct_qc -i ${type}/${file_image} -s ${type}/${file_seg_basename} -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
+>>>>>>> sb/remove_crop_preprocessing:qc_other_datasets/run_qc_prediction_ivadomed.sh
     fi
 done
 

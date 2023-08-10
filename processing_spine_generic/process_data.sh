@@ -95,8 +95,6 @@ label_if_does_not_exist(){
   # Update global variable with segmentation file name
   FILELABEL="${file}_labels-disc"
   FILELABELMANUAL="${PATH_DATA}/derivatives/labels/${SUBJECT}/${FILELABEL}-manual.nii.gz"
-  # Binarize softsegmentation to create labeled softseg
-  #sct_maths -i ${file_seg}.nii.gz -bin 0.5 -o ${file_seg}_bin.nii.gz
   echo "Looking for manual label: $FILELABELMANUAL"
   if [[ -e $FILELABELMANUAL ]]; then
     echo "Found! Using manual labels."
@@ -377,22 +375,28 @@ for file_path in "${inc_contrasts[@]}";do
   fileseg=${file_path}_seg
   warping_field_inv=${type}warp_${file_t2}2${file}
 
-
   # Bring softseg to native space
   sct_apply_transfo -i ${file_softseg}.nii.gz -d ${file_path}.nii.gz -w ${warping_field_inv}.nii.gz -x linear -o ${file_path}_softseg.nii.gz
   # Apply coverage mask to softseg
   sct_maths -i ${file_path}_softseg.nii.gz -o ${file_path}_softseg.nii.gz -mul ${file_path}_ones.nii.gz
+  # Binarize output softseg for CSA computation
+  sct_maths -i ${file_path}_softseg.nii.gz -bin 0.5 -o ${file_path}_softseg_bin.nii.gz
   # Generate QC report
   sct_qc -i ${file_path}.nii.gz -s ${file_path}_softseg.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
   
-  # Bring T2w disc labels to native space
-  sct_apply_transfo -i ./anat/${file_t2_discs}.nii.gz -d ${file_path}.nii.gz -w ${warping_field_inv}.nii.gz -x label -o ${file_path}_seg_labeled_discs.nii.gz
-  # Set sform to qform (there are disparencies)
-  sct_image -i ${file_path}_seg_labeled_discs.nii.gz -set-sform-to-qform
-  sct_image -i ${fileseg}.nii.gz -set-sform-to-qform
-  sct_image -i ${file_path}.nii.gz -set-sform-to-qform
-  # Generate labeled segmentation from warp disc labels
-  sct_label_vertebrae -i ${file_path}.nii.gz -s ${fileseg}.nii.gz -discfile ${file_path}_seg_labeled_discs.nii.gz -c t2 -ofolder $type
+  # For T1w contrast, use existing disc file labels
+  if [[ $file_path == *"T1w"* ]];then
+    label_if_does_not_exist ${file_path} ${fileseg}
+  else
+    # Bring T2w disc labels to native space
+    sct_apply_transfo -i ./anat/${file_t2_discs}.nii.gz -d ${file_path}.nii.gz -w ${warping_field_inv}.nii.gz -x label -o ${file_path}_seg_labeled_discs.nii.gz
+    # Set sform to qform (there are disparencies)
+    sct_image -i ${file_path}_seg_labeled_discs.nii.gz -set-sform-to-qform
+    sct_image -i ${fileseg}.nii.gz -set-sform-to-qform
+    sct_image -i ${file_path}.nii.gz -set-sform-to-qform
+    # Generate labeled segmentation from warp disc labels
+    sct_label_vertebrae -i ${file_path}.nii.gz -s ${fileseg}.nii.gz -discfile ${file_path}_seg_labeled_discs.nii.gz -c t2 -ofolder $type
+  fi
   # Generate QC report to assess vertebral labeling
   sct_qc -i ${file_path}.nii.gz -s ${fileseg}_labeled.nii.gz -p sct_label_vertebrae -qc ${PATH_QC} -qc-subject ${SUBJECT}
 
@@ -435,30 +439,21 @@ for file_path in "${inc_contrasts[@]}";do
   # Clip softsegs
   python ${PATH_SCRIPT}/clip_softseg.py -i ${filesoftseg}.nii.gz -o ${filesoftseg}.nii.gz
 
-  # Compute CSA on hard GT and soft GT (only from the derivaives)
+  # Compute CSA on soft GT and hard GT (only from the derivaives)
   # Soft segmentation
   sct_process_segmentation -i ${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/${filesoftseg}.nii.gz -vert 2,3 -vertfile ${fileseglabel}.nii.gz -o ${PATH_RESULTS}/csa_soft_GT_${contrast_seg}.csv -append 1
+  
+  # Soft segmentation binarized
+  sct_process_segmentation -i ${filesoftseg}_bin.nii.gz -vert 2,3 -vertfile ${fileseglabel}.nii.gz -o ${PATH_RESULTS}/csa_soft_GT_bin_${contrast_seg}.csv -append 1
+
   # Hard segmentation
   sct_process_segmentation -i ${PATH_DATA}/derivatives/labels/${SUBJECT}/${fileseg}.nii.gz -vert 2,3 -vertfile ${fileseglabel}.nii.gz -o ${PATH_RESULTS}/csa_hard_GT_${contrast_seg}.csv -append 1
   
-  # Only use segmentations and soft segmentations in the derivatives.
-  # Dilate spinal cord segmentation
-  sct_maths -i ${PATH_DATA}/derivatives/labels/${SUBJECT}/${fileseg}.nii.gz -dilate 7 -shape ball -o ${fileseg}_dilate.nii.gz
-  # Crop image 
-  sct_crop_image -i ${file_path}.nii.gz -m ${fileseg}_dilate.nii.gz -o ${file_path}_crop.nii.gz
-  # Crop softseg
-  sct_crop_image -i ${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/${filesoftseg}.nii.gz -m ${fileseg}_dilate.nii.gz -o ${filesoftseg}_crop.nii.gz
-  # Crop seg
-  sct_crop_image -i ${PATH_DATA}/derivatives/labels/${SUBJECT}/${fileseg}.nii.gz -m ${fileseg}_dilate.nii.gz -o ${fileseg}_crop.nii.gz
-  # Crop disc labels
-  sct_crop_image -i ${fileseglabel}_discs.nii.gz -m ${fileseg}_dilate.nii.gz -o ${file_path}_discs_crop.nii.gz
-
-
   mkdir -p $PATH_DATA_PROCESSED_CLEAN $PATH_DATA_PROCESSED_CLEAN/${SUBJECT}/$type $PATH_DATA_PROCESSED_CLEAN/derivatives/labels/${SUBJECT}/$type
   mkdir -p $PATH_DATA_PROCESSED_CLEAN/derivatives/labels_softseg/${SUBJECT}/$type
 
-  # Put cropped image in cleaned dataset
-  rsync -avzh $PATH_DATA_PROCESSED/${SUBJECT}/${file_path}_crop.nii.gz $PATH_DATA_PROCESSED_CLEAN/${SUBJECT}/${file_path}.nii.gz
+  # Put image in cleaned dataset
+  rsync -avzh $PATH_DATA_PROCESSED/${SUBJECT}/${file_path}.nii.gz $PATH_DATA_PROCESSED_CLEAN/${SUBJECT}/${file_path}.nii.gz
 
   # Don't copy .json file 
   if echo "$file_path" | grep -q "./dwi"; then
@@ -468,13 +463,13 @@ for file_path in "${inc_contrasts[@]}";do
   fi
 
   # Move segmentation and soft segmentation to the cleanded derivatives
-  rsync -avzh $PATH_DATA_PROCESSED/${SUBJECT}/${fileseg}_crop.nii.gz $PATH_DATA_PROCESSED_CLEAN/derivatives/labels/${SUBJECT}/${fileseg}.nii.gz
-  rsync -avzh $PATH_DATA_PROCESSED/${SUBJECT}/${filesoftseg}_crop.nii.gz $PATH_DATA_PROCESSED_CLEAN/derivatives/labels_softseg/${SUBJECT}/${filesoftseg}.nii.gz
+  rsync -avzh ${PATH_DATA}/derivatives/labels/${SUBJECT}/${fileseg}.nii.gz $PATH_DATA_PROCESSED_CLEAN/derivatives/labels/${SUBJECT}/${fileseg}.nii.gz
+  rsync -avzh ${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/${filesoftseg}.nii.gz $PATH_DATA_PROCESSED_CLEAN/derivatives/labels_softseg/${SUBJECT}/${filesoftseg}.nii.gz
   # Move json files of derivatives
   rsync -avzh "${PATH_DATA}/derivatives/labels/${SUBJECT}/${fileseg}.json" $PATH_DATA_PROCESSED_CLEAN/derivatives/labels/${SUBJECT}/${fileseg}.json
   rsync -avzh "${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/${filesoftseg}.json" $PATH_DATA_PROCESSED_CLEAN/derivatives/labels_softseg/${SUBJECT}/${filesoftseg}.json
-  # Move cropped disc labels into cleaned derivatives
-  rsync -avzh $PATH_DATA_PROCESSED/${SUBJECT}/${file_path}_discs_crop.nii.gz $PATH_DATA_PROCESSED_CLEAN/derivatives/labels/${SUBJECT}/${file_path}_discs.nii.gz
+  # Move disc labels into cleaned derivatives
+  rsync -avzh $PATH_DATA_PROCESSED/${SUBJECT}/${file_path}_seg_labeled_discs.nii.gz $PATH_DATA_PROCESSED_CLEAN/derivatives/labels/${SUBJECT}/${file_path}_discs.nii.gz
 
 done
 
