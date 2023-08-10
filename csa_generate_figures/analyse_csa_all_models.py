@@ -6,6 +6,7 @@ import os
 import logging
 import argparse
 import sys
+import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -57,10 +58,15 @@ def get_csa(csa_filename):
 def violin_plot(df, y_label, title, path_out, filename, set_ylim=False):
     sns.set_style('whitegrid', rc={'xtick.bottom': True,
                                  'ytick.left': True,})
-    fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(10, 9)) 
+    fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(12, 10)) 
     plt.rcParams['legend.title_fontsize'] = 'x-large'
     plt.yticks(fontsize="x-large")
     sns.violinplot(data=df, ax=ax, inner="box", linewidth=2, palette="Set2")
+    
+    if filename == 'violin_plot_all.png':
+        # insert a dashed vertical line at x=5
+        ax.axvline(x=5.5, linestyle='--', color='black', linewidth=1, alpha=0.5)
+        
     plt.setp(ax.collections, alpha=.9)
     ax.set_title(title, pad=20, fontweight="bold", fontsize=17)
     ax.xaxis.set_tick_params(direction='out')
@@ -74,16 +80,22 @@ def violin_plot(df, y_label, title, path_out, filename, set_ylim=False):
     ax.set_ylabel(y_label, fontsize=17, fontweight="bold")
     if set_ylim:
         ax.set_ylim([40, 105])
+        # show y-axis values in interval of 5
+        ax.set_yticks(np.arange(40, 105, 5))
+        # insert horizontal line at y=70 
+        ax.axhline(y=70, linestyle='--', color='black', linewidth=1.5, alpha=0.5)
+
     else:
         yabs_max = abs(max(ax.get_ylim(), key=abs))
         ax.set_ylim(ymax=(yabs_max + 1))
 
     plt.tight_layout()
     outfile = os.path.join(path_out, filename)
-    plt.savefig(outfile, dpi=400, bbox_inches="tight")
+    plt.savefig(outfile, dpi=300, bbox_inches="tight")
 
 def main():
     exp_folder = create_experiment_folder()
+    print(exp_folder)
 
     # Dump log file there
     if os.path.exists(FNAME_LOG):
@@ -103,11 +115,12 @@ def main():
     for folder in csa_folders:
         if folder in folders_included:
             df = pd.DataFrame()
-            path_csa = os.path.join(path_in, folder, 'results')
+            # path_csa = os.path.join(path_in, folder, 'results')
+            path_csa = os.path.join(path_in, folder)    # TODO: comment this when NOT comparing GTs only
             for file in os.listdir(path_csa):
                 if 'csv' in file:
                     contrast = file.split('_')
-                    if len(contrast) < 4:
+                    if len(contrast) < 5: # 4:
                         contrast = contrast[-1].split('.')[0]
                     else:
                         contrast = contrast[-2]
@@ -116,11 +129,17 @@ def main():
             df.dropna(axis=0, inplace=True)
     # Compute STD
 
-    rename = {'ivado_avg_bin_no_crop': 'IVADO_avg_bin',
-             'ivado_soft_no_crop':'IVADO_avg',
-             'ivado_hard_GT': 'IVADO_hard_GT',
-             'csa_nnunet_soft_avg_all_no_crop': 'nnUnet_avg_bin',
-             }
+    rename = {
+        'ivado_avg_bin_no_crop': 'IVADO_avg_bin',
+        'ivado_soft_no_crop':'IVADO_avg',
+        'ivado_hard_GT': 'IVADO_hard_GT',
+        'csa_nnunet_soft_avg_all_no_crop': 'nnUNet_avg_bin',
+        'csa_monai_no-pred-qc': 'MONAI_avg',  # Added folder name here
+        'csa_monai_soft_and_bin': 'MONAI_avg_bin',  # Added folder name here
+        'csa_soft_avg_gt': 'GT_soft_avg'
+    }
+
+
     dfs = dict((rename[key], value) for (key, value) in dfs.items())
     stds = pd.DataFrame()
     for method in dfs.keys():
@@ -139,7 +158,7 @@ def main():
                     filename='violin_plot_csa_percontrast_'+method+'.png', 
                     set_ylim=True)
     logger.info(f'Number of subject in test set: {len(stds.index)}')
-    stds = stds[['IVADO_hard_GT', 'IVADO_avg', 'IVADO_avg_bin', 'nnUnet_avg_bin']]
+    stds = stds[list(rename.values())]
     
     violin_plot(stds,
                 y_label=r'Standard deviation ($\bf{mm^2}$)', 
