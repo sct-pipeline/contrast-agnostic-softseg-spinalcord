@@ -167,7 +167,7 @@ python gen_charts.py --contrasts T1w T2w T2star rec-average_dwi \
        --baseline_folder ../duke/projects/ivadomed/contrast-agnostic-seg/archive_derivatives_softsegs-seg/contrast-agnostic-centerofmass-preprocess-clean-all-2022-10-22\results_MTS_renamed
 ```
   
-## 7.Run qc report on prediction masks from other datasets
+## 7. Run QC report on prediction masks from other datasets
 
 1. Got inside the `scripts` folder:
 ~~~
