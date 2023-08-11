@@ -22,4 +22,4 @@ FILES_REG:
     - sub-beijingGE04  # Missing all 3 MTS images
     - sub-ubc01  # Missing flip-2_mt-off_MTS
     - sub-oxfordOhba02  # DWI motion correction failed
-  
+    - sub-oxfordFmrib04  # Bad T1w registration
