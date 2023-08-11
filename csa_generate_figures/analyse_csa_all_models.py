@@ -114,29 +114,61 @@ def main():
     dfs = {}
     for folder in csa_folders:
         if folder in folders_included:
-            df = pd.DataFrame()
-            # path_csa = os.path.join(path_in, folder, 'results')
-            path_csa = os.path.join(path_in, folder)    # TODO: comment this when NOT comparing GTs only
-            for file in os.listdir(path_csa):
-                if 'csv' in file:
-                    contrast = file.split('_')
-                    if len(contrast) < 5: # 4:
-                        contrast = contrast[-1].split('.')[0]
-                    else:
-                        contrast = contrast[-2]
-                    df[contrast] = get_csa(os.path.join(path_csa, file))
+            if 'csa_gt' in folder:
+                df = pd.DataFrame()
+                path_csa = os.path.join(path_in, folder, 'results')
+                # path_csa = os.path.join(path_in, folder)    # TODO: comment this when NOT comparing GTs only
+                for file in os.listdir(path_csa):
+                    if 'csa_soft' in file:
+                        contrast = file.split('_')
+                        if len(contrast) < 5:   # the filename format is "csa_soft_GT_<contrast>.csv"
+                            contrast = contrast[-1].split('.')[0]
+                        else:
+                            contrast = contrast[-2]
+                        df[contrast] = get_csa(os.path.join(path_csa, file))
+
+            elif 'csa_monai' in folder:
+                df = pd.DataFrame()
+                path_csa = os.path.join(path_in, folder, 'results')
+                # path_csa = os.path.join(path_in, folder)    # TODO: comment this when NOT comparing GTs only
+                for file in os.listdir(path_csa):
+                    if '_soft.csv' in file:
+                        contrast = file.split('_')
+                        if len(contrast) < 5:   # the filename format is "csa_pred_<contrast>_soft.csv"
+                            contrast = contrast[-2]
+                        else:
+                            contrast = contrast[-3] # for mt-on and mt-off
+                        df[contrast] = get_csa(os.path.join(path_csa, file))
+
+            else:
+                df = pd.DataFrame()
+                path_csa = os.path.join(path_in, folder, 'results')
+                # path_csa = os.path.join(path_in, folder)    # TODO: comment this when NOT comparing GTs only
+                for file in os.listdir(path_csa):
+                    if 'csv' in file:
+                        contrast = file.split('_')
+                        if len(contrast) < 4:   # the filename format is "csa_pred_<contrast>.csv"
+                            contrast = contrast[-1].split('.')[0]
+                        else:
+                            contrast = contrast[-2]
+                        df[contrast] = get_csa(os.path.join(path_csa, file))
             dfs[folder] = df
             df.dropna(axis=0, inplace=True)
     # Compute STD
 
+    # rename = {
+    #     'ivado_avg_bin_no_crop': 'IVADO_avg_bin',
+    #     'ivado_soft_no_crop':'IVADO_avg',
+    #     'ivado_hard_GT': 'IVADO_hard_GT',
+    #     'csa_nnunet_soft_avg_all_no_crop': 'nnUNet_avg_bin',
+    #     'csa_monai_model_80x160x64': 'MONAI_avg',  # Added folder name here
+    #     'csa_gt_2023-08-08': 'GT_soft_avg'
+    # }
+
+    # To compare only monai model and the GT
     rename = {
-        'ivado_avg_bin_no_crop': 'IVADO_avg_bin',
-        'ivado_soft_no_crop':'IVADO_avg',
-        'ivado_hard_GT': 'IVADO_hard_GT',
-        'csa_nnunet_soft_avg_all_no_crop': 'nnUNet_avg_bin',
-        'csa_monai_no-pred-qc': 'MONAI_avg',  # Added folder name here
-        'csa_monai_soft_and_bin': 'MONAI_avg_bin',  # Added folder name here
-        'csa_soft_avg_gt': 'GT_soft_avg'
+        'csa_monai_model_80x160x64': 'MONAI_avg',  # Added folder name here
+        'csa_gt_2023-08-08': 'GT_soft_avg'
     }
 
 
