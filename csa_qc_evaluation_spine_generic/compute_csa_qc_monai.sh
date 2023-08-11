@@ -86,7 +86,7 @@ for pred_sub in ${PATH_PRED_SEG}/sub-*; do
     echo "Subject found, running QC report $pred_sub"
     # cd ${SUBJECT}
     
-    for file_pred in ${PATH_PRED_SEG}/${SUBJECT}/*.nii.gz; do
+    for file_pred in ${PATH_PRED_SEG}/${SUBJECT}/*_pred.nii.gz; do
       file_seg_basename=${file_pred##*/}  # keep only the file name from the whole path
       echo $file_seg_basename
       if [[ ${file_seg_basename} =~ "dwi" ]]; then
