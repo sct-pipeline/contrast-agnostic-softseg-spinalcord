@@ -10,14 +10,14 @@ import pytorch_lightning as pl
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
 
-from utils import precision_score, recall_score, dice_score, plot_slices, PolyLRScheduler
+from utils import precision_score, recall_score, dice_score, compute_average_csa, PolyLRScheduler
 from losses import SoftDiceLoss, AdapWingLoss
 from transforms import train_transforms, val_transforms
 from models import ModifiedUNet3D
 
 from monai.utils import set_determinism
 from monai.inferers import sliding_window_inference
-from monai.networks.nets import UNet, BasicUNet, UNETR, AttentionUnet
+from monai.networks.nets import UNet, UNETR
 from monai.data import (DataLoader, Dataset, CacheDataset, load_decathlon_datalist, decollate_batch)
 from monai.transforms import (Compose, EnsureType, EnsureTyped, Invertd, SaveImaged, SaveImage)
 
@@ -43,7 +43,8 @@ class Model(pl.LightningModule):
 
         # define cropping and padding dimensions
         self.voxel_cropping_size = (160, 224, 96)   # (80, 192, 160) taken from nnUNet_plans.json
-        self.inference_roi_size = (160, 224, 96)   
+        self.inference_roi_size = (160, 224, 96)
+        self.spacing = (1.0, 1.0, 1.0)
 
         # define post-processing transforms for validation, nothing fancy just making sure that it's a tensor (default)
         self.val_post_pred = Compose([EnsureType()]) 
@@ -56,6 +57,9 @@ class Model(pl.LightningModule):
         self.train_step_outputs = []
         self.val_step_outputs = []
         self.test_step_outputs = []
+
+        # MSE loss for comparing the CSA values
+        self.mse_loss = torch.nn.MSELoss()
 
 
     # --------------------------------
@@ -164,8 +168,9 @@ class Model(pl.LightningModule):
 
         output = self.forward(inputs)   # logits
 
-        # calculate training loss
-        loss = self.loss_function(output, labels)
+        # calculate training loss   
+        # NOTE: the diceLoss expects the input to be logits (which it then normalizes inside)
+        dice_loss = self.loss_function(output, labels)
 
         # get probabilities from logits
         output = F.relu(output) / F.relu(output).max() if bool(F.relu(output).max()) else F.relu(output)
@@ -176,14 +181,29 @@ class Model(pl.LightningModule):
         train_soft_dice = self.soft_dice_metric(output, labels) 
         # train_hard_dice = self.soft_dice_metric((output.detach() > 0.5).float(), (labels.detach() > 0.5).float())
 
+        # binarize the predictions and the labels
+        output = (output.detach() > 0.5).float()
+        labels = (labels.detach() > 0.5).float()
+        
+        # compute CSA for each element of the batch
+        csa_loss = 0.0
+        for batch_idx in range(output.shape[0]):
+            pred_patch_csa = compute_average_csa(output[batch_idx].squeeze(), self.spacing)
+            gt_patch_csa = compute_average_csa(labels[batch_idx].squeeze(), self.spacing)
+            csa_loss += (pred_patch_csa - gt_patch_csa) ** 2
+
+        # total loss
+        loss = dice_loss + csa_loss
+
         metrics_dict = {
             "loss": loss.cpu(),
+            "dice_loss": dice_loss.cpu(),
+            "csa_loss": csa_loss.cpu(),
             "train_soft_dice": train_soft_dice.detach().cpu(),
-            # "train_hard_dice": train_hard_dice,
             "train_number": len(inputs),
-            "train_image": inputs[0].detach().cpu().squeeze(),
-            "train_gt": labels[0].detach().cpu().squeeze(),
-            "train_pred": output[0].detach().cpu().squeeze()
+            # "train_image": inputs[0].detach().cpu().squeeze(),
+            # "train_gt": labels[0].detach().cpu().squeeze(),
+            # "train_pred": output[0].detach().cpu().squeeze()
         }
         self.train_step_outputs.append(metrics_dict)
 
@@ -195,32 +215,39 @@ class Model(pl.LightningModule):
             # means the training step was skipped because of empty input patch
             return None
         else:
-            train_loss, num_items, train_soft_dice = 0, 0, 0
+            train_loss, train_dice_loss, train_csa_loss = 0, 0, 0
+            num_items, train_soft_dice = 0, 0
             for output in self.train_step_outputs:
-                train_loss += output["loss"].sum().item()
-                train_soft_dice += output["train_soft_dice"].sum().item()
+                train_loss += output["loss"].item()
+                train_dice_loss += output["dice_loss"].item()
+                train_csa_loss += output["csa_loss"].item()
+                train_soft_dice += output["train_soft_dice"].item()
                 num_items += output["train_number"]
             
             mean_train_loss = (train_loss / num_items)
+            mean_train_dice_loss = (train_dice_loss / num_items)
+            mean_train_csa_loss = (train_csa_loss / num_items)
             mean_train_soft_dice = (train_soft_dice / num_items)
 
             wandb_logs = {
                 "train_soft_dice": mean_train_soft_dice, 
-                "train_loss": mean_train_loss
+                "train_loss": mean_train_loss,
+                "train_dice_loss": mean_train_dice_loss,
+                "train_csa_loss": mean_train_csa_loss,
             }
             self.log_dict(wandb_logs)
 
-            # plot the training images
-            fig = plot_slices(image=self.train_step_outputs[0]["train_image"],
-                              gt=self.train_step_outputs[0]["train_gt"],
-                              pred=self.train_step_outputs[0]["train_pred"],
-                              debug=args.debug)
-            wandb.log({"training images": wandb.Image(fig)})
+            # # plot the training images
+            # fig = plot_slices(image=self.train_step_outputs[0]["train_image"],
+            #                   gt=self.train_step_outputs[0]["train_gt"],
+            #                   pred=self.train_step_outputs[0]["train_pred"],
+            #                   debug=args.debug)
+            # wandb.log({"training images": wandb.Image(fig)})
 
             # free up memory
             self.train_step_outputs.clear()
             wandb_logs.clear()
-            plt.close(fig)
+            # plt.close(fig)
 
 
     # --------------------------------
@@ -235,7 +262,7 @@ class Model(pl.LightningModule):
         # outputs shape: (B, C, <original H x W x D>)
         
         # calculate validation loss
-        loss = self.loss_function(outputs, labels)
+        dice_loss = self.loss_function(outputs, labels)
 
         # get probabilities from logits
         outputs = F.relu(outputs) / F.relu(outputs).max() if bool(F.relu(outputs).max()) else F.relu(outputs)
@@ -244,15 +271,27 @@ class Model(pl.LightningModule):
         post_outputs = [self.val_post_pred(i) for i in decollate_batch(outputs)]
         post_labels = [self.val_post_label(i) for i in decollate_batch(labels)]
         val_soft_dice = self.soft_dice_metric(post_outputs[0], post_labels[0])
-        val_hard_dice = self.soft_dice_metric(
-            (post_outputs[0].detach() > 0.5).float(), (post_labels[0].detach() > 0.5).float()
-            )
-        
+
+        hard_preds, hard_labels = (post_outputs[0].detach() > 0.5).float(), (post_labels[0].detach() > 0.5).float()
+        val_hard_dice = self.soft_dice_metric(hard_preds, hard_labels)
+
+        # compute val CSA loss
+        val_csa_loss = 0.0
+        for batch_idx in range(hard_preds.shape[0]):
+            pred_patch_csa = compute_average_csa(hard_preds[batch_idx].squeeze(), self.spacing)
+            gt_patch_csa = compute_average_csa(hard_labels[batch_idx].squeeze(), self.spacing)
+            val_csa_loss += (pred_patch_csa - gt_patch_csa) ** 2
+
+        # total loss
+        loss = dice_loss + val_csa_loss        
+
         # NOTE: there was a massive memory leak when storing cuda tensors in this dict. Hence,
         # using .detach() to avoid storing the whole computation graph
         # Ref: https://discuss.pytorch.org/t/cuda-memory-leak-while-training/82855/2
         metrics_dict = {
             "val_loss": loss.detach().cpu(),
+            "val_dice_loss": dice_loss.detach().cpu(),
+            "val_csa_loss": val_csa_loss.detach().cpu(),
             "val_soft_dice": val_soft_dice.detach().cpu(),
             "val_hard_dice": val_hard_dice.detach().cpu(),
             "val_number": len(post_outputs),
@@ -267,20 +306,27 @@ class Model(pl.LightningModule):
     def on_validation_epoch_end(self):
 
         val_loss, num_items, val_soft_dice, val_hard_dice = 0, 0, 0, 0
+        val_dice_loss, val_csa_loss = 0, 0
         for output in self.val_step_outputs:
             val_loss += output["val_loss"].sum().item()
             val_soft_dice += output["val_soft_dice"].sum().item()
             val_hard_dice += output["val_hard_dice"].sum().item()
+            val_dice_loss += output["val_dice_loss"].sum().item()
+            val_csa_loss += output["val_csa_loss"].sum().item()
             num_items += output["val_number"]
         
         mean_val_loss = (val_loss / num_items)
         mean_val_soft_dice = (val_soft_dice / num_items)
         mean_val_hard_dice = (val_hard_dice / num_items)
+        mean_val_dice_loss = (val_dice_loss / num_items)
+        mean_val_csa_loss = (val_csa_loss / num_items)
                 
         wandb_logs = {
             "val_soft_dice": mean_val_soft_dice,
             "val_hard_dice": mean_val_hard_dice,
             "val_loss": mean_val_loss,
+            "val_dice_loss": mean_val_dice_loss,
+            "val_csa_loss": mean_val_csa_loss,
         }
         if mean_val_soft_dice > self.best_val_dice:
             self.best_val_dice = mean_val_soft_dice
