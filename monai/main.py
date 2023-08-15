@@ -11,8 +11,9 @@ import torch.nn.functional as F
 import matplotlib.pyplot as plt
 
 from utils import precision_score, recall_score, dice_score, plot_slices, PolyLRScheduler
-from losses import SoftDiceLoss, DiceCrossEntropyLoss
+from losses import SoftDiceLoss, AdapWingLoss
 from transforms import train_transforms, val_transforms
+from models import ModifiedUNet3D
 
 from monai.utils import set_determinism
 from monai.inferers import sliding_window_inference
@@ -27,13 +28,6 @@ class Model(pl.LightningModule):
         super().__init__()
         self.args = args
         self.save_hyperparameters(ignore=['net'])
-
-        # if self.args.unet_depth == 3:
-        #     from models import ModifiedUNet3DEncoder, ModifiedUNet3DDecoder   # this is 3-level UNet
-        #     logger.info("Using UNet with Depth = 3! ")
-        # else:
-        #     from models_original import ModifiedUNet3DEncoder, ModifiedUNet3DDecoder
-        #     logger.info("Using UNet with Depth = 4! ")
 
         self.root = data_root
         self.fold_num = fold_num
@@ -98,7 +92,7 @@ class Model(pl.LightningModule):
         transforms_val = val_transforms(lbl_key='label')
         
         # load the dataset
-        dataset = os.path.join(self.root, f"dataset.json")
+        dataset = os.path.join(self.root, f"spine-generic-ivado-comparison_dataset.json")
         train_files = load_decathlon_datalist(dataset, True, "train")
         val_files = load_decathlon_datalist(dataset, True, "validation")
         test_files = load_decathlon_datalist(dataset, True, "test")
@@ -108,7 +102,8 @@ class Model(pl.LightningModule):
             val_files = val_files[:10]
             test_files = test_files[:6]
         
-        self.train_ds = CacheDataset(data=train_files, transform=transforms_train, cache_rate=0.25, num_workers=4)
+        train_cache_rate = 0.25 if args.debug else 0.5
+        self.train_ds = CacheDataset(data=train_files, transform=transforms_train, cache_rate=train_cache_rate, num_workers=4)
         self.val_ds = CacheDataset(data=val_files, transform=transforms_val, cache_rate=0.25, num_workers=4)
 
         # define test transforms
@@ -421,28 +416,36 @@ def main(args):
     dataset_root = "/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/contrast-agnostic-softseg-spinalcord/monai"
 
     # define optimizer
-    if args.optimizer in ["adamw", "AdamW", "Adamw"]:
-        optimizer_class = torch.optim.AdamW
+    if args.optimizer in ["adam", "Adam"]:
+        optimizer_class = torch.optim.Adam
     elif args.optimizer in ["SGD", "sgd"]:
         optimizer_class = torch.optim.SGD
 
     # define models
     if args.model in ["unet", "UNet"]:            
-        net = UNet(spatial_dims=3, 
-                    in_channels=1, out_channels=1,
-                    channels=(
-                        args.init_filters, 
-                        args.init_filters * 2, 
-                        args.init_filters * 4, 
-                        args.init_filters * 8, 
-                        args.init_filters * 16
-                    ),
-                    strides=(2, 2, 2, 2),
-                    num_res_units=4,
-                )
-        patch_size = "160x224x96"
-        save_exp_id =f"{args.model}_nf={args.init_filters}_nrs=4_opt={args.optimizer}_lr={args.learning_rate}" \
-                        f"_diceCE_bs={args.batch_size}_{patch_size}"
+        # # this is the MONAI model
+        # net = UNet(spatial_dims=3, 
+        #             in_channels=1, out_channels=1,
+        #             channels=(
+        #                 args.init_filters, 
+        #                 args.init_filters * 2, 
+        #                 args.init_filters * 4, 
+        #                 args.init_filters * 8, 
+        #                 args.init_filters * 16
+        #             ),
+        #             strides=(2, 2, 2, 2),
+        #             num_res_units=4,
+        #         )
+        # patch_size = "160x224x96"
+        # save_exp_id =f"{args.model}_nf={args.init_filters}_nrs=4_opt={args.optimizer}_lr={args.learning_rate}" \
+        #                 f"_diceL_nspv={args.num_samples_per_volume}_bs={args.batch_size}_{patch_size}"
+        
+        # This is the ivadomed model
+        net = ModifiedUNet3D(in_channels=1, out_channels=1, init_filters=args.init_filters)
+        patch_size =  "160x224x96"   # "64x128x64"
+        save_exp_id =f"ivado_{args.model}_nf={args.init_filters}_opt={args.optimizer}_lr={args.learning_rate}" \
+                        f"_CsaDiceL_nspv={args.num_samples_per_volume}_bs={args.batch_size}_{patch_size}"
+
     elif args.model in ["unetr", "UNETR"]:
         # define image size to be fed to the model
         img_size = (96, 96, 96)
@@ -464,8 +467,9 @@ def main(args):
                         f"_fs={args.feature_size}_hs={args.hidden_size}_mlpd={args.mlp_dim}_nh={args.num_heads}"
 
     # define loss function
-    # loss_func = SoftDiceLoss(p=1, smooth=1.0)
-    loss_func = DiceCrossEntropyLoss(weight_ce=1.0, weight_dice=1.0)
+    loss_func = SoftDiceLoss(p=1, smooth=1.0)
+    # loss_func = DiceCrossEntropyLoss(weight_ce=1.0, weight_dice=1.0)
+    # loss_func = AdapWingLoss(epsilon=1, theta=0.5, alpha=2.1, omega=8.0, reduction='mean')
 
     # TODO: move this inside the for loop when using more folds
     timestamp = datetime.now().strftime(f"%Y%m%d-%H%M")   # prints in YYYYMMDD-HHMMSS format
@@ -498,7 +502,7 @@ def main(args):
         exp_logger = pl.loggers.WandbLogger(
                             name=save_exp_id,
                             save_dir=args.save_path,
-                            group=f"{args.model}", 
+                            group=f"{args.model}_Adam", 
                             log_model=True, # save best model using checkpoint callback
                             project='contrast-agnostic',
                             entity='naga-karthik',
@@ -533,7 +537,6 @@ def main(args):
         # Saving training script to wandb
         wandb.save("main.py")
 
-        # TODO: Come back to testing when hyperparamters have been fixed after cross-validation
         # Test!
         trainer.test(pl_model)
         logger.info(f"TESTING DONE!")
@@ -547,8 +550,6 @@ def main(args):
             print(f"\nSeed Used: {args.seed}", file=f)
             print(f"\ninitf={args.init_filters}_lr={args.learning_rate}_bs={args.batch_size}_{timestamp}", file=f)
             print(f"\npatch_size={pl_model.voxel_cropping_size}", file=f)
-            # print(f"\n{np.array(centers_list)[None, :]}", file=f)
-            # print(f"\n{np.array(centers_list)[:, None]}", file=f)
             
             print('\n-------------- Test Hard Dice Scores ----------------', file=f)
             print("Hard Dice --> Mean: %0.3f, Std: %0.3f" % (pl_model.avg_test_dice_hard, pl_model.std_test_dice_hard), file=f)
@@ -591,8 +592,8 @@ if __name__ == "__main__":
     parser.add_argument('-me', '--max_epochs', default=1000, type=int, help='Number of epochs for the training process')
     parser.add_argument('-bs', '--batch_size', default=2, type=int, help='Batch size of the training and validation processes')
     parser.add_argument('-opt', '--optimizer', 
-                        choices=['adamw', 'AdamW', 'SGD', 'sgd'], 
-                        default='adamw', type=str, help='Optimizer to use')
+                        choices=['adam', 'Adam', 'SGD', 'sgd'], 
+                        default='adam', type=str, help='Optimizer to use')
     parser.add_argument('-lr', '--learning_rate', default=1e-4, type=float, help='Learning rate for training the model')
     parser.add_argument('-pat', '--patience', default=25, type=int, 
                             help='number of validation steps (val_every_n_iters) to wait before early stopping')
