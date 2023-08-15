@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from torch.optim.lr_scheduler import _LRScheduler
+import torch
 
 
 class FoldGenerator:
@@ -214,6 +215,17 @@ def plot_slices(image, gt, pred, debug=False):
     plt.tight_layout()
     fig.show()
     return fig
+
+
+def compute_average_csa(patch, spacing):
+    num_slices = patch.shape[2]
+    areas = torch.empty(num_slices)
+    for slice_idx in range(num_slices):
+        slice_mask = patch[:, :, slice_idx]
+        area = torch.count_nonzero(slice_mask) * (spacing[0] * spacing[1])
+        areas[slice_idx] = area
+
+    return torch.mean(areas)
 
 
 class PolyLRScheduler(_LRScheduler):
