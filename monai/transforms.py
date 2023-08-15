@@ -8,7 +8,7 @@ from monai.transforms import (SpatialPadd, Compose, CropForegroundd, LoadImaged,
 # median image size in voxels - taken from nnUNet
 # median_size = (123, 255, 214)     # so pad with this size
 # median_size after 1mm isotropic resampling
-# median_size = [ 192. 228. 106.]   
+# median_size = [ 192. 228. 106.]
 
 # Order in which nnunet does preprocessing:
 # 1. Crop to non-zero
@@ -22,7 +22,7 @@ def train_transforms(crop_size, num_samples_pv, lbl_key="label"):
             EnsureChannelFirstd(keys=["image", lbl_key]),
             CropForegroundd(keys=["image", lbl_key], source_key="image"),     # crops >0 values with a bounding box
             NormalizeIntensityd(keys=["image"], nonzero=False, channel_wise=False),
-            Spacingd(keys=["image", "label"], pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "nearest"),),
+            Spacingd(keys=["image", "label"], pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "bilinear"),),
             # data-augmentation
             SpatialPadd(keys=["image", lbl_key], spatial_size=(192, 228, 106), method="symmetric"),
             # NOTE: used with neg together to calculate the ratio pos / (pos + neg) for the probability to pick a 
@@ -52,6 +52,6 @@ def val_transforms(lbl_key="label"):
             Orientationd(keys=["image", lbl_key], axcodes="RPI"),
             CropForegroundd(keys=["image", lbl_key], source_key="image"),
             NormalizeIntensityd(keys=["image"], nonzero=False, channel_wise=False),
-            Spacingd(keys=["image", lbl_key], pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "nearest"),),
+            Spacingd(keys=["image", lbl_key], pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "bilinear"),),
             # SpatialPadd(keys=["image", lbl_key], spatial_size=(123, 255, 214), method="symmetric"),
         ])

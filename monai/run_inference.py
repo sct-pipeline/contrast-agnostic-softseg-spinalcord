@@ -17,7 +17,7 @@ from utils import precision_score, recall_score, dice_score
 
 DEBUG = False
 INIT_FILTERS=8
-INFERENCE_ROI_SIZE = (64, 128, 128)   # (80, 192, 160)
+INFERENCE_ROI_SIZE = (160, 224, 96)   # (80, 192, 160)
 DEVICE = "cpu"
 
 
@@ -45,6 +45,7 @@ def prepare_data(root, dataset_name="spine-generic"):
             
     # load the dataset
     dataset = os.path.join(root, f"{dataset_name}_dataset.json")
+    # dataset = os.path.join(root, f"dataset_ivado_comparison.json")
     test_files = load_decathlon_datalist(dataset, True, "test")
 
     if DEBUG: # args.debug:
@@ -76,7 +77,6 @@ def main(args):
     dataset_root = args.path_json
     dataset_name = args.dataset_name
 
-    # TODO: change the name of the checkpoint file to best_model.ckpt
     chkp_path = os.path.join(args.chkp_path, "best_model.ckpt")
 
     results_path = args.path_out
@@ -187,6 +187,7 @@ def main(args):
                 "precision": round(test_precision, 2),
                 "recall": round(test_recall, 2),
                 # TODO: add relative volume difference here
+                # NOTE: RVD is usually compared with binary objects (not soft)
                 "inference_time_in_sec": round((end_time - start_time), 2),
             }
             test_step_outputs.append(metrics_dict)
