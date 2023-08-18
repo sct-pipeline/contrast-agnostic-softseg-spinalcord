@@ -61,11 +61,13 @@ def violin_plot(df, y_label, title, path_out, filename, set_ylim=False):
     fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(12, 10)) 
     plt.rcParams['legend.title_fontsize'] = 'x-large'
     plt.yticks(fontsize="x-large")
-    sns.violinplot(data=df, ax=ax, inner="box", linewidth=2, palette="Set2")
+    sns.violinplot(data=df, ax=ax, inner="box", linewidth=2, palette="Set2") #, cut=0)
+    # overlay scatter plot on the violin plot to show individual data points
+    sns.swarmplot(data=df, ax=ax, alpha=0.5, size=3, palette='dark:black')
     
     if filename == 'violin_plot_all.png':
         # insert a dashed vertical line at x=5
-        ax.axvline(x=5.5, linestyle='--', color='black', linewidth=1, alpha=0.5)
+        ax.axvline(x=4.5, linestyle='--', color='black', linewidth=1, alpha=0.5)
         
     plt.setp(ax.collections, alpha=.9)
     ax.set_title(title, pad=20, fontweight="bold", fontsize=17)
@@ -154,7 +156,16 @@ def main():
                         df[contrast] = get_csa(os.path.join(path_csa, file))
             dfs[folder] = df
             df.dropna(axis=0, inplace=True)
-    # Compute STD
+
+    # only retain the common subjects from each folder inside dfs
+    # NOTE: only requirement is that the first folder in folders_included should NOT be the GT folder
+    common_subjects = dfs[folders_included[0]].index
+    for folder in folders_included[1:]:
+        common_subjects = common_subjects.intersection(dfs[folder].index)
+    for folder in folders_included:
+        dfs[folder] = dfs[folder].loc[common_subjects]
+        dfs[folder] = dfs[folder].sort_index()
+        logger.info(f'Number of subjects in {folder}: {len(dfs[folder].index)}')
 
     # rename = {
     #     'ivado_avg_bin_no_crop': 'IVADO_avg_bin',
@@ -167,7 +178,11 @@ def main():
 
     # To compare only monai model and the GT
     rename = {
-        'csa_monai_model_80x160x64': 'MONAI_avg',  # Added folder name here
+        'ivado_soft_no_crop':'IVADO_avg',
+        'ivado_avg_bin_no_crop': 'IVADO_avg_bin',
+        'csa_nnunet_soft_avg_all_no_crop': 'nnUNet_avg_bin',
+        'csa_monai_model_160x224x96': 'MONAI_avg',  # Added folder name here
+        'csa_monai_csaDiceL_160x224x96': 'MONAI_avg_csa',  # Added folder name here
         'csa_gt_2023-08-08': 'GT_soft_avg'
     }
 
