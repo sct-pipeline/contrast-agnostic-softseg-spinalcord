@@ -89,7 +89,7 @@ def violin_plot(df, y_label, title, path_out, filename, set_ylim=False):
 
     else:
         yabs_max = abs(max(ax.get_ylim(), key=abs))
-        ax.set_ylim(ymax=(yabs_max + 1))
+        ax.set_ylim(ymax=(yabs_max + 2))
 
     plt.tight_layout()
     outfile = os.path.join(path_out, filename)
@@ -118,7 +118,7 @@ def main():
         if folder in folders_included:
             if 'csa_gt' in folder:
                 df = pd.DataFrame()
-                path_csa = os.path.join(path_in, folder, 'results')
+                path_csa = os.path.join(path_in, folder, 'results')  # TO CHANGE use binarized soft ground truth CSA 
                 # path_csa = os.path.join(path_in, folder)    # TODO: comment this when NOT comparing GTs only
                 for file in os.listdir(path_csa):
                     if 'csa_soft' in file:
@@ -183,12 +183,13 @@ def main():
         'csa_nnunet_soft_avg_all_no_crop': 'nnUNet_avg_bin',
         'csa_monai_model_160x224x96': 'MONAI_avg',  # Added folder name here
         'csa_monai_csaDiceL_160x224x96': 'MONAI_avg_csa',  # Added folder name here
-        'csa_gt_2023-08-08': 'GT_soft_avg'
+        'csa_gt_2023-08-08': 'GT_soft_avg_bin'
     }
 
 
     dfs = dict((rename[key], value) for (key, value) in dfs.items())
     stds = pd.DataFrame()
+    error_csa_prediction = pd.DataFrame()
     for method in dfs.keys():
         std = dfs[method].std(axis=1)
         mean_std = std.mean()
@@ -204,16 +205,34 @@ def main():
                     path_out=exp_folder, 
                     filename='violin_plot_csa_percontrast_'+method+'.png', 
                     set_ylim=True)
+
+        # Compute CSA error
+        if method != 'GT_soft_avg_bin':
+            error = abs(dfs[method] - dfs['GT_soft_avg_bin'])
+            error_csa_prediction[method] = error.mean(axis=1)  # TODO append all contrast toghether instead
+            # Plot error per contrast
+            violin_plot(error,
+                        y_label=r'Absolute CSA Error($\bf{mm^2}$)',
+                        title="CSA Error across MRI contrasts " + method,
+                        path_out=exp_folder, 
+                        filename='violin_plot_csa_percontrast_error'+method+'.png', 
+                        set_ylim=False)
+
     logger.info(f'Number of subject in test set: {len(stds.index)}')
-    stds = stds[list(rename.values())]
-    
+    #stds = stds[list(rename.values())]
+
     violin_plot(stds,
                 y_label=r'Standard deviation ($\bf{mm^2}$)', 
                 title="Variability of CSA across MRI contrasts",
                 path_out=exp_folder,
                 filename='violin_plot_all.png')
 
-
+    # Plot CSA error:
+    violin_plot(error_csa_prediction,
+                y_label=r'Mean absolute CSA error($\bf{mm^2}$)', 
+                title="Absolute CSA error between prediction and GT",
+                path_out=exp_folder,
+                filename='violin_plot_csa_error_all.png')
 
 if __name__ == "__main__":
     main()
