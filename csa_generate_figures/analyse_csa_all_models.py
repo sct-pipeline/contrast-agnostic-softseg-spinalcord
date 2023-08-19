@@ -199,16 +199,20 @@ def main():
         logger.info(f'{method} Mean CSA: \n{dfs[method].mean()}')
         logger.info(f'{method} STD CSA: \n{dfs[method].std()}')
         stds[method] = std
-        violin_plot(dfs[method], 
+        violin_plot(dfs[method],
                     y_label=r'CSA ($\bf{mm^2}$)',
                     title="CSA across MRI contrasts " + method,
-                    path_out=exp_folder, 
-                    filename='violin_plot_csa_percontrast_'+method+'.png', 
+                    path_out=exp_folder,
+                    filename='violin_plot_csa_percontrast_'+method+'.png',
                     set_ylim=True)
 
         # Compute CSA error
         if method != 'GT_soft_avg_bin':
             error = abs(dfs[method] - dfs['GT_soft_avg_bin'])
+            logger.info('Max error:')
+            logger.info(error.max())
+            logger.info('Index of max')
+            logger.info(error.idxmax())
             error_csa_prediction[method] = error.mean(axis=1)  # TODO append all contrast toghether instead
             # Plot error per contrast
             violin_plot(error,
