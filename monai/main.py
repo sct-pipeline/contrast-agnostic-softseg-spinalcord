@@ -40,6 +40,7 @@ class Model(pl.LightningModule):
         self.results_path = results_path
 
         self.best_val_dice, self.best_val_epoch = 0, 0
+        self.best_val_csa = float("inf")
 
         # define cropping and padding dimensions
         self.voxel_cropping_size = (160, 224, 96)   # (80, 192, 160) taken from nnUNet_plans.json
@@ -192,6 +193,9 @@ class Model(pl.LightningModule):
             gt_patch_csa = compute_average_csa(labels[batch_idx].squeeze(), self.spacing)
             csa_loss += (pred_patch_csa - gt_patch_csa) ** 2
 
+        # average CSA loss across the batch
+        csa_loss = csa_loss / output.shape[0]
+
         # total loss
         loss = dice_loss + csa_loss
 
@@ -282,8 +286,11 @@ class Model(pl.LightningModule):
             gt_patch_csa = compute_average_csa(hard_labels[batch_idx].squeeze(), self.spacing)
             val_csa_loss += (pred_patch_csa - gt_patch_csa) ** 2
 
+        # average CSA loss across the batch
+        val_csa_loss = val_csa_loss / hard_preds.shape[0]
+
         # total loss
-        loss = dice_loss + val_csa_loss        
+        loss = dice_loss + val_csa_loss
 
         # NOTE: there was a massive memory leak when storing cuda tensors in this dict. Hence,
         # using .detach() to avoid storing the whole computation graph
@@ -328,15 +335,23 @@ class Model(pl.LightningModule):
             "val_dice_loss": mean_val_dice_loss,
             "val_csa_loss": mean_val_csa_loss,
         }
-        if mean_val_soft_dice > self.best_val_dice:
-            self.best_val_dice = mean_val_soft_dice
+        # # save the best model based on validation dice score
+        # if mean_val_soft_dice > self.best_val_dice:
+        #     self.best_val_dice = mean_val_soft_dice
+        #     self.best_val_epoch = self.current_epoch
+        
+        # save the best model based on validation CSA loss
+        if mean_val_csa_loss < self.best_val_csa:
+            self.best_val_csa = mean_val_csa_loss
             self.best_val_epoch = self.current_epoch
 
         print(
             f"Current epoch: {self.current_epoch}"
             f"\nAverage Soft Dice (VAL): {mean_val_soft_dice:.4f}"
             f"\nAverage Hard Dice (VAL): {mean_val_hard_dice:.4f}"
-            f"\nBest Average Soft Dice: {self.best_val_dice:.4f} at Epoch: {self.best_val_epoch}"
+            f"\nAverage CSA (VAL): {mean_val_csa_loss:.4f}"
+            # f"\nBest Average Soft Dice: {self.best_val_dice:.4f} at Epoch: {self.best_val_epoch}"
+            f"\nBest Average CSA: {self.best_val_csa:.4f} at Epoch: {self.best_val_epoch}"
             f"\n----------------------------------------------------")
 
         # log on to wandb
@@ -490,7 +505,8 @@ def main(args):
         net = ModifiedUNet3D(in_channels=1, out_channels=1, init_filters=args.init_filters)
         patch_size =  "160x224x96"   # "64x128x64"
         save_exp_id =f"ivado_{args.model}_nf={args.init_filters}_opt={args.optimizer}_lr={args.learning_rate}" \
-                        f"_CsaDiceL_nspv={args.num_samples_per_volume}_bs={args.batch_size}_{patch_size}"
+                        f"_CSAdiceL_bestValCSA_nspv={args.num_samples_per_volume}" \
+                        f"_bs={args.batch_size}_{patch_size}"
 
     elif args.model in ["unetr", "UNETR"]:
         # define image size to be fed to the model
@@ -553,17 +569,21 @@ def main(args):
                             project='contrast-agnostic',
                             entity='naga-karthik',
                             config=args)
-        # else:
-        #     exp_logger = pl.loggers.CSVLogger(save_dir=args.save_path, name="my_exp_name")
         
+        # # saving the best model based on soft validation dice score
+        # checkpoint_callback = pl.callbacks.ModelCheckpoint(
+        #     dirpath=save_path, filename='best_model', monitor='val_soft_dice', 
+        #     save_top_k=5, mode="max", save_last=False, save_weights_only=True)
         checkpoint_callback = pl.callbacks.ModelCheckpoint(
-            dirpath=save_path, filename='best_model', monitor='val_loss', 
-            save_top_k=1, mode="min", save_last=False, save_weights_only=True)
+            dirpath=save_path, filename='best_model', monitor='val_csa_loss', 
+            save_top_k=5, mode="min", save_last=False, save_weights_only=True)
         
-        lr_monitor = pl.callbacks.LearningRateMonitor(logging_interval='epoch')
-        
-        early_stopping = pl.callbacks.EarlyStopping(monitor="val_loss", min_delta=0.00, patience=args.patience, 
+        # early_stopping = pl.callbacks.EarlyStopping(monitor="val_soft_dice", min_delta=0.00, patience=args.patience, 
+        #                     verbose=False, mode="max")
+        early_stopping = pl.callbacks.EarlyStopping(monitor="val_csa_loss", min_delta=0.00, patience=args.patience, 
                             verbose=False, mode="min")
+
+        lr_monitor = pl.callbacks.LearningRateMonitor(logging_interval='epoch')
 
         # initialise Lightning's trainer.
         trainer = pl.Trainer(
