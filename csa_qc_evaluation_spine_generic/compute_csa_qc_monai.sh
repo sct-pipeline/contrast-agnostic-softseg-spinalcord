@@ -113,8 +113,8 @@ for pred_sub in ${PATH_PRED_SEG}/sub-*; do
       # Create QC for pred mask
       # NOTE: this is raising errors for subjects - sub-stanford06 and sub-cmrrb01
       sct_qc -i ${type}/${file_image}.nii.gz -s ${pred_seg_bin} -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
+           
 
-     
       # Get manual hard GT to get labeled segmentation
       FILESEG="${type}/${file_image}_seg" 
       FILESEGMANUAL="${PATH_DATA}/derivatives/labels/${SUBJECT}/${FILESEG}-manual.nii.gz"

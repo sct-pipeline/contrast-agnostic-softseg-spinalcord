@@ -186,11 +186,12 @@ def main():
     # To compare only monai model and the GT
     rename = {
         'ivado_soft_no_crop':'IVADO_avg',
-        'ivado_avg_bin_no_crop': 'IVADO_avg_bin',
+        # 'ivado_avg_bin_no_crop': 'IVADO_avg_bin',
         'csa_nnunet_soft_avg_all_no_crop': 'nnUNet_avg_bin',
-        'csa_monai_model_160x224x96': 'MONAI_avg',  # Added folder name here
-        'csa_monai_csaDiceL_160x224x96': 'MONAI_avg_csa',  # Added folder name here
-        'csa_gt_2023-08-08': 'GT_soft_avg_bin'
+        'csa_monai_csaDiceL_160x224x96': 'MONAI_avg',
+        'csa_monai_csaWgt1_160x224x96': 'MONAI_wgtCSA=1',  
+        'csa_monai_csaWgt5_160x224x96': 'MONAI_wgtCSA=5',  # Added folder name here
+        'csa_gt_2023-08-08': 'GT_soft_avg'
     }
 
 
