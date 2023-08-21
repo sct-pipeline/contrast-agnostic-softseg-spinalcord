@@ -61,14 +61,21 @@ def violin_plot(df, y_label, title, path_out, filename, set_ylim=False):
     fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(12, 10)) 
     plt.rcParams['legend.title_fontsize'] = 'x-large'
     plt.yticks(fontsize="x-large")
-    sns.violinplot(data=df, ax=ax, inner="box", linewidth=2, palette="Set2") #, cut=0)
-    # overlay scatter plot on the violin plot to show individual data points
-    sns.swarmplot(data=df, ax=ax, alpha=0.5, size=3, palette='dark:black')
     
     if filename == 'violin_plot_all.png':
+        # NOTE: we're adding cut=0 because the STD CSA violin plot extends beyond zero
+        sns.violinplot(data=df, ax=ax, inner="box", linewidth=2, palette="Set2", cut=0, 
+                       showmeans=True, meanprops={"marker":"^", "markerfacecolor":"white", "markerscale": "2"})
+        # overlay scatter plot on the violin plot to show individual data points
+        sns.swarmplot(data=df, ax=ax, alpha=0.5, size=3, palette='dark:black')        
         # insert a dashed vertical line at x=5
         ax.axvline(x=4.5, linestyle='--', color='black', linewidth=1, alpha=0.5)
-        
+    else: 
+        sns.violinplot(data=df, ax=ax, inner="box", linewidth=2, palette="Set2", 
+                       showmeans=True, meanprops={"marker":"^", "markerfacecolor":"white", "markerscale": "2"})
+        # # overlay scatter plot on the violin plot to show individual data points
+        # sns.swarmplot(data=df, ax=ax, alpha=0.5, size=3, palette='dark:black')
+
     plt.setp(ax.collections, alpha=.9)
     ax.set_title(title, pad=20, fontweight="bold", fontsize=17)
     ax.xaxis.set_tick_params(direction='out')
