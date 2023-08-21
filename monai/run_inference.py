@@ -6,6 +6,7 @@ import torch.nn.functional as F
 import torch
 import json
 from time import time
+from tqdm import tqdm
 
 from monai.inferers import sliding_window_inference
 from monai.data import (DataLoader, CacheDataset, load_decathlon_datalist, decollate_batch)
@@ -18,7 +19,8 @@ from models import ModifiedUNet3D
 DEBUG = False
 INIT_FILTERS=8
 INFERENCE_ROI_SIZE = (160, 224, 96)   # (80, 192, 160)
-DEVICE = "cpu"
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+# DEVICE = "cpu"
 
 
 def get_parser():
@@ -63,7 +65,7 @@ def prepare_data(root, dataset_name="spine-generic"):
                 meta_keys=["pred_meta_dict", "label_meta_dict"],
                 nearest_interp=False, to_tensor=True),
         ])
-    test_ds = CacheDataset(data=test_files, transform=transforms_test, cache_rate=0.1, num_workers=4)
+    test_ds = CacheDataset(data=test_files, transform=transforms_test, cache_rate=0.25, num_workers=4)
 
     return test_ds, test_post_pred
 
@@ -77,67 +79,83 @@ def main(args):
     dataset_root = args.path_json
     dataset_name = args.dataset_name
 
-    chkp_path = os.path.join(args.chkp_path, "best_model.ckpt")
+    # chkp_path = os.path.join(args.chkp_path, "best_model.ckpt")
 
     results_path = args.path_out
-    model_name = chkp_path.split("/")[-2]
+    model_name = args.chkp_path.split("/")[-1]
     results_path = os.path.join(results_path, dataset_name, model_name)
     if not os.path.exists(results_path):
         os.makedirs(results_path, exist_ok=True)
-
-    checkpoint = torch.load(chkp_path, map_location=torch.device(DEVICE))["state_dict"]
-    # NOTE: remove the 'net.' prefix from the keys because of how the model was initialized in lightning
-    # https://discuss.pytorch.org/t/missing-keys-unexpected-keys-in-state-dict-when-loading-self-trained-model/22379/14
-    for key in list(checkpoint.keys()):
-        if 'net.' in key:
-            checkpoint[key.replace('net.', '')] = checkpoint[key]
-            del checkpoint[key]
-    
-    # initialize ivadomed unet model
-    net = ModifiedUNet3D(in_channels=1, out_channels=1, init_filters=INIT_FILTERS)
-
-    # load the trained model weights
-    net.load_state_dict(checkpoint)
-    net.to(DEVICE)
 
     # define the dataset and dataloader
     test_ds, test_post_pred = prepare_data(dataset_root, dataset_name)
     test_loader = DataLoader(test_ds, batch_size=1, shuffle=False, num_workers=4, pin_memory=True)
 
+    # initialize ivadomed unet model
+    net = ModifiedUNet3D(in_channels=1, out_channels=1, init_filters=INIT_FILTERS)
+
     # define list to collect the test metrics
     test_step_outputs = []
     test_summary = {}
-
+        
+    preds_stack = []
     # iterate over the dataset and compute metrics
-    net.eval()
     with torch.no_grad():
-        for i, batch in enumerate(test_loader):
+        for batch in test_loader:
             # compute time for inference per subject
             start_time = time()
+
+            # get the test input
+            test_input = batch["image"].to(DEVICE)
+
+            # load the checkpoints
+            for chkp in os.listdir(args.chkp_path):
+                chkp_path = os.path.join(args.chkp_path, chkp)
+                # print(f"Loading checkpoint: {chkp_path}")
             
-            test_input = batch["image"]
-            batch["pred"] = sliding_window_inference(test_input, INFERENCE_ROI_SIZE,
-                                                    sw_batch_size=4, predictor=net, overlap=0.5)
-            # NOTE: monai's models do not normalize the output, so we need to do it manually
-            if bool(F.relu(batch["pred"]).max()):
-                batch["pred"] = F.relu(batch["pred"]) / F.relu(batch["pred"]).max() 
-            else:
-                batch["pred"] = F.relu(batch["pred"])
+                checkpoint = torch.load(chkp_path, map_location=torch.device(DEVICE))["state_dict"]
+                # NOTE: remove the 'net.' prefix from the keys because of how the model was initialized in lightning
+                # https://discuss.pytorch.org/t/missing-keys-unexpected-keys-in-state-dict-when-loading-self-trained-model/22379/14
+                for key in list(checkpoint.keys()):
+                    if 'net.' in key:
+                        checkpoint[key.replace('net.', '')] = checkpoint[key]
+                        del checkpoint[key]
+        
+                # load the trained model weights
+                net.load_state_dict(checkpoint)
+                net.to(DEVICE)
+                net.eval()
 
-            # # upon fsleyes visualization, observed that very small values need to be set to zero, but NOT fully binarizing the pred
-            # batch["pred"][batch["pred"] < 0.099] = 0.0
+                # run inference            
+                batch["pred"] = sliding_window_inference(test_input, INFERENCE_ROI_SIZE, mode="gaussian",
+                                                        sw_batch_size=4, predictor=net, overlap=0.5, progress=False)
+                # NOTE: monai's models do not normalize the output, so we need to do it manually
+                if bool(F.relu(batch["pred"]).max()):
+                    batch["pred"] = F.relu(batch["pred"]) / F.relu(batch["pred"]).max() 
+                else:
+                    batch["pred"] = F.relu(batch["pred"])
 
-            post_test_out = [test_post_pred(i) for i in decollate_batch(batch)]
+                post_test_out = [test_post_pred(i) for i in decollate_batch(batch)]
 
-            # make sure that the shapes of prediction and GT label are the same
-            # print(f"pred shape: {post_test_out[0]['pred'].shape}, label shape: {post_test_out[0]['label'].shape}")
-            assert post_test_out[0]['pred'].shape == post_test_out[0]['label'].shape
-            
-            pred, label = post_test_out[0]['pred'].cpu(), post_test_out[0]['label'].cpu()
+                # make sure that the shapes of prediction and GT label are the same
+                # print(f"pred shape: {post_test_out[0]['pred'].shape}, label shape: {post_test_out[0]['label'].shape}")
+                assert post_test_out[0]['pred'].shape == post_test_out[0]['label'].shape
+                
+                pred, label = post_test_out[0]['pred'].cpu(), post_test_out[0]['label'].cpu()
+                
+                # stack the predictions
+                preds_stack.append(pred)
 
-            # save the prediction and label
+            # save the (soft) prediction and label
             subject_name = (batch["image_meta_dict"]["filename_or_obj"][0]).split("/")[-1].replace(".nii.gz", "")
             print(f"Saving subject: {subject_name}")
+
+            # take the average of the predictions
+            pred = torch.stack(preds_stack).mean(dim=0)
+            preds_stack.clear()
+
+            # check whether the prediction and label have the same shape
+            assert pred.shape == label.shape, f"Prediction and label shapes are different: {pred.shape} vs {label.shape}"
 
             # image saver class
             save_folder = os.path.join(results_path, subject_name.split("_")[0])
