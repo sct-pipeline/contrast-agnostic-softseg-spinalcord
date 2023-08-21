@@ -10,10 +10,10 @@ from time import time
 from monai.inferers import sliding_window_inference
 from monai.data import (DataLoader, CacheDataset, load_decathlon_datalist, decollate_batch)
 from monai.transforms import (Compose, EnsureTyped, Invertd, SaveImage)
-from monai.networks.nets import UNet
 
 from transforms import val_transforms
 from utils import precision_score, recall_score, dice_score
+from models import ModifiedUNet3D
 
 DEBUG = False
 INIT_FILTERS=8
@@ -85,27 +85,17 @@ def main(args):
     if not os.path.exists(results_path):
         os.makedirs(results_path, exist_ok=True)
 
-    checkpoint = torch.load(chkp_path, map_location=torch.device('cpu'))["state_dict"]
+    checkpoint = torch.load(chkp_path, map_location=torch.device(DEVICE))["state_dict"]
     # NOTE: remove the 'net.' prefix from the keys because of how the model was initialized in lightning
     # https://discuss.pytorch.org/t/missing-keys-unexpected-keys-in-state-dict-when-loading-self-trained-model/22379/14
     for key in list(checkpoint.keys()):
         if 'net.' in key:
             checkpoint[key.replace('net.', '')] = checkpoint[key]
             del checkpoint[key]
-
-    # initialize the model
-    net = UNet(spatial_dims=3, 
-                in_channels=1, out_channels=1,
-                channels=(
-                    INIT_FILTERS, 
-                    INIT_FILTERS * 2, 
-                    INIT_FILTERS * 4, 
-                    INIT_FILTERS * 8, 
-                    INIT_FILTERS * 16
-                ),
-                strides=(2, 2, 2, 2),
-                num_res_units=4,)
     
+    # initialize ivadomed unet model
+    net = ModifiedUNet3D(in_channels=1, out_channels=1, init_filters=INIT_FILTERS)
+
     # load the trained model weights
     net.load_state_dict(checkpoint)
     net.to(DEVICE)
