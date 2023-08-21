@@ -59,9 +59,6 @@ class Model(pl.LightningModule):
         self.val_step_outputs = []
         self.test_step_outputs = []
 
-        # MSE loss for comparing the CSA values
-        self.mse_loss = torch.nn.MSELoss()
-
 
     # --------------------------------
     # FORWARD PASS
@@ -261,7 +258,7 @@ class Model(pl.LightningModule):
         
         inputs, labels = batch["image"], batch["label"]
 
-        outputs = sliding_window_inference(inputs, self.inference_roi_size, 
+        outputs = sliding_window_inference(inputs, self.inference_roi_size, mode="gaussian",
                                            sw_batch_size=4, predictor=self.forward, overlap=0.5,) 
         # outputs shape: (B, C, <original H x W x D>)
         
@@ -483,25 +480,8 @@ def main(args):
         optimizer_class = torch.optim.SGD
 
     # define models
-    if args.model in ["unet", "UNet"]:            
-        # # this is the MONAI model
-        # net = UNet(spatial_dims=3, 
-        #             in_channels=1, out_channels=1,
-        #             channels=(
-        #                 args.init_filters, 
-        #                 args.init_filters * 2, 
-        #                 args.init_filters * 4, 
-        #                 args.init_filters * 8, 
-        #                 args.init_filters * 16
-        #             ),
-        #             strides=(2, 2, 2, 2),
-        #             num_res_units=4,
-        #         )
-        # patch_size = "160x224x96"
-        # save_exp_id =f"{args.model}_nf={args.init_filters}_nrs=4_opt={args.optimizer}_lr={args.learning_rate}" \
-        #                 f"_diceL_nspv={args.num_samples_per_volume}_bs={args.batch_size}_{patch_size}"
-        
-        # This is the ivadomed model
+    if args.model in ["unet", "UNet"]:                    
+        # this is the ivadomed unet model
         net = ModifiedUNet3D(in_channels=1, out_channels=1, init_filters=args.init_filters)
         patch_size =  "160x224x96"   # "64x128x64"
         save_exp_id =f"ivado_{args.model}_nf={args.init_filters}_opt={args.optimizer}_lr={args.learning_rate}" \
@@ -530,8 +510,6 @@ def main(args):
 
     # define loss function
     loss_func = SoftDiceLoss(p=1, smooth=1.0)
-    # loss_func = DiceCrossEntropyLoss(weight_ce=1.0, weight_dice=1.0)
-    # loss_func = AdapWingLoss(epsilon=1, theta=0.5, alpha=2.1, omega=8.0, reduction='mean')
 
     # TODO: move this inside the for loop when using more folds
     timestamp = datetime.now().strftime(f"%Y%m%d-%H%M")   # prints in YYYYMMDD-HHMMSS format
@@ -564,7 +542,7 @@ def main(args):
         exp_logger = pl.loggers.WandbLogger(
                             name=save_exp_id,
                             save_dir=args.save_path,
-                            group=f"{args.model}_Adam", 
+                            group=f"{args.model}_final", 
                             log_model=True, # save best model using checkpoint callback
                             project='contrast-agnostic',
                             entity='naga-karthik',
