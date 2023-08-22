@@ -24,7 +24,7 @@ trap "echo Caught Keyboard Interrupt within script. Exiting now.; exit" INT
 # Retrieve input params
 SUBJECT=$1
 PATH_PRED_SEG=$2
-
+MODEL=$3
 
 # get starting time:
 start=`date +%s`
@@ -73,33 +73,73 @@ cd ${SUBJECT}
 # We do a substitution '/' --> '_' in case there is a subfolder 'ses-0X/'
 file_sub="${SUBJECT//[\/]/_}"
 
-for file_pred in ${PATH_PRED_SEG}/*; do
-    if [[ $file_pred == *$file_sub* ]];then
-        echo " File found, running QC report $file_pred"
-        # Find if anat or dwi
-        file_seg_basename=${file_pred##*/}
+# if model is nnUNet, then we run the following code
+if [[ ${MODEL} == "nnUNet" ]]; then
+  echo "Running QC for nnUNet predictions ..."
+
+  for file_pred in ${PATH_PRED_SEG}/*; do
+      if [[ $file_pred == *$file_sub* ]];then
+          echo " File found, running QC report $file_pred"
+          # Find if anat or dwi
+          file_seg_basename=${file_pred##*/}
+          echo $file_seg_basename
+          type=$(find_contrast $file_pred)
+          prefix="tSCIColoradoSCSeg_"  # TODO change accroding to prediction names
+          file_image=${file_seg_basename#"$prefix"}
+          file_image="${file_image::-11}"  # Remove X.nii.gz since the number X varies
+          # split with "-"
+          arrIN=(${file_image//-/ })
+          contrast="_T2w"
+          file_image=${arrIN[0]}"-"${arrIN[1]}"${contrast}.nii.gz"
+          echo $file_image
+          # rsync prediction mask
+          file_pred_new_name=${type}/${arrIN[0]}"-"${arrIN[1]}"${contrast}_pred.nii.gz"
+          rsync -avzh $file_pred $file_pred_new_name
+      fi
+  done
+
+else
+  echo "Running QC for MONAI predictions ..."
+  
+  # Check if file exists (pred file)
+  for pred_sub in ${PATH_PRED_SEG}/sub-*; do
+    echo $pred_sub
+    if [[ ${pred_sub} =~ ${SUBJECT} ]]; then
+      echo "Subject found, running QC report $pred_sub"
+      # cd ${SUBJECT}
+      
+      for file_pred in ${PATH_PRED_SEG}/${SUBJECT}/*_pred.nii.gz; do
+        file_seg_basename=${file_pred##*/}  # keep only the file name from the whole path
         echo $file_seg_basename
-        type=$(find_contrast $file_pred)
-        prefix="tSCIColoradoSCSeg_"  # TODO change accroding to prediction names
-        file_image=${file_seg_basename#"$prefix"}
-        file_image="${file_image::-11}"  # Remove X.nii.gz since the number X varies
-        # split with "-"
-        arrIN=(${file_image//-/ })
-        contrast="_T2w"
-        file_image=${arrIN[0]}"-"${arrIN[1]}"${contrast}.nii.gz"
-        echo $file_image
+        if [[ ${file_seg_basename} =~ "dwi" ]]; then
+          type=dwi
+        else
+          type=anat
+        fi
+
         # rsync prediction mask
-        file_pred_new_name=${type}/${arrIN[0]}"-"${arrIN[1]}"${contrast}_pred.nii.gz"
-        rsync -avzh $file_pred $file_pred_new_name
+        rsync -avzh $file_pred ${type}/$file_seg_basename
+        file_image=${file_seg_basename}
+        echo $file_image  # should be same as file_seg_basename
+        file_image="${file_image/_pred.nii.gz/}"  # deletes suffix
+
+        pred_seg="${type}/${file_seg_basename}"
+        pred_seg_bin="${type}/${file_seg_basename/.nii.gz/_bin.nii.gz}"
+
+        # NOTE: soft QC is still buggy so binarize the prediction with threshold 0.5
+        sct_maths -i ${pred_seg} -bin 0.5 -o ${pred_seg_bin}
+
         # Create QC for pred mask
-<<<<<<< HEAD:qc_other_datasets/run_qc_prediction_sci_colorado.sh
-        sct_qc -i ${type}/${file_image} -s $file_pred_new_name -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
-=======
-      sct_maths -i ${type}/${file_seg_basename} -bin 0.5 -o ${type}/${file_seg_basename}
-      sct_qc -i ${type}/${file_image} -s ${type}/${file_seg_basename} -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
->>>>>>> sb/remove_crop_preprocessing:qc_other_datasets/run_qc_prediction_ivadomed.sh
+        # NOTE: this is raising errors for subjects - sub-stanford06 and sub-cmrrb01
+        sct_qc -i ${type}/${file_image}.nii.gz -s ${pred_seg_bin} -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
+
+      done
+    else
+      echo "Pred mask not found"
     fi
-done
+  done
+fi
+
 
 # Display useful info for the log
 end=`date +%s`
