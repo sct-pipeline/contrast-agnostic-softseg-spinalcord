@@ -379,8 +379,7 @@ for file_path in "${inc_contrasts[@]}";do
   sct_apply_transfo -i ${file_softseg}.nii.gz -d ${file_path}.nii.gz -w ${warping_field_inv}.nii.gz -x linear -o ${file_path}_softseg.nii.gz
   # Apply coverage mask to softseg
   sct_maths -i ${file_path}_softseg.nii.gz -o ${file_path}_softseg.nii.gz -mul ${file_path}_ones.nii.gz
-  # Binarize output softseg for CSA computation
-  sct_maths -i ${file_path}_softseg.nii.gz -bin 0.5 -o ${file_path}_softseg_bin.nii.gz
+
   # Generate QC report
   sct_qc -i ${file_path}.nii.gz -s ${file_path}_softseg.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
   
@@ -444,6 +443,8 @@ for file_path in "${inc_contrasts[@]}";do
   sct_process_segmentation -i ${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/${filesoftseg}.nii.gz -vert 2,3 -vertfile ${fileseglabel}.nii.gz -o ${PATH_RESULTS}/csa_soft_GT_${contrast_seg}.csv -append 1
   
   # Soft segmentation binarized
+  # Binarize output softseg for CSA computation
+  sct_maths -i ${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/${filesoftseg}.nii.gz -bin 0.5 -o ${filesoftseg}_bin.nii.gz
   sct_process_segmentation -i ${filesoftseg}_bin.nii.gz -vert 2,3 -vertfile ${fileseglabel}.nii.gz -o ${PATH_RESULTS}/csa_soft_GT_bin_${contrast_seg}.csv -append 1
 
   # Hard segmentation
