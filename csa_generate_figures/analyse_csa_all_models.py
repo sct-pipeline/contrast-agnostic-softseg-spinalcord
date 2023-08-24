@@ -57,24 +57,27 @@ def get_csa(csa_filename):
 
 def violin_plot(df, y_label, title, path_out, filename, set_ylim=False):
     sns.set_style('whitegrid', rc={'xtick.bottom': True,
-                                 'ytick.left': True,})
-    fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(12, 10)) 
+                                   'ytick.left': True})
+    fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(12, 10))
     plt.rcParams['legend.title_fontsize'] = 'x-large'
     plt.yticks(fontsize="x-large")
     
     if filename == 'violin_plot_all.png':
         # NOTE: we're adding cut=0 because the STD CSA violin plot extends beyond zero
-        sns.violinplot(data=df, ax=ax, inner="box", linewidth=2, palette="Set2", cut=0, 
-                       showmeans=True, meanprops={"marker":"^", "markerfacecolor":"white", "markerscale": "2"})
+        sns.violinplot(data=df, ax=ax, inner="box", linewidth=2, palette="Set2", cut=0,
+                       showmeans=True, meanprops={"marker": "^", "markerfacecolor":"white", "markerscale": "2"})
         # overlay scatter plot on the violin plot to show individual data points
-        sns.swarmplot(data=df, ax=ax, alpha=0.5, size=3, palette='dark:black')        
+        sns.swarmplot(data=df, ax=ax, alpha=0.5, size=3, palette='dark:black')
         # insert a dashed vertical line at x=5
         ax.axvline(x=4.5, linestyle='--', color='black', linewidth=1, alpha=0.5)
-    else: 
-        sns.violinplot(data=df, ax=ax, inner="box", linewidth=2, palette="Set2", 
+    else:
+        sns.violinplot(data=df, ax=ax, inner="box", linewidth=2, palette="Set2",
                        showmeans=True, meanprops={"marker":"^", "markerfacecolor":"white", "markerscale": "2"})
         # # overlay scatter plot on the violin plot to show individual data points
-        # sns.swarmplot(data=df, ax=ax, alpha=0.5, size=3, palette='dark:black')
+        sns.swarmplot(data=df, ax=ax, alpha=0.5, size=3, palette='dark:black')
+        # Compute mean to add on plot:
+        Means = df.mean()
+        plt.scatter(x=df.columns, y=Means, c="w", marker="^", s=20, zorder=15)
 
     plt.setp(ax.collections, alpha=.9)
     ax.set_title(title, pad=20, fontweight="bold", fontsize=17)
@@ -88,11 +91,14 @@ def violin_plot(df, y_label, title, path_out, filename, set_ylim=False):
     #ax.set_xlabel('Segmentation type', fontsize=17, fontweight="bold")
     ax.set_ylabel(y_label, fontsize=17, fontweight="bold")
     if set_ylim:
-        ax.set_ylim([40, 105])
-        # show y-axis values in interval of 5
-        ax.set_yticks(np.arange(40, 105, 5))
-        # insert horizontal line at y=70 
-        ax.axhline(y=70, linestyle='--', color='black', linewidth=1.5, alpha=0.5)
+        if 'error' in filename:
+            ax.set_ylim([-2.5, 13])
+        else:
+            ax.set_ylim([40, 105])
+            # show y-axis values in interval of 5
+            ax.set_yticks(np.arange(40, 105, 5))
+            # insert horizontal line at y=70 
+            ax.axhline(y=70, linestyle='--', color='black', linewidth=1.5, alpha=0.5)
 
     else:
         yabs_max = abs(max(ax.get_ylim(), key=abs))
@@ -125,15 +131,17 @@ def main():
         if folder in folders_included:
             if 'csa_gt' in folder:
                 df = pd.DataFrame()
-                path_csa = os.path.join(path_in, folder, 'results')  # TO CHANGE use binarized soft ground truth CSA 
+                path_csa = os.path.join(path_in, folder, 'results_soft_bin')  # Use binarized soft ground truth CSA
                 # path_csa = os.path.join(path_in, folder)    # TODO: comment this when NOT comparing GTs only
                 for file in os.listdir(path_csa):
-                    if 'csa_soft' in file:
+                    if 'csa_soft_GT_bin' in file:
                         contrast = file.split('_')
-                        if len(contrast) < 5:   # the filename format is "csa_soft_GT_<contrast>.csv"
+                        if len(contrast) < 6:   # the filename format is "csa_soft_GT_bin_<contrast>.csv"
                             contrast = contrast[-1].split('.')[0]
+                            print(contrast)
                         else:
                             contrast = contrast[-2]
+                            print(contrast)
                         df[contrast] = get_csa(os.path.join(path_csa, file))
 
             elif 'csa_monai' in folder:
@@ -185,13 +193,13 @@ def main():
 
     # To compare only monai model and the GT
     rename = {
-        'ivado_soft_no_crop':'IVADO_avg',
-        # 'ivado_avg_bin_no_crop': 'IVADO_avg_bin',
+        #'ivado_soft_no_crop':'IVADO_avg',
+        'ivado_avg_bin_no_crop': 'IVADO_avg_bin',
         'csa_nnunet_soft_avg_all_no_crop': 'nnUNet_avg_bin',
         'csa_monai_csaDiceL_160x224x96': 'MONAI_avg',
-        'csa_monai_csaWgt1_160x224x96': 'MONAI_wgtCSA=1',  
+        'csa_monai_csaWgt1_160x224x96': 'MONAI_wgtCSA=1',
         'csa_monai_csaWgt5_160x224x96': 'MONAI_wgtCSA=5',  # Added folder name here
-        'csa_gt_2023-08-08': 'GT_soft_avg'
+        'csa_gt_2023-08-08': 'GT_soft_avg_bin'
     }
 
 
@@ -202,6 +210,7 @@ def main():
         std = dfs[method].std(axis=1)
         mean_std = std.mean()
         std_std = std.std()
+        logger.info(f'\nProcessing {method}')
         logger.info(f'{method} Mean STD: {mean_std} ± {std_std} mm^2')
         logger.info(f'{method} Mean CSA: {dfs[method].values.mean()} ± {dfs[method].values.std(ddof=1)} mm^2')
         logger.info(f'{method} Mean CSA: \n{dfs[method].mean()}')
@@ -221,18 +230,21 @@ def main():
             logger.info(error.max())
             logger.info('Index of max')
             logger.info(error.idxmax())
-            error_csa_prediction[method] = error.mean(axis=1)  # TODO append all contrast toghether instead
+            # Append all errors in one column for CSA error across methods
+            oneCol = []
+            for column in error.columns:
+                oneCol.append(error[column])
+            error_csa_prediction[method] = pd.concat(oneCol, ignore_index=True)
             # Plot error per contrast
             violin_plot(error,
                         y_label=r'Absolute CSA Error($\bf{mm^2}$)',
                         title="CSA Error across MRI contrasts " + method,
-                        path_out=exp_folder, 
-                        filename='violin_plot_csa_percontrast_error'+method+'.png', 
-                        set_ylim=False)
+                        path_out=exp_folder,
+                        filename='violin_plot_csa_percontrast_error_'+method+'.png',
+                        set_ylim=True)
 
     logger.info(f'Number of subject in test set: {len(stds.index)}')
-    #stds = stds[list(rename.values())]
-
+    # Plot STD
     violin_plot(stds,
                 y_label=r'Standard deviation ($\bf{mm^2}$)', 
                 title="Variability of CSA across MRI contrasts",
