@@ -495,7 +495,7 @@ def main(args):
 
     elif args.model in ["unetr", "UNETR"]:
         # define image size to be fed to the model
-        img_size = (96, 96, 96)
+        img_size = (160, 224, 96)
         
         # define model
         net = UNETR(spatial_dims=3,
@@ -505,13 +505,15 @@ def main(args):
                     hidden_size=args.hidden_size, 
                     mlp_dim=args.mlp_dim, 
                     num_heads=args.num_heads,
-                    pos_embed="perceptron", 
+                    pos_embed="conv", 
                     norm_name="instance", 
                     res_block=True, 
                     dropout_rate=0.2,
                 )
-        save_exp_id = f"{args.model}_lr={args.learning_rate}" \
-                        f"_fs={args.feature_size}_hs={args.hidden_size}_mlpd={args.mlp_dim}_nh={args.num_heads}"
+        img_size = f"{img_size[0]}x{img_size[1]}x{img_size[2]}"
+        save_exp_id = f"{args.model}_opt={args.optimizer}_lr={args.learning_rate}" \
+                        f"_fs={args.feature_size}_hs={args.hidden_size}_mlpd={args.mlp_dim}_nh={args.num_heads}" \
+                        f"_CSAdiceL_nspv={args.num_samples_per_volume}_bs={args.batch_size}_{img_size}" \
 
     # define loss function
     loss_func = SoftDiceLoss(p=1, smooth=1.0)
@@ -577,7 +579,8 @@ def main(args):
             max_epochs=args.max_epochs, 
             precision=32,   # TODO: see if 16-bit precision is stable
             # deterministic=True,
-            enable_progress_bar=args.enable_progress_bar)
+            enable_progress_bar=args.enable_progress_bar, 
+            profiler="simple",)     # to profile the training time taken for each step
 
         # Train!
         trainer.fit(pl_model)        
