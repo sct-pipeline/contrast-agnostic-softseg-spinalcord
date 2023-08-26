@@ -4,6 +4,15 @@ from torch.optim.lr_scheduler import _LRScheduler
 import torch
 
 
+# Check if any label image patch is empty in the batch
+def check_empty_patch(labels):
+    for i, label in enumerate(labels):
+        if torch.sum(label) == 0.0:
+            # print(f"Empty label patch found at index {i}. Skipping training step ...")
+            return None
+    return labels  # If no empty patch is found, return the labels
+
+
 class FoldGenerator:
     """
     Adapted from https://github.com/MIC-DKFZ/medicaldetectiontoolkit/blob/master/utils/dataloader_utils.py#L59 
