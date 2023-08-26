@@ -149,12 +149,17 @@ def main():
                 path_csa = os.path.join(path_in, folder, 'results')
                 # path_csa = os.path.join(path_in, folder)    # TODO: comment this when NOT comparing GTs only
                 for file in os.listdir(path_csa):
-                    if '_soft.csv' in file:
+                    if '_soft_bin.csv' in file:     # NOTE: using binarized soft preds for plots
+                        print(file)
                         contrast = file.split('_')
-                        if len(contrast) < 5:   # the filename format is "csa_pred_<contrast>_soft.csv"
-                            contrast = contrast[-2]
+                        if len(contrast) < 6:   # the filename format is "csa_pred_<contrast>_soft_bin.csv"
+                            # contrast = contrast[-3]     # if using _soft_bin.csv
+                            contrast = contrast[-2]     # if using _soft.csv
                         else:
-                            contrast = contrast[-3] # for mt-on and mt-off
+                            # # if using _soft.csv, uncomment this
+                            # contrast = contrast[-3] # for mt-on and mt-off
+                            # if using _soft_bin.csv, uncomment this
+                            contrast = contrast[-4] # for mt-on and mt-off
                         df[contrast] = get_csa(os.path.join(path_csa, file))
 
             else:
@@ -182,23 +187,13 @@ def main():
         dfs[folder] = dfs[folder].sort_index()
         logger.info(f'Number of subjects in {folder}: {len(dfs[folder].index)}')
 
-    # rename = {
-    #     'ivado_avg_bin_no_crop': 'IVADO_avg_bin',
-    #     'ivado_soft_no_crop':'IVADO_avg',
-    #     'ivado_hard_GT': 'IVADO_hard_GT',
-    #     'csa_nnunet_soft_avg_all_no_crop': 'nnUNet_avg_bin',
-    #     'csa_monai_model_80x160x64': 'MONAI_avg',  # Added folder name here
-    #     'csa_gt_2023-08-08': 'GT_soft_avg'
-    # }
-
     # To compare only monai model and the GT
     rename = {
-        #'ivado_soft_no_crop':'IVADO_avg',
+        # 'ivado_soft_no_crop':'IVADO_avg',
         'ivado_avg_bin_no_crop': 'IVADO_avg_bin',
-        'csa_nnunet_soft_avg_all_no_crop': 'nnUNet_avg_bin',
-        'csa_monai_csaDiceL_160x224x96': 'MONAI_avg',
-        'csa_monai_csaWgt1_160x224x96': 'MONAI_wgtCSA=1',
-        'csa_monai_csaWgt5_160x224x96': 'MONAI_wgtCSA=5',  # Added folder name here
+        'csa_nnunet_2023-08-24': 'nnUNet_avg_bin',
+        'csa_monai_unet_bestValCSA': 'MONAI_UNet_avg_bin',
+        # 'csa_monai_unetr_bestValCSA': 'MONAI_UNetR_avg_bin',       # Added folder name here
         'csa_gt_2023-08-08': 'GT_soft_avg_bin'
     }
 
