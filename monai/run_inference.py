@@ -15,12 +15,20 @@ from monai.transforms import (Compose, EnsureTyped, Invertd, SaveImage)
 from transforms import val_transforms
 from utils import precision_score, recall_score, dice_score
 from models import ModifiedUNet3D
+from monai.networks.nets import UNETR
 
-DEBUG = False
-INIT_FILTERS=8
-INFERENCE_ROI_SIZE = (160, 224, 96)   # (80, 192, 160)
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-# DEVICE = "cpu"
+DEBUG = False
+INFERENCE_ROI_SIZE = (160, 224, 96)   # (80, 192, 160)
+# UNET params
+INIT_FILTERS=8
+# UNETR params
+FEATURE_SIZE = 8
+HIDDEN_SIZE = 512
+MLP_DIM = 1024
+NUM_HEADS = 8
+
+EXAMPLE_INPUT = torch.randn(1, 1, 160, 224, 96).to(DEVICE)
 
 
 def get_parser():
@@ -34,6 +42,7 @@ def get_parser():
                         help="Path to the output folder where to store the predictions and associated metrics")
     parser.add_argument("-dname", "--dataset-name", type=str, default="spine-generic",
                         help="Name of the dataset to run inference on")
+    parser.add_argument("--model", type=str, default="unet", help="Name of the model to use for inference")
     
     return parser
 
@@ -91,8 +100,23 @@ def main(args):
     test_ds, test_post_pred = prepare_data(dataset_root, dataset_name)
     test_loader = DataLoader(test_ds, batch_size=1, shuffle=False, num_workers=4, pin_memory=True)
 
-    # initialize ivadomed unet model
-    net = ModifiedUNet3D(in_channels=1, out_channels=1, init_filters=INIT_FILTERS)
+    if args.model == "unet":
+        # initialize ivadomed unet model
+        net = ModifiedUNet3D(in_channels=1, out_channels=1, init_filters=INIT_FILTERS)
+    elif args.model == "unetr":
+        # initialize unetr model
+        net = UNETR(spatial_dims=3,
+                    in_channels=1, out_channels=1, 
+                    img_size=INFERENCE_ROI_SIZE,
+                    feature_size=FEATURE_SIZE,
+                    hidden_size=HIDDEN_SIZE,
+                    mlp_dim=MLP_DIM,
+                    num_heads=NUM_HEADS,
+                    pos_embed="conv", 
+                    norm_name="instance", 
+                    res_block=True, 
+                    dropout_rate=0.2,
+                )
 
     # define list to collect the test metrics
     test_step_outputs = []
@@ -111,7 +135,7 @@ def main(args):
             # load the checkpoints
             for chkp in os.listdir(args.chkp_path):
                 chkp_path = os.path.join(args.chkp_path, chkp)
-                # print(f"Loading checkpoint: {chkp_path}")
+                print(f"Loading checkpoint: {chkp_path}")
             
                 checkpoint = torch.load(chkp_path, map_location=torch.device(DEVICE))["state_dict"]
                 # NOTE: remove the 'net.' prefix from the keys because of how the model was initialized in lightning
