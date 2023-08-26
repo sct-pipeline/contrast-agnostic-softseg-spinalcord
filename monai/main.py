@@ -59,6 +59,9 @@ class Model(pl.LightningModule):
         self.val_step_outputs = []
         self.test_step_outputs = []
 
+        # specify example_input_array for model summary
+        self.example_input_array = torch.rand(1, 1, 160, 224, 96)
+
 
     # --------------------------------
     # FORWARD PASS
@@ -128,15 +131,16 @@ class Model(pl.LightningModule):
     # --------------------------------
     def train_dataloader(self):
         # NOTE: if num_samples=4 in RandCropByPosNegLabeld and batch_size=2, then 2 x 4 images are generated for network training
-        return DataLoader(self.train_ds, batch_size=self.args.batch_size, shuffle=True, num_workers=4, 
-                            pin_memory=True,) # collate_fn=pad_list_data_collate)
+        return DataLoader(self.train_ds, batch_size=self.args.batch_size, shuffle=True, num_workers=16, 
+                            pin_memory=True, persistent_workers=True) # collate_fn=pad_list_data_collate)
         # list_data_collate is only useful when each input in the batch has different shape
 
     def val_dataloader(self):
-        return DataLoader(self.val_ds, batch_size=1, shuffle=False, num_workers=4, pin_memory=True)
+        return DataLoader(self.val_ds, batch_size=1, shuffle=False, num_workers=16, pin_memory=True, 
+                          persistent_workers=True)
     
     def test_dataloader(self):
-        return DataLoader(self.test_ds, batch_size=1, shuffle=False, num_workers=4, pin_memory=True)
+        return DataLoader(self.test_ds, batch_size=1, shuffle=False, num_workers=8, pin_memory=True)
 
     
     # --------------------------------
