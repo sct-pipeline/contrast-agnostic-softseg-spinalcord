@@ -10,7 +10,8 @@ import pytorch_lightning as pl
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
 
-from utils import precision_score, recall_score, dice_score, compute_average_csa, PolyLRScheduler
+from utils import precision_score, recall_score, dice_score, compute_average_csa, \
+                    PolyLRScheduler, check_empty_patch
 from losses import SoftDiceLoss, AdapWingLoss
 from transforms import train_transforms, val_transforms
 from models import ModifiedUNet3D
@@ -163,9 +164,9 @@ class Model(pl.LightningModule):
 
         inputs, labels = batch["image"], batch["label"]
 
-        # filter empty label patches
-        if not labels.any():
-            print("Encountered empty label patch. Skipping...")
+        # check if any label image patch is empty in the batch
+        if check_empty_patch(labels) is None:
+            # print(f"Empty label patch found. Skipping training step ...")
             return None
 
         output = self.forward(inputs)   # logits
@@ -489,7 +490,7 @@ def main(args):
         net = ModifiedUNet3D(in_channels=1, out_channels=1, init_filters=args.init_filters)
         patch_size =  "160x224x96"   # "64x128x64"
         save_exp_id =f"ivado_{args.model}_nf={args.init_filters}_opt={args.optimizer}_lr={args.learning_rate}" \
-                        f"_CSAdiceL_bestValCSA_nspv={args.num_samples_per_volume}" \
+                        f"_CSAdiceL_bestValCSA_nspv={args.num_samples_per_volume}_fltr" \
                         f"_bs={args.batch_size}_{patch_size}"
 
     elif args.model in ["unetr", "UNETR"]:
