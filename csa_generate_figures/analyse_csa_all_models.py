@@ -66,18 +66,22 @@ def violin_plot(df, y_label, title, path_out, filename, set_ylim=False):
         # NOTE: we're adding cut=0 because the STD CSA violin plot extends beyond zero
         sns.violinplot(data=df, ax=ax, inner="box", linewidth=2, palette="Set2", cut=0,
                        showmeans=True, meanprops={"marker": "^", "markerfacecolor":"white", "markerscale": "2"})
+        x_bot, x_top = plt.xlim()
         # overlay scatter plot on the violin plot to show individual data points
         sns.swarmplot(data=df, ax=ax, alpha=0.5, size=3, palette='dark:black')
         # insert a dashed vertical line at x=5
         ax.axvline(x=4.5, linestyle='--', color='black', linewidth=1, alpha=0.5)
+        plt.xlim(x_bot, x_top)
     else:
         sns.violinplot(data=df, ax=ax, inner="box", linewidth=2, palette="Set2",
                        showmeans=True, meanprops={"marker":"^", "markerfacecolor":"white", "markerscale": "2"})
+        x_bot, x_top = plt.xlim()
         # # overlay scatter plot on the violin plot to show individual data points
         sns.swarmplot(data=df, ax=ax, alpha=0.5, size=3, palette='dark:black')
         # Compute mean to add on plot:
         Means = df.mean()
         plt.scatter(x=df.columns, y=Means, c="w", marker="^", s=20, zorder=15)
+        plt.xlim(x_bot, x_top)
 
     plt.setp(ax.collections, alpha=.9)
     ax.set_title(title, pad=20, fontweight="bold", fontsize=17)
@@ -92,7 +96,7 @@ def violin_plot(df, y_label, title, path_out, filename, set_ylim=False):
     ax.set_ylabel(y_label, fontsize=17, fontweight="bold")
     if set_ylim:
         if 'error' in filename:
-            ax.set_ylim([-2.5, 13])
+            ax.set_ylim([-2.5, 14])
         else:
             ax.set_ylim([40, 105])
             # show y-axis values in interval of 5
@@ -131,16 +135,20 @@ def main():
         if folder in folders_included:
             if 'csa_gt' in folder:
                 df = pd.DataFrame()
-                path_csa = os.path.join(path_in, folder, 'results_soft_bin')  # Use binarized soft ground truth CSA
+                path_csa = os.path.join(path_in, folder, 'results')  # Use binarized soft ground truth CSA results_soft_bin
                 # path_csa = os.path.join(path_in, folder)    # TODO: comment this when NOT comparing GTs only
                 for file in os.listdir(path_csa):
-                    if 'csa_soft_GT_bin' in file:
-                        contrast = file.split('_')
-                        if len(contrast) < 6:   # the filename format is "csa_soft_GT_bin_<contrast>.csv"
+                    if 'csa_soft_GT' in file: #csa_soft_GT_bin
+                        contrast = file.split('_')  #csa_soft_GT_bin
+                        if len(contrast) < 5:  # FOR SOFT GT
                             contrast = contrast[-1].split('.')[0]
                             print(contrast)
+                       # if len(contrast) < 6:   # the filename format is "csa_soft_GT_bin_<contrast>.csv"
+                           # contrast = contrast[-1].split('.')[0]
+                            #print(contrast)
                         else:
                             contrast = contrast[-2]
+                           
                             print(contrast)
                         df[contrast] = get_csa(os.path.join(path_csa, file))
 
@@ -149,17 +157,17 @@ def main():
                 path_csa = os.path.join(path_in, folder, 'results')
                 # path_csa = os.path.join(path_in, folder)    # TODO: comment this when NOT comparing GTs only
                 for file in os.listdir(path_csa):
-                    if '_soft_bin.csv' in file:     # NOTE: using binarized soft preds for plots
+                    if '_soft.csv' in file:     # NOTE: using binarized soft preds for plots
                         print(file)
                         contrast = file.split('_')
                         if len(contrast) < 6:   # the filename format is "csa_pred_<contrast>_soft_bin.csv"
-                            # contrast = contrast[-3]     # if using _soft_bin.csv
+                            #contrast = contrast[-3]     # if using _soft_bin.csv
                             contrast = contrast[-2]     # if using _soft.csv
                         else:
                             # # if using _soft.csv, uncomment this
-                            # contrast = contrast[-3] # for mt-on and mt-off
+                            contrast = contrast[-3] # for mt-on and mt-off
                             # if using _soft_bin.csv, uncomment this
-                            contrast = contrast[-4] # for mt-on and mt-off
+                            #contrast = contrast[-4] # for mt-on and mt-off
                         df[contrast] = get_csa(os.path.join(path_csa, file))
 
             else:
@@ -189,10 +197,10 @@ def main():
 
     # To compare only monai model and the GT
     rename = {
-        # 'ivado_soft_no_crop':'IVADO_avg',
-        'ivado_avg_bin_no_crop': 'IVADO_avg_bin',
+        'ivado_soft_no_crop':'IVADO_avg',
+        #'ivado_avg_bin_no_crop': 'IVADO_avg_bin', #--> binarized before training
         'csa_nnunet_2023-08-24': 'nnUNet_avg_bin',
-        'csa_monai_unet_bestValCSA': 'MONAI_UNet_avg_bin',
+        'csa_monai_unet_bestValCSA': 'MONAI_UNet_avg',
         # 'csa_monai_unetr_bestValCSA': 'MONAI_UNetR_avg_bin',       # Added folder name here
         'csa_gt_2023-08-08': 'GT_soft_avg_bin'
     }
