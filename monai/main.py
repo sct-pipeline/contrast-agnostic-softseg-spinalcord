@@ -164,39 +164,80 @@ class Model(pl.LightningModule):
 
         inputs, labels = batch["image"], batch["label"]
 
-        # check if any label image patch is empty in the batch
-        if check_empty_patch(labels) is None:
-            # print(f"Empty label patch found. Skipping training step ...")
-            return None
+        # NOTE: surprisingly, filtering out empty patches is adding more CSA bias
+        # # check if any label image patch is empty in the batch
+        # if check_empty_patch(labels) is None:
+        #     # print(f"Empty label patch found. Skipping training step ...")
+        #     return None
 
         output = self.forward(inputs)   # logits
-
-        # calculate training loss   
-        # NOTE: the diceLoss expects the input to be logits (which it then normalizes inside)
-        dice_loss = self.loss_function(output, labels)
-
-        # get probabilities from logits
-        output = F.relu(output) / F.relu(output).max() if bool(F.relu(output).max()) else F.relu(output)
-
-        # calculate train dice
-        # NOTE: this is done on patches (and not entire 3D volume) because SlidingWindowInference is not used here
-        # So, take this dice score with a lot of salt
-        train_soft_dice = self.soft_dice_metric(output, labels) 
-        # train_hard_dice = self.soft_dice_metric((output.detach() > 0.5).float(), (labels.detach() > 0.5).float())
-
-        # binarize the predictions and the labels
-        output = (output.detach() > 0.5).float()
-        labels = (labels.detach() > 0.5).float()
+        # if using dynunet, output.shape = (B, num_upsample_layers+1, C, H, W, D)
+        # print(f"labels.shape: {labels.shape} \t output.shape: {output.shape}")
         
-        # compute CSA for each element of the batch
-        csa_loss = 0.0
-        for batch_idx in range(output.shape[0]):
-            pred_patch_csa = compute_average_csa(output[batch_idx].squeeze(), self.spacing)
-            gt_patch_csa = compute_average_csa(labels[batch_idx].squeeze(), self.spacing)
-            csa_loss += (pred_patch_csa - gt_patch_csa) ** 2
+        if self.args.model == "dynunet":
+            # unbind the preds to calculate loss for each output
+            outputs = torch.unbind(output, dim=1)
 
-        # average CSA loss across the batch
-        csa_loss = csa_loss / output.shape[0]
+            # calculate dice loss for each output
+            dice_loss, train_soft_dice = 0.0, 0.0
+            for i in range(len(outputs)):
+                # give each output a weight which decreases exponentially (division by 2) as the resolution decreases
+                # this gives higher resolution outputs more weight in the loss
+                # NOTE: outputs[0] is the final pred, outputs[-1] is the lowest resolution pred (at the bottleneck)
+                dice_loss += (0.5 ** i) * self.loss_function(outputs[i], labels)
+
+                # get probabilities from logits
+                out = F.relu(outputs[i]) / F.relu(outputs[i]).max() if bool(F.relu(outputs[i]).max()) else F.relu(outputs[i])
+
+                # calculate train dice
+                # NOTE: this is done on patches (and not entire 3D volume) because SlidingWindowInference is not used here
+                # So, take this dice score with a lot of salt
+                train_soft_dice += self.soft_dice_metric(out, labels) 
+            
+            # average dice loss across the outputs
+            dice_loss = dice_loss / len(outputs)
+            train_soft_dice = train_soft_dice / len(outputs)
+
+            # binarize the predictions and the labels (take only the final feature map i.e. the final prediction)
+            output = (outputs[0].detach() > 0.5).float()
+            labels = (labels.detach() > 0.5).float()
+            
+            # compute CSA for each element of the batch
+            # NOTE: the CSA is computed only for the final feature map (i.e. the prediction, not the intermediate deepsupervision feature maps)
+            csa_loss = 0.0
+            for batch_idx in range(output.shape[0]):
+                pred_patch_csa = compute_average_csa(output[batch_idx].squeeze(), self.spacing)
+                gt_patch_csa = compute_average_csa(labels[batch_idx].squeeze(), self.spacing)
+                csa_loss += (pred_patch_csa - gt_patch_csa) ** 2
+            # average CSA loss across the batch
+            csa_loss = csa_loss / output.shape[0]
+
+        else:
+            # calculate training loss   
+            # NOTE: the diceLoss expects the input to be logits (which it then normalizes inside)
+            dice_loss = self.loss_function(output, labels)
+
+            # get probabilities from logits
+            output = F.relu(output) / F.relu(output).max() if bool(F.relu(output).max()) else F.relu(output)
+
+            # calculate train dice
+            # NOTE: this is done on patches (and not entire 3D volume) because SlidingWindowInference is not used here
+            # So, take this dice score with a lot of salt
+            train_soft_dice = self.soft_dice_metric(output, labels) 
+            # train_hard_dice = self.soft_dice_metric((output.detach() > 0.5).float(), (labels.detach() > 0.5).float())
+
+            # binarize the predictions and the labels
+            output = (output.detach() > 0.5).float()
+            labels = (labels.detach() > 0.5).float()
+            
+            # compute CSA for each element of the batch
+            csa_loss = 0.0
+            for batch_idx in range(output.shape[0]):
+                pred_patch_csa = compute_average_csa(output[batch_idx].squeeze(), self.spacing)
+                gt_patch_csa = compute_average_csa(labels[batch_idx].squeeze(), self.spacing)
+                csa_loss += (pred_patch_csa - gt_patch_csa) ** 2
+            # average CSA loss across the batch
+            csa_loss = csa_loss / output.shape[0]
 
         # total loss
         loss = dice_loss + csa_loss
