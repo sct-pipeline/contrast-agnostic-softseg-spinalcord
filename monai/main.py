@@ -619,7 +619,7 @@ def main(args):
         exp_logger = pl.loggers.WandbLogger(
                             name=save_exp_id,
                             save_dir=args.save_path,
-                            group=f"{args.model}_final", 
+                            group=f"{args.model}", #_final", 
                             log_model=True, # save best model using checkpoint callback
                             project='contrast-agnostic',
                             entity='naga-karthik',
@@ -629,9 +629,15 @@ def main(args):
         # checkpoint_callback = pl.callbacks.ModelCheckpoint(
         #     dirpath=save_path, filename='best_model', monitor='val_soft_dice', 
         #     save_top_k=5, mode="max", save_last=False, save_weights_only=True)
-        checkpoint_callback = pl.callbacks.ModelCheckpoint(
-            dirpath=save_path, filename='best_model', monitor='val_csa_loss', 
-            save_top_k=5, mode="min", save_last=False, save_weights_only=True)
+        # saving the best model based on validation CSA loss
+        checkpoint_callback_csa = pl.callbacks.ModelCheckpoint(
+            dirpath=save_path, filename='best_model_csa', monitor='val_csa_loss', 
+            save_top_k=1, mode="min", save_last=False, save_weights_only=True)
+        
+        # saving the best model based on soft validation dice score
+        checkpoint_callback_dice = pl.callbacks.ModelCheckpoint(
+            dirpath=save_path, filename='best_model_dice', monitor='val_soft_dice', 
+            save_top_k=1, mode="max", save_last=False, save_weights_only=True)
         
         # early_stopping = pl.callbacks.EarlyStopping(monitor="val_soft_dice", min_delta=0.00, patience=args.patience, 
         #                     verbose=False, mode="max")
@@ -644,7 +650,7 @@ def main(args):
         trainer = pl.Trainer(
             devices=1, accelerator="gpu", # strategy="ddp",
             logger=exp_logger,
-            callbacks=[checkpoint_callback, lr_monitor, early_stopping],
+            callbacks=[checkpoint_callback_csa, checkpoint_callback_dice, lr_monitor, early_stopping],
             check_val_every_n_epoch=args.check_val_every_n_epochs,
             max_epochs=args.max_epochs, 
             precision=32,   # TODO: see if 16-bit precision is stable
