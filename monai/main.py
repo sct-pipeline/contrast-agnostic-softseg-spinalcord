@@ -174,32 +174,34 @@ class Model(pl.LightningModule):
         # if using dynunet, output.shape = (B, num_upsample_layers+1, C, H, W, D)
         # print(f"labels.shape: {labels.shape} \t output.shape: {output.shape}")
         
-        if self.args.model == "dynunet":
-            # unbind the preds to calculate loss for each output
-            outputs = torch.unbind(output, dim=1)
+        if self.args.model == "nnunet" and self.args.enable_DS:
 
             # calculate dice loss for each output
             dice_loss, train_soft_dice = 0.0, 0.0
-            for i in range(len(outputs)):
+            for i in range(len(output)):
                 # give each output a weight which decreases exponentially (division by 2) as the resolution decreases
                 # this gives higher resolution outputs more weight in the loss
                 # NOTE: outputs[0] is the final pred, outputs[-1] is the lowest resolution pred (at the bottleneck)
-                dice_loss += (0.5 ** i) * self.loss_function(outputs[i], labels)
+                # we're downsampling the GT to the resolution of each deepsupervision feature map output 
+                # (instead of upsampling each deepsupervision feature map output to the final resolution)
+                downsampled_gt = F.interpolate(labels, size=output[i].shape[-3:], mode='trilinear', align_corners=False)
+                # print(f"downsampled_gt.shape: {downsampled_gt.shape} \t output[i].shape: {output[i].shape}")
+                dice_loss += (0.5 ** i) * self.loss_function(output[i], downsampled_gt)
 
                 # get probabilities from logits
-                out = F.relu(outputs[i]) / F.relu(outputs[i]).max() if bool(F.relu(outputs[i]).max()) else F.relu(outputs[i])
+                out = F.relu(output[i]) / F.relu(output[i]).max() if bool(F.relu(output[i]).max()) else F.relu(output[i])
 
                 # calculate train dice
                 # NOTE: this is done on patches (and not entire 3D volume) because SlidingWindowInference is not used here
                 # So, take this dice score with a lot of salt
-                train_soft_dice += self.soft_dice_metric(out, labels) 
+                train_soft_dice += self.soft_dice_metric(out, downsampled_gt) 
             
             # average dice loss across the outputs
-            dice_loss = dice_loss / len(outputs)
-            train_soft_dice = train_soft_dice / len(outputs)
+            dice_loss = dice_loss / len(output)
+            train_soft_dice = train_soft_dice / len(output)
 
             # binarize the predictions and the labels (take only the final feature map i.e. the final prediction)
-            output = (outputs[0].detach() > 0.5).float()
+            output = (output[0].detach() > 0.5).float()
             labels = (labels.detach() > 0.5).float()
             
             # compute CSA for each element of the batch
@@ -307,6 +309,10 @@ class Model(pl.LightningModule):
         outputs = sliding_window_inference(inputs, self.inference_roi_size, mode="gaussian",
                                            sw_batch_size=4, predictor=self.forward, overlap=0.5,) 
         # outputs shape: (B, C, <original H x W x D>)
+        
+        if self.args.model == "nnunet" and self.args.enable_DS:
+            # we only need the output with the highest resolution
+            outputs = outputs[0]
         
         # calculate validation loss
         dice_loss = self.loss_function(outputs, labels)
