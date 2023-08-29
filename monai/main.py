@@ -14,7 +14,7 @@ from utils import precision_score, recall_score, dice_score, compute_average_csa
                     PolyLRScheduler, check_empty_patch
 from losses import SoftDiceLoss
 from transforms import train_transforms, val_transforms
-from models import ModifiedUNet3D
+from models import ModifiedUNet3D, create_nnunet_from_plans
 
 from monai.utils import set_determinism
 from monai.inferers import sliding_window_inference
@@ -516,6 +516,33 @@ def main(args):
     # Setting the seed
     pl.seed_everything(args.seed, workers=True)
 
+    # ======================================================================================================
+    #                           Define plans json taken from nnUNet_preprocessed folder
+    # ======================================================================================================
+    nnunet_plans = {
+        "UNet_class_name": "PlainConvUNet",
+        "UNet_base_num_features": args.init_filters,
+        "n_conv_per_stage_encoder": [2, 2, 2, 2, 2, 2],
+        "n_conv_per_stage_decoder": [2, 2, 2, 2, 2],
+        "pool_op_kernel_sizes": [
+            [1, 1, 1],
+            [2, 2, 2],
+            [2, 2, 2],
+            [2, 2, 2],
+            [2, 2, 2],
+            [1, 2, 2]
+        ],
+        "conv_kernel_sizes": [
+            [3, 3, 3],
+            [3, 3, 3],
+            [3, 3, 3],
+            [3, 3, 3],
+            [3, 3, 3],
+            [3, 3, 3]
+        ],
+        "unet_max_num_features": 320,
+    }
+
     # define root path for finding datalists
     dataset_root = "/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/contrast-agnostic-softseg-spinalcord/monai"
 
@@ -584,6 +611,19 @@ def main(args):
                         f"nspv={args.num_samples_per_volume}" \
                         f"_bs={args.batch_size}_{patch_size}"
 
+    elif args.model in ["nnunet"]:
+        if args.enable_DS:
+            logger.info(f" Using nnUNet model WITH deep supervision! ")
+        else:
+            logger.info(f" Using nnUNet model WITHOUT deep supervision! ")
+
+        # define model
+        net = create_nnunet_from_plans(plans=nnunet_plans, num_input_channels=1, num_classes=1, deep_supervision=args.enable_DS)
+        patch_size = "160x224x96"
+        save_exp_id =f"{args.model}_nf={args.init_filters}_DS={int(args.enable_DS)}" \
+                        f"_opt={args.optimizer}_lr={args.learning_rate}" \
+                        f"_CSAdiceL_nspv={args.num_samples_per_volume}" \
+                        f"_bs={args.batch_size}_{patch_size}"
 
     # define loss function
     loss_func = SoftDiceLoss(p=1, smooth=1.0)
@@ -698,8 +738,9 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='Script for training custom models for SCI Lesion Segmentation.')
     # Arguments for model, data, and training and saving
-    parser.add_argument('-m', '--model', choices=['unet', 'unetr', 'dynunet'], 
+    parser.add_argument('-m', '--model', choices=['unet', 'unetr', 'nnunet'], 
                         default='unet', type=str, help='Model type to be used')
+    parser.add_argument('--enable_DS', default=False, action='store_true', help='Enable Deep Supervision')
     # dataset
     parser.add_argument('-nspv', '--num_samples_per_volume', default=4, type=int, help="Number of samples to crop per volume")    
     parser.add_argument('-ncv', '--num_cv_folds', default=5, type=int, help="Number of cross validation folds")
