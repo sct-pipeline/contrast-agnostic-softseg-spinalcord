@@ -12,13 +12,13 @@ import matplotlib.pyplot as plt
 
 from utils import precision_score, recall_score, dice_score, compute_average_csa, \
                     PolyLRScheduler, check_empty_patch
-from losses import SoftDiceLoss, AdapWingLoss
+from losses import SoftDiceLoss
 from transforms import train_transforms, val_transforms
 from models import ModifiedUNet3D
 
 from monai.utils import set_determinism
 from monai.inferers import sliding_window_inference
-from monai.networks.nets import UNet, UNETR
+from monai.networks.nets import UNet, UNETR, DynUNet
 from monai.data import (DataLoader, Dataset, CacheDataset, load_decathlon_datalist, decollate_batch)
 from monai.transforms import (Compose, EnsureType, EnsureTyped, Invertd, SaveImaged, SaveImage)
 
@@ -485,15 +485,16 @@ def main(args):
         optimizer_class = torch.optim.SGD
 
     # define models
-    if args.model in ["unet", "UNet"]:                    
+    if args.model in ["unet"]:
+        logger.info(f" Using ivadomed's UNet model! ")
         # this is the ivadomed unet model
         net = ModifiedUNet3D(in_channels=1, out_channels=1, init_filters=args.init_filters)
-        patch_size =  "160x224x96"   # "64x128x64"
+        patch_size = "160x224x96"   # "64x128x64"
         save_exp_id =f"ivado_{args.model}_nf={args.init_filters}_opt={args.optimizer}_lr={args.learning_rate}" \
-                        f"_CSAdiceL_bestValCSA_nspv={args.num_samples_per_volume}_fltr" \
+                        f"_CSAdiceL_bestValCSA_nspv={args.num_samples_per_volume}" \
                         f"_bs={args.batch_size}_{patch_size}"
 
-    elif args.model in ["unetr", "UNETR"]:
+    elif args.model in ["unetr"]:
         # define image size to be fed to the model
         img_size = (160, 224, 96)
         
@@ -514,6 +515,34 @@ def main(args):
         save_exp_id = f"{args.model}_opt={args.optimizer}_lr={args.learning_rate}" \
                         f"_fs={args.feature_size}_hs={args.hidden_size}_mlpd={args.mlp_dim}_nh={args.num_heads}" \
                         f"_CSAdiceL_nspv={args.num_samples_per_volume}_bs={args.batch_size}_{img_size}" \
+
+    elif args.model in ["dynunet"]:
+        logger.info(f" Using MONAI's DynUNet model! ")
+        
+        # NOTE: these values are taken from nnUNetPlans.json
+        kernel_sizes = (3, 3, 3, 3, 3, 3)
+        stride_sizes = ((1, 1, 1), 2, 2, 2, 2, (1, 2, 2))
+        # num_filters = (8, 16, 32, 64, 128, 256)
+        num_filters = (16, 32, 64, 128, 256, 320)
+        
+        # define model
+        net = DynUNet(spatial_dims=3,
+                    in_channels=1, out_channels=1, 
+                    kernel_size=kernel_sizes, 
+                    strides=stride_sizes, 
+                    upsample_kernel_size=stride_sizes[1:],
+                    filters=num_filters,
+                    norm_name="instance", 
+                    deep_supervision=True, 
+                    deep_supr_num=4, #(len(stride_sizes)-2), 
+                    res_block=True, 
+                    dropout=0.3,
+                )
+        patch_size = "160x224x96" 
+        save_exp_id =f"{args.model}_initf=16_DS=4opt={args.optimizer}_lr={args.learning_rate}" \
+                        f"nspv={args.num_samples_per_volume}" \
+                        f"_bs={args.batch_size}_{patch_size}"
+
 
     # define loss function
     loss_func = SoftDiceLoss(p=1, smooth=1.0)
@@ -622,8 +651,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='Script for training custom models for SCI Lesion Segmentation.')
     # Arguments for model, data, and training and saving
-    parser.add_argument('-m', '--model', 
-                        choices=['unet', 'UNet', 'unetr', 'UNETR', 'attentionunet'], 
+    parser.add_argument('-m', '--model', choices=['unet', 'unetr', 'dynunet'], 
                         default='unet', type=str, help='Model type to be used')
     # dataset
     parser.add_argument('-nspv', '--num_samples_per_volume', default=4, type=int, help="Number of samples to crop per volume")    
