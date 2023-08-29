@@ -42,7 +42,8 @@ def get_parser():
                         help="Path to the output folder where to store the predictions and associated metrics")
     parser.add_argument("-dname", "--dataset-name", type=str, default="spine-generic",
                         help="Name of the dataset to run inference on")
-    parser.add_argument("--model", type=str, default="unet", help="Name of the model to use for inference")
+    parser.add_argument("--model", type=str, default="unet", required=True,
+                         help="Name of the model to use for inference")
     
     return parser
 
@@ -135,7 +136,7 @@ def main(args):
             # load the checkpoints
             for chkp in os.listdir(args.chkp_path):
                 chkp_path = os.path.join(args.chkp_path, chkp)
-                print(f"Loading checkpoint: {chkp_path}")
+                # print(f"Loading checkpoint: {chkp_path}")
             
                 checkpoint = torch.load(chkp_path, map_location=torch.device(DEVICE))["state_dict"]
                 # NOTE: remove the 'net.' prefix from the keys because of how the model was initialized in lightning
