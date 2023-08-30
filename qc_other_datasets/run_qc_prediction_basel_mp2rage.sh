@@ -21,9 +21,21 @@ set -e -o pipefail
 # Exit if user presses CTRL+C (Linux) or CMD+C (OSX)
 trap "echo Caught Keyboard Interrupt within script. Exiting now.; exit" INT
 
+# Print retrieved variables from the sct_run_batch script to the log (to allow easier debug)
+echo "Retrieved variables from from the caller sct_run_batch:"
+echo "PATH_DATA: ${PATH_DATA}"
+echo "PATH_DATA_PROCESSED: ${PATH_DATA_PROCESSED}"
+echo "PATH_RESULTS: ${PATH_RESULTS}"
+echo "PATH_LOG: ${PATH_LOG}"
+echo "PATH_QC: ${PATH_QC}"
+
 # Retrieve input params
 SUBJECT=$1
 PATH_PRED_SEG=$2
+MODEL=$3
+
+echo "PATH_PRED_SEG: ${PATH_PRED_SEG}"
+echo "MODEL: ${MODEL}"
 
 
 # get starting time:
@@ -73,7 +85,12 @@ cd ${SUBJECT}
 # We do a substitution '/' --> '_' in case there is a subfolder 'ses-0X/'
 file_sub="${SUBJECT//[\/]/_}"
 
-for file_pred in ${PATH_PRED_SEG}/*; do
+# if model is nnUNet, then we run the following code
+if [[ ${MODEL} == "nnUNet" ]]; then
+  echo "Running QC for nnUNet predictions ..."
+
+  for file_pred in ${PATH_PRED_SEG}/*; do
+    echo $file_pred
     if [[ $file_pred == *$file_sub* ]];then
       echo " File found, running QC report $file_pred"
       # Find if anat or dwi
@@ -94,7 +111,51 @@ for file_pred in ${PATH_PRED_SEG}/*; do
       # Create QC for pred mask
       sct_qc -i ${type}/${file_image} -s $file_pred_new_name -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
     fi
-done
+  done
+
+else
+  echo "Running QC for MONAI predictions ..."
+  
+  # Check if file exists (pred file)
+  for pred_sub in ${PATH_PRED_SEG}/sub-*; do
+    echo $pred_sub
+    if [[ ${pred_sub} =~ ${SUBJECT} ]]; then
+      echo "Subject found, running QC report $pred_sub"
+      # cd ${SUBJECT}
+      
+      for file_pred in ${PATH_PRED_SEG}/${SUBJECT}/*_pred.nii.gz; do
+        file_seg_basename=${file_pred##*/}  # keep only the file name from the whole path
+        echo $file_seg_basename
+        if [[ ${file_seg_basename} =~ "dwi" ]]; then
+          type=dwi
+        else
+          type=anat
+        fi
+
+        # rsync prediction mask
+        rsync -avzh $file_pred ${type}/$file_seg_basename
+        file_image=${file_seg_basename}
+        echo $file_image  # should be same as file_seg_basename
+        file_image="${file_image/_pred.nii.gz/}"  # deletes suffix
+
+        pred_seg="${type}/${file_seg_basename}"
+        pred_seg_bin="${type}/${file_seg_basename/.nii.gz/_bin.nii.gz}"
+
+        # NOTE: soft QC is still buggy so binarize the prediction with threshold 0.5
+        sct_maths -i ${pred_seg} -bin 0.5 -o ${pred_seg_bin}
+
+        # Create QC for pred mask
+        # sct_qc -i ${type}/${file_image}.nii.gz -s ${pred_seg_bin} -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
+        # soft QC
+        sct_qc -i ${type}/${file_image}.nii.gz -s ${pred_seg} -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
+
+      done
+    else
+      echo "Pred mask not found"
+    fi
+  done
+fi
+
 
 # Display useful info for the log
 end=`date +%s`

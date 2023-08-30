@@ -21,10 +21,21 @@ set -e -o pipefail
 # Exit if user presses CTRL+C (Linux) or CMD+C (OSX)
 trap "echo Caught Keyboard Interrupt within script. Exiting now.; exit" INT
 
+# Print retrieved variables from the sct_run_batch script to the log (to allow easier debug)
+echo "Retrieved variables from from the caller sct_run_batch:"
+echo "PATH_DATA: ${PATH_DATA}"
+echo "PATH_DATA_PROCESSED: ${PATH_DATA_PROCESSED}"
+echo "PATH_RESULTS: ${PATH_RESULTS}"
+echo "PATH_LOG: ${PATH_LOG}"
+echo "PATH_QC: ${PATH_QC}"
+
 # Retrieve input params
 SUBJECT=$1
 PATH_PRED_SEG=$2
 MODEL=$3
+
+echo "PATH_PRED_SEG: ${PATH_PRED_SEG}"
+echo "MODEL: ${MODEL}"
 
 # get starting time:
 start=`date +%s`
@@ -78,24 +89,28 @@ if [[ ${MODEL} == "nnUNet" ]]; then
   echo "Running QC for nnUNet predictions ..."
 
   for file_pred in ${PATH_PRED_SEG}/*; do
-      if [[ $file_pred == *$file_sub* ]];then
-          echo " File found, running QC report $file_pred"
-          # Find if anat or dwi
-          file_seg_basename=${file_pred##*/}
-          echo $file_seg_basename
-          type=$(find_contrast $file_pred)
-          prefix="tSCIColoradoSCSeg_"  # TODO change accroding to prediction names
-          file_image=${file_seg_basename#"$prefix"}
-          file_image="${file_image::-11}"  # Remove X.nii.gz since the number X varies
-          # split with "-"
-          arrIN=(${file_image//-/ })
-          contrast="_T2w"
-          file_image=${arrIN[0]}"-"${arrIN[1]}"${contrast}.nii.gz"
-          echo $file_image
-          # rsync prediction mask
-          file_pred_new_name=${type}/${arrIN[0]}"-"${arrIN[1]}"${contrast}_pred.nii.gz"
-          rsync -avzh $file_pred $file_pred_new_name
-      fi
+    echo $file_pred
+    if [[ $file_pred == *$file_sub* ]]; then
+    # if [[ ${file_pred} =~ ${SUBJECT} ]]; then
+      echo " File found, running QC report $file_pred"
+      # Find if anat or dwi
+      file_seg_basename=${file_pred##*/}
+      echo $file_seg_basename
+      type=$(find_contrast $file_pred)
+      prefix="tSCIColoradoSC_"  # TODO change accroding to prediction names
+      file_image=${file_seg_basename#"$prefix"}
+      file_image="${file_image::-11}"  # Remove X.nii.gz since the number X varies
+      # split with "-"
+      arrIN=(${file_image//-/ })
+      contrast="_T2w"
+      file_image=${arrIN[0]}"-"${arrIN[1]}"${contrast}.nii.gz"
+      echo $file_image
+      # rsync prediction mask
+      file_pred_new_name=${type}/${arrIN[0]}"-"${arrIN[1]}"${contrast}_pred.nii.gz"
+      rsync -avzh $file_pred $file_pred_new_name
+      # Create QC for pred mask
+      sct_qc -i ${type}/${file_image} -s $file_pred_new_name -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
+    fi
   done
 
 else
