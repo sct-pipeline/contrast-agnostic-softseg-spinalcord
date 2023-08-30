@@ -135,46 +135,37 @@ def main():
         if folder in folders_included:
             if 'csa_gt' in folder:
                 df = pd.DataFrame()
-                path_csa = os.path.join(path_in, folder, 'results')  # Use binarized soft ground truth CSA results_soft_bin
+                path_csa = os.path.join(path_in, folder, 'results_soft_bin')  # Use binarized soft ground truth CSA results_soft_bin
                 # path_csa = os.path.join(path_in, folder)    # TODO: comment this when NOT comparing GTs only
                 for file in os.listdir(path_csa):
-                    if 'csa_soft_GT' in file: #csa_soft_GT_bin
-                        contrast = file.split('_')  #csa_soft_GT_bin
-                        if len(contrast) < 5:  # FOR SOFT GT
+                    if 'csa_soft_GT_bin' in file:
+                        contrast = file.split('_')
+                        if len(contrast) < 6:   # the filename format is "csa_soft_GT_bin_<contrast>.csv"
                             contrast = contrast[-1].split('.')[0]
                             print(contrast)
-                       # if len(contrast) < 6:   # the filename format is "csa_soft_GT_bin_<contrast>.csv"
-                           # contrast = contrast[-1].split('.')[0]
-                            #print(contrast)
                         else:
                             contrast = contrast[-2]
-                           
                             print(contrast)
                         df[contrast] = get_csa(os.path.join(path_csa, file))
 
             elif 'csa_monai' in folder:
                 df = pd.DataFrame()
                 path_csa = os.path.join(path_in, folder, 'results')
-                # path_csa = os.path.join(path_in, folder)    # TODO: comment this when NOT comparing GTs only
                 for file in os.listdir(path_csa):
-                    if '_soft.csv' in file:     # NOTE: using binarized soft preds for plots
+                    if '_soft_bin.csv' in file:     # NOTE: using binarized soft preds for plots
                         print(file)
                         contrast = file.split('_')
                         if len(contrast) < 6:   # the filename format is "csa_pred_<contrast>_soft_bin.csv"
-                            #contrast = contrast[-3]     # if using _soft_bin.csv
-                            contrast = contrast[-2]     # if using _soft.csv
+                            contrast = contrast[-3]     # using _soft_bin.csv
                         else:
-                            # # if using _soft.csv, uncomment this
-                            contrast = contrast[-3] # for mt-on and mt-off
-                            # if using _soft_bin.csv, uncomment this
-                            #contrast = contrast[-4] # for mt-on and mt-off
+                            contrast = contrast[-4] # for mt-on and mt-off
                         df[contrast] = get_csa(os.path.join(path_csa, file))
 
-            else:
+            else:  # For ivado
                 df = pd.DataFrame()
                 path_csa = os.path.join(path_in, folder, 'results')
-                # path_csa = os.path.join(path_in, folder)    # TODO: comment this when NOT comparing GTs only
                 for file in os.listdir(path_csa):
+                    print(file)
                     if 'csv' in file:
                         contrast = file.split('_')
                         if len(contrast) < 4:   # the filename format is "csa_pred_<contrast>.csv"
@@ -197,8 +188,8 @@ def main():
 
     # To compare only monai model and the GT
     rename = {
-        'ivado_soft_no_crop':'IVADO_avg',
-        #'ivado_avg_bin_no_crop': 'IVADO_avg_bin', #--> binarized before training
+        'ivado_soft_no_crop':'IVADO_avg_bin',
+        #'ivado_avg_bin_no_crop': 'IVADO_avg_train_bin', #--> binarized before training
         'csa_nnunet_2023-08-24': 'nnUNet_avg_bin',
         'csa_monai_unet_bestValCSA': 'MONAI_UNet_avg',
         # 'csa_monai_unetr_bestValCSA': 'MONAI_UNetR_avg_bin',       # Added folder name here
