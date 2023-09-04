@@ -217,6 +217,45 @@ if [[ -f ${file_t2s}.nii.gz ]];then
   # Delete raw images
   rm -f ${SUBJECT}_T2star_raw.nii.gz
 fi
+
+# MTS
+# ------------------------------------------------------------------------------
+file_t1w="${SUBJECT}_flip-2_mt-off_MTS"
+if [[ -f ${file_t1w}.nii.gz ]];then
+  # Rename raw file
+  mv ${file_t1w}.nii.gz ${file_t1w}_raw.nii.gz
+  file_t1w="${file_t1w}_raw"
+
+  # Reorient to RPI
+  sct_image -i ${file_t1w}.nii.gz -setorient RPI -o ${file_t1w}_RPI.nii.gz
+  file_t1w="${file_t1w}_RPI"
+
+  # Rename _RPI file
+  mv ${file_t1w}.nii.gz ${SUBJECT}_flip-2_mt-off_MTS.nii.gz
+
+  # Delete raw
+  rm -f ${SUBJECT}_flip-2_mt-off_MTS_raw.nii.gz
+fi
+
+
+file_mton="${SUBJECT}_flip-1_mt-on_MTS"
+if [[ -f ${file_mton}.nii.gz ]];then
+  # Rename raw file
+  mv ${file_mton}.nii.gz ${file_mton}_raw.nii.gz
+  file_mton="${file_mton}_raw"
+
+  # Reorient to RPI
+  sct_image -i ${file_mton}.nii.gz -setorient RPI -o ${file_mton}_RPI.nii.gz
+  file_mton="${file_mton}_RPI"
+
+  # Rename _RPI file
+  mv ${file_mton}.nii.gz ${SUBJECT}_flip-1_mt-on_MTS.nii.gz
+
+  # Delete raw
+  rm -f ${SUBJECT}_flip-1_mt-on_MTS_raw.nii.gz
+fi
+
+
 cd ..
 # DWI
 # ------------------------------------------------------------------------------
