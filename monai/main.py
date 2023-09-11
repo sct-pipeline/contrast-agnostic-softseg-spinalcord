@@ -11,8 +11,8 @@ import torch.nn.functional as F
 import matplotlib.pyplot as plt
 
 from utils import precision_score, recall_score, dice_score, compute_average_csa, \
-                    PolyLRScheduler, check_empty_patch
-from losses import SoftDiceLoss
+                    PolyLRScheduler, plot_slices, check_empty_patch
+from losses import SoftDiceLoss, AdapWingLoss
 from transforms import train_transforms, val_transforms
 from models import ModifiedUNet3D, create_nnunet_from_plans
 
@@ -200,24 +200,25 @@ class Model(pl.LightningModule):
             dice_loss = dice_loss / len(output)
             train_soft_dice = train_soft_dice / len(output)
 
-            # binarize the predictions and the labels (take only the final feature map i.e. the final prediction)
-            output = (output[0].detach() > 0.5).float()
-            labels = (labels.detach() > 0.5).float()
+            # # binarize the predictions and the labels (take only the final feature map i.e. the final prediction)
+            # output = (output[0].detach() > 0.5).float()
+            # labels = (labels.detach() > 0.5).float()
             
-            # compute CSA for each element of the batch
-            # NOTE: the CSA is computed only for the final feature map (i.e. the prediction, not the intermediate deepsupervision feature maps)
-            csa_loss = 0.0
-            for batch_idx in range(output.shape[0]):
-                pred_patch_csa = compute_average_csa(output[batch_idx].squeeze(), self.spacing)
-                gt_patch_csa = compute_average_csa(labels[batch_idx].squeeze(), self.spacing)
-                csa_loss += (pred_patch_csa - gt_patch_csa) ** 2
-            # average CSA loss across the batch
-            csa_loss = csa_loss / output.shape[0]
+            # # compute CSA for each element of the batch
+            # # NOTE: the CSA is computed only for the final feature map (i.e. the prediction, not the intermediate deepsupervision feature maps)
+            # csa_loss = 0.0
+            # for batch_idx in range(output.shape[0]):
+            #     pred_patch_csa = compute_average_csa(output[batch_idx].squeeze(), self.spacing)
+            #     gt_patch_csa = compute_average_csa(labels[batch_idx].squeeze(), self.spacing)
+            #     csa_loss += (pred_patch_csa - gt_patch_csa) ** 2
+            # # average CSA loss across the batch
+            # csa_loss = csa_loss / output.shape[0]
 
         else:
             # calculate training loss   
             # NOTE: the diceLoss expects the input to be logits (which it then normalizes inside)
-            dice_loss = self.loss_function(output, labels)
+            # dice_loss = self.loss_function(output, labels)
+            loss = self.loss_function(output, labels)
 
             # get probabilities from logits
             output = F.relu(output) / F.relu(output).max() if bool(F.relu(output).max()) else F.relu(output)
@@ -228,26 +229,26 @@ class Model(pl.LightningModule):
             train_soft_dice = self.soft_dice_metric(output, labels) 
             # train_hard_dice = self.soft_dice_metric((output.detach() > 0.5).float(), (labels.detach() > 0.5).float())
 
-            # binarize the predictions and the labels
-            output = (output.detach() > 0.5).float()
-            labels = (labels.detach() > 0.5).float()
+            # # binarize the predictions and the labels
+            # output = (output.detach() > 0.5).float()
+            # labels = (labels.detach() > 0.5).float()
             
-            # compute CSA for each element of the batch
-            csa_loss = 0.0
-            for batch_idx in range(output.shape[0]):
-                pred_patch_csa = compute_average_csa(output[batch_idx].squeeze(), self.spacing)
-                gt_patch_csa = compute_average_csa(labels[batch_idx].squeeze(), self.spacing)
-                csa_loss += (pred_patch_csa - gt_patch_csa) ** 2
-            # average CSA loss across the batch
-            csa_loss = csa_loss / output.shape[0]
+            # # compute CSA for each element of the batch
+            # csa_loss = 0.0
+            # for batch_idx in range(output.shape[0]):
+            #     pred_patch_csa = compute_average_csa(output[batch_idx].squeeze(), self.spacing)
+            #     gt_patch_csa = compute_average_csa(labels[batch_idx].squeeze(), self.spacing)
+            #     csa_loss += (pred_patch_csa - gt_patch_csa) ** 2
+            # # average CSA loss across the batch
+            # csa_loss = csa_loss / output.shape[0]
 
-        # total loss
-        loss = dice_loss + csa_loss
+        # # total loss
+        # loss = dice_loss + csa_loss
 
         metrics_dict = {
             "loss": loss.cpu(),
-            "dice_loss": dice_loss.cpu(),
-            "csa_loss": csa_loss.cpu(),
+            # "dice_loss": dice_loss.cpu(),
+            # "csa_loss": csa_loss.cpu(),
             "train_soft_dice": train_soft_dice.detach().cpu(),
             "train_number": len(inputs),
             # "train_image": inputs[0].detach().cpu().squeeze(),
@@ -264,25 +265,25 @@ class Model(pl.LightningModule):
             # means the training step was skipped because of empty input patch
             return None
         else:
-            train_loss, train_dice_loss, train_csa_loss = 0, 0, 0
-            num_items, train_soft_dice = 0, 0
+            train_loss, train_dice_loss, train_csa_loss, train_soft_dice = 0, 0, 0, 0
+            num_items = len(self.train_step_outputs)
             for output in self.train_step_outputs:
                 train_loss += output["loss"].item()
-                train_dice_loss += output["dice_loss"].item()
-                train_csa_loss += output["csa_loss"].item()
+                # train_dice_loss += output["dice_loss"].item()
+                # train_csa_loss += output["csa_loss"].item()
                 train_soft_dice += output["train_soft_dice"].item()
-                num_items += output["train_number"]
+                # num_items += output["train_number"]
             
             mean_train_loss = (train_loss / num_items)
-            mean_train_dice_loss = (train_dice_loss / num_items)
-            mean_train_csa_loss = (train_csa_loss / num_items)
+            # mean_train_dice_loss = (train_dice_loss / num_items)
+            # mean_train_csa_loss = (train_csa_loss / num_items)
             mean_train_soft_dice = (train_soft_dice / num_items)
 
             wandb_logs = {
                 "train_soft_dice": mean_train_soft_dice, 
                 "train_loss": mean_train_loss,
-                "train_dice_loss": mean_train_dice_loss,
-                "train_csa_loss": mean_train_csa_loss,
+                # "train_dice_loss": mean_train_dice_loss,
+                # "train_csa_loss": mean_train_csa_loss,
             }
             self.log_dict(wandb_logs)
 
@@ -306,16 +307,18 @@ class Model(pl.LightningModule):
         
         inputs, labels = batch["image"], batch["label"]
 
+        # NOTE: this calculates the loss on the entire image after sliding window
         outputs = sliding_window_inference(inputs, self.inference_roi_size, mode="gaussian",
-                                           sw_batch_size=4, predictor=self.forward, overlap=0.5,) 
+                                           sw_batch_size=1, predictor=self.forward, overlap=0.5,) 
         # outputs shape: (B, C, <original H x W x D>)
-        
+                
         if self.args.model == "nnunet" and self.args.enable_DS:
             # we only need the output with the highest resolution
             outputs = outputs[0]
         
         # calculate validation loss
-        dice_loss = self.loss_function(outputs, labels)
+        # dice_loss = self.loss_function(outputs, labels)
+        loss = self.loss_function(outputs, labels)
 
         # get probabilities from logits
         outputs = F.relu(outputs) / F.relu(outputs).max() if bool(F.relu(outputs).max()) else F.relu(outputs)
@@ -328,26 +331,26 @@ class Model(pl.LightningModule):
         hard_preds, hard_labels = (post_outputs[0].detach() > 0.5).float(), (post_labels[0].detach() > 0.5).float()
         val_hard_dice = self.soft_dice_metric(hard_preds, hard_labels)
 
-        # compute val CSA loss
-        val_csa_loss = 0.0
-        for batch_idx in range(hard_preds.shape[0]):
-            pred_patch_csa = compute_average_csa(hard_preds[batch_idx].squeeze(), self.spacing)
-            gt_patch_csa = compute_average_csa(hard_labels[batch_idx].squeeze(), self.spacing)
-            val_csa_loss += (pred_patch_csa - gt_patch_csa) ** 2
+        # # compute val CSA loss
+        # val_csa_loss = 0.0
+        # for batch_idx in range(hard_preds.shape[0]):
+        #     pred_patch_csa = compute_average_csa(hard_preds[batch_idx].squeeze(), self.spacing)
+        #     gt_patch_csa = compute_average_csa(hard_labels[batch_idx].squeeze(), self.spacing)
+        #     val_csa_loss += (pred_patch_csa - gt_patch_csa) ** 2
 
-        # average CSA loss across the batch
-        val_csa_loss = val_csa_loss / hard_preds.shape[0]
+        # # average CSA loss across the batch
+        # val_csa_loss = val_csa_loss / hard_preds.shape[0]
 
-        # total loss
-        loss = dice_loss + val_csa_loss
+        # # total loss
+        # loss = dice_loss + val_csa_loss
 
         # NOTE: there was a massive memory leak when storing cuda tensors in this dict. Hence,
         # using .detach() to avoid storing the whole computation graph
         # Ref: https://discuss.pytorch.org/t/cuda-memory-leak-while-training/82855/2
         metrics_dict = {
             "val_loss": loss.detach().cpu(),
-            "val_dice_loss": dice_loss.detach().cpu(),
-            "val_csa_loss": val_csa_loss.detach().cpu(),
+            # "val_dice_loss": dice_loss.detach().cpu(),
+            # "val_csa_loss": val_csa_loss.detach().cpu(),
             "val_soft_dice": val_soft_dice.detach().cpu(),
             "val_hard_dice": val_hard_dice.detach().cpu(),
             "val_number": len(post_outputs),
@@ -367,40 +370,41 @@ class Model(pl.LightningModule):
             val_loss += output["val_loss"].sum().item()
             val_soft_dice += output["val_soft_dice"].sum().item()
             val_hard_dice += output["val_hard_dice"].sum().item()
-            val_dice_loss += output["val_dice_loss"].sum().item()
-            val_csa_loss += output["val_csa_loss"].sum().item()
+            # val_dice_loss += output["val_dice_loss"].sum().item()
+            # val_csa_loss += output["val_csa_loss"].sum().item()
             num_items += output["val_number"]
         
         mean_val_loss = (val_loss / num_items)
         mean_val_soft_dice = (val_soft_dice / num_items)
         mean_val_hard_dice = (val_hard_dice / num_items)
-        mean_val_dice_loss = (val_dice_loss / num_items)
-        mean_val_csa_loss = (val_csa_loss / num_items)
+        # mean_val_dice_loss = (val_dice_loss / num_items)
+        # mean_val_csa_loss = (val_csa_loss / num_items)
                 
         wandb_logs = {
             "val_soft_dice": mean_val_soft_dice,
             "val_hard_dice": mean_val_hard_dice,
             "val_loss": mean_val_loss,
-            "val_dice_loss": mean_val_dice_loss,
-            "val_csa_loss": mean_val_csa_loss,
+            # "val_dice_loss": mean_val_dice_loss,
+            # "val_csa_loss": mean_val_csa_loss,
         }
-        # # save the best model based on validation dice score
-        # if mean_val_soft_dice > self.best_val_dice:
-        #     self.best_val_dice = mean_val_soft_dice
-        #     self.best_val_epoch = self.current_epoch
+        # save the best model based on validation dice score
+        if mean_val_soft_dice > self.best_val_dice:
+            self.best_val_dice = mean_val_soft_dice
+            self.best_val_epoch = self.current_epoch
         
         # save the best model based on validation CSA loss
-        if mean_val_csa_loss < self.best_val_csa:
-            self.best_val_csa = mean_val_csa_loss
+        # if mean_val_loss < self.best_val_csa:
+        if mean_val_loss < self.best_val_loss:    
+            self.best_val_loss = mean_val_loss
             self.best_val_epoch = self.current_epoch
 
         print(
             f"Current epoch: {self.current_epoch}"
             f"\nAverage Soft Dice (VAL): {mean_val_soft_dice:.4f}"
             f"\nAverage Hard Dice (VAL): {mean_val_hard_dice:.4f}"
-            f"\nAverage CSA (VAL): {mean_val_csa_loss:.4f}"
-            # f"\nBest Average Soft Dice: {self.best_val_dice:.4f} at Epoch: {self.best_val_epoch}"
-            f"\nBest Average CSA: {self.best_val_csa:.4f} at Epoch: {self.best_val_epoch}"
+            f"\nAverage AdapWing Loss (VAL): {mean_val_loss:.4f}"
+            f"\nBest Average Soft Dice: {self.best_val_dice:.4f} at Epoch: {self.best_val_epoch}"
+            # f"\nBest Average AdapWing Loss: {self.best_val_loss:.4f} at Epoch: {self.best_val_epoch}"
             f"\n----------------------------------------------------")
 
         # log on to wandb
@@ -632,7 +636,9 @@ def main(args):
                         f"_bs={args.batch_size}_{patch_size}"
 
     # define loss function
-    loss_func = SoftDiceLoss(p=1, smooth=1.0)
+    # loss_func = SoftDiceLoss(p=1, smooth=1.0)
+    loss_func = AdapWingLoss(theta=0.5, omega=8, alpha=2.1, epsilon=1, reduction="sum")
+    logger.info(f"Using AdapWingLoss with theta={loss_func.theta}, omega={loss_func.omega}, alpha={loss_func.alpha}, epsilon={loss_func.epsilon}!")
 
     # TODO: move this inside the for loop when using more folds
     timestamp = datetime.now().strftime(f"%Y%m%d-%H%M")   # prints in YYYYMMDD-HHMMSS format
