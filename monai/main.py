@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 from utils import precision_score, recall_score, dice_score, compute_average_csa, \
                     PolyLRScheduler, plot_slices, check_empty_patch
 from losses import SoftDiceLoss, AdapWingLoss
-from transforms import train_transforms, val_transforms
+from transforms import train_transforms, val_transforms, val_transforms_with_center_crop
 from models import ModifiedUNet3D, create_nnunet_from_plans
 
 from monai.utils import set_determinism
@@ -41,11 +41,17 @@ class Model(pl.LightningModule):
         self.results_path = results_path
 
         self.best_val_dice, self.best_val_epoch = 0, 0
-        self.best_val_csa = float("inf")
+        # self.best_val_csa = float("inf")
+        self.best_val_loss = float("inf")
 
         # define cropping and padding dimensions
-        self.voxel_cropping_size = (160, 224, 96)   # (80, 192, 160) taken from nnUNet_plans.json
-        self.inference_roi_size = (160, 224, 96)
+        # NOTE about patch sizes: nnUNet defines patches using the median size of the dataset as the reference
+        # BUT, for SC images, this means a lot of context outside the spinal cord is included in the patches
+        # which could be sub-optimal. 
+        # On the other hand, ivadomed used a patch-size that's heavily padded along the R-L direction so that 
+        # only the SC is in context. 
+        self.voxel_cropping_size = (48, 176, 288)
+        self.inference_roi_size = self.voxel_cropping_size
         self.spacing = (1.0, 1.0, 1.0)
 
         # define post-processing transforms for validation, nothing fancy just making sure that it's a tensor (default)
@@ -95,7 +101,8 @@ class Model(pl.LightningModule):
             num_samples_pv=self.args.num_samples_per_volume,
             lbl_key='label'
         )
-        transforms_val = val_transforms(lbl_key='label')
+        # transforms_val = val_transforms(lbl_key='label')
+        transforms_val = val_transforms_with_center_crop(crop_size=self.voxel_cropping_size, lbl_key='label')
         
         # load the dataset
         dataset = os.path.join(self.root, f"spine-generic-ivado-comparison_dataset.json")
@@ -104,8 +111,8 @@ class Model(pl.LightningModule):
         test_files = load_decathlon_datalist(dataset, True, "test")
 
         if args.debug:
-            train_files = train_files[:10]
-            val_files = val_files[:10]
+            train_files = train_files[:15]
+            val_files = val_files[:15]
             test_files = test_files[:6]
         
         train_cache_rate = 0.25 if args.debug else 0.5
@@ -113,7 +120,8 @@ class Model(pl.LightningModule):
         self.val_ds = CacheDataset(data=val_files, transform=transforms_val, cache_rate=0.25, num_workers=4)
 
         # define test transforms
-        transforms_test = val_transforms(lbl_key='label')
+        # transforms_test = val_transforms(lbl_key='label')
+        transforms_test = val_transforms_with_center_crop(crop_size=self.voxel_cropping_size, lbl_key='label')
         
         # define post-processing transforms for testing; taken (with explanations) from 
         # https://github.com/Project-MONAI/tutorials/blob/main/3d_segmentation/torch/unet_inference_dict.py#L66
