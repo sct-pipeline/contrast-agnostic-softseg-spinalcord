@@ -22,6 +22,10 @@ from monai.networks.nets import UNet, UNETR, DynUNet
 from monai.data import (DataLoader, Dataset, CacheDataset, load_decathlon_datalist, decollate_batch)
 from monai.transforms import (Compose, EnsureType, EnsureTyped, Invertd, SaveImaged, SaveImage)
 
+# TODO:
+# 1. Remove centerCropping but train with AdapWingLoss
+# 2. Modify probs of transformations; add new ones
+
 # create a "model"-agnostic class with PL to use different models
 class Model(pl.LightningModule):
     def __init__(self, args, data_root, fold_num, net, loss_function, optimizer_class, 
@@ -33,7 +37,6 @@ class Model(pl.LightningModule):
         self.root = data_root
         self.fold_num = fold_num
         self.net = net
-        # self.load_pretrained = load_pretrained
         self.lr = args.learning_rate
         self.loss_function = loss_function
         self.optimizer_class = optimizer_class
@@ -65,9 +68,6 @@ class Model(pl.LightningModule):
         self.train_step_outputs = []
         self.val_step_outputs = []
         self.test_step_outputs = []
-
-        # specify example_input_array for model summary
-        self.example_input_array = torch.rand(1, 1, 160, 224, 96)
 
 
     # --------------------------------
@@ -141,8 +141,7 @@ class Model(pl.LightningModule):
     def train_dataloader(self):
         # NOTE: if num_samples=4 in RandCropByPosNegLabeld and batch_size=2, then 2 x 4 images are generated for network training
         return DataLoader(self.train_ds, batch_size=self.args.batch_size, shuffle=True, num_workers=16, 
-                            pin_memory=True, persistent_workers=True) # collate_fn=pad_list_data_collate)
-        # list_data_collate is only useful when each input in the batch has different shape
+                            pin_memory=True, persistent_workers=True) 
 
     def val_dataloader(self):
         return DataLoader(self.val_ds, batch_size=1, shuffle=False, num_workers=16, pin_memory=True, 
@@ -157,11 +156,12 @@ class Model(pl.LightningModule):
     # --------------------------------
     def configure_optimizers(self):
         if self.args.optimizer == "sgd":
-            optimizer = self.optimizer_class(self.parameters(), lr=self.lr, momentum=0.99, weight_decay=1e-5, nesterov=True)
+            optimizer = self.optimizer_class(self.parameters(), lr=self.lr, momentum=0.99, weight_decay=3e-5, nesterov=True)
         else:
-            optimizer = self.optimizer_class(self.parameters(), lr=self.lr, weight_decay=1e-5)
-        # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.5)
-        scheduler = PolyLRScheduler(optimizer, self.lr, max_steps=self.args.max_epochs)
+            optimizer = self.optimizer_class(self.parameters(), lr=self.lr)
+        # scheduler = PolyLRScheduler(optimizer, self.lr, max_steps=self.args.max_epochs)
+        # NOTE: ivadomed using CosineAnnealingLR with T_max = 200
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=self.args.max_epochs)
         return [optimizer], [scheduler]
 
 
@@ -172,11 +172,11 @@ class Model(pl.LightningModule):
 
         inputs, labels = batch["image"], batch["label"]
 
-        # NOTE: surprisingly, filtering out empty patches is adding more CSA bias
-        # # check if any label image patch is empty in the batch
-        # if check_empty_patch(labels) is None:
-        #     # print(f"Empty label patch found. Skipping training step ...")
-        #     return None
+        # NOTE: surprisingly, filtering out empty patches is adding more CSA bias; TODO: verify with new patch size
+        # check if any label image patch is empty in the batch
+        if check_empty_patch(labels) is None:
+            print(f"Empty label patch found. Skipping training step ...")
+            return None
 
         output = self.forward(inputs)   # logits
         # if using dynunet, output.shape = (B, num_upsample_layers+1, C, H, W, D)
@@ -440,9 +440,13 @@ class Model(pl.LightningModule):
         # print(batch["label_meta_dict"]["filename_or_obj"][0])
         # print(f"test_input.shape: {test_input.shape} \t test_label.shape: {test_label.shape}")
         batch["pred"] = sliding_window_inference(test_input, self.inference_roi_size, 
-                                                 sw_batch_size=4, predictor=self.forward, overlap=0.5)
+                                                 sw_batch_size=1, predictor=self.forward, overlap=0.5)
         # print(f"batch['pred'].shape: {batch['pred'].shape}")
         
+        if self.args.model == "nnunet" and self.args.enable_DS:
+            # we only need the output with the highest resolution
+            batch["pred"] = batch["pred"][0]
+
         # normalize the logits
         batch["pred"] = F.relu(batch["pred"]) / F.relu(batch["pred"]).max() if bool(F.relu(batch["pred"]).max()) else F.relu(batch["pred"])
 
@@ -548,7 +552,7 @@ def main(args):
             [2, 2, 2],
             [2, 2, 2],
             [2, 2, 2],
-            [1, 2, 2]
+            [1, 2, 2]   # dims 0 and 2 of nnunet and monai images are swapped. Hence, 2x2x1 instead of 1x2x2
         ],
         "conv_kernel_sizes": [
             [3, 3, 3],
@@ -575,10 +579,11 @@ def main(args):
         logger.info(f" Using ivadomed's UNet model! ")
         # this is the ivadomed unet model
         net = ModifiedUNet3D(in_channels=1, out_channels=1, init_filters=args.init_filters)
-        patch_size = "160x224x96"   # "64x128x64"
-        save_exp_id =f"ivado_{args.model}_nf={args.init_filters}_opt={args.optimizer}_lr={args.learning_rate}" \
-                        f"_CSAdiceL_bestValCSA_nspv={args.num_samples_per_volume}" \
-                        f"_bs={args.batch_size}_{patch_size}"
+        patch_size = "48x176x288"   # "160x224x96"   # "64x128x64"
+        #                 f"_CSAdiceL_nspv={args.num_samples_per_volume}" \
+        save_exp_id =f"ivado_reImp_{args.model}_nf={args.init_filters}_opt={args.optimizer}_lr={args.learning_rate}" \
+                        f"_AdapW_ValCCrop_Splin_bs={args.batch_size}_{patch_size}"
+
 
     elif args.model in ["unetr"]:
         # define image size to be fed to the model
@@ -602,33 +607,6 @@ def main(args):
                         f"_fs={args.feature_size}_hs={args.hidden_size}_mlpd={args.mlp_dim}_nh={args.num_heads}" \
                         f"_CSAdiceL_nspv={args.num_samples_per_volume}_bs={args.batch_size}_{img_size}" \
 
-    elif args.model in ["dynunet"]:
-        logger.info(f" Using MONAI's DynUNet model! ")
-        
-        # NOTE: these values are taken from nnUNetPlans.json
-        kernel_sizes = (3, 3, 3, 3, 3, 3)
-        stride_sizes = ((1, 1, 1), 2, 2, 2, 2, (1, 2, 2))
-        # num_filters = (8, 16, 32, 64, 128, 256)
-        num_filters = (16, 32, 64, 128, 256, 320)
-        
-        # define model
-        net = DynUNet(spatial_dims=3,
-                    in_channels=1, out_channels=1, 
-                    kernel_size=kernel_sizes, 
-                    strides=stride_sizes, 
-                    upsample_kernel_size=stride_sizes[1:],
-                    filters=num_filters,
-                    norm_name="instance", 
-                    deep_supervision=True, 
-                    deep_supr_num=4, #(len(stride_sizes)-2), 
-                    res_block=True, 
-                    dropout=0.3,
-                )
-        patch_size = "160x224x96" 
-        save_exp_id =f"{args.model}_initf=16_DS=4opt={args.optimizer}_lr={args.learning_rate}" \
-                        f"nspv={args.num_samples_per_volume}" \
-                        f"_bs={args.batch_size}_{patch_size}"
-
     elif args.model in ["nnunet"]:
         if args.enable_DS:
             logger.info(f" Using nnUNet model WITH deep supervision! ")
@@ -637,10 +615,10 @@ def main(args):
 
         # define model
         net = create_nnunet_from_plans(plans=nnunet_plans, num_input_channels=1, num_classes=1, deep_supervision=args.enable_DS)
-        patch_size = "160x224x96"
+        patch_size = "160x192x80"
         save_exp_id =f"{args.model}_nf={args.init_filters}_DS={int(args.enable_DS)}" \
                         f"_opt={args.optimizer}_lr={args.learning_rate}" \
-                        f"_CSAdiceL_nspv={args.num_samples_per_volume}" \
+                        f"_CSAdiceL_sameTFs_nspv={args.num_samples_per_volume}" \
                         f"_bs={args.batch_size}_{patch_size}"
 
     # define loss function
@@ -676,22 +654,19 @@ def main(args):
 
         # don't use wandb logger if in debug mode
         # if not args.debug:
+        grp = f"monai_ivado_{args.model}" if args.model == "unet" else f"monai_{args.model}"
         exp_logger = pl.loggers.WandbLogger(
                             name=save_exp_id,
                             save_dir=args.save_path,
-                            group=f"{args.model}", #_final", 
+                            group=grp,
                             log_model=True, # save best model using checkpoint callback
                             project='contrast-agnostic',
                             entity='naga-karthik',
                             config=args)
-        
-        # # saving the best model based on soft validation dice score
-        # checkpoint_callback = pl.callbacks.ModelCheckpoint(
-        #     dirpath=save_path, filename='best_model', monitor='val_soft_dice', 
-        #     save_top_k=5, mode="max", save_last=False, save_weights_only=True)
+                
         # saving the best model based on validation CSA loss
-        checkpoint_callback_csa = pl.callbacks.ModelCheckpoint(
-            dirpath=save_path, filename='best_model_csa', monitor='val_csa_loss', 
+        checkpoint_callback_loss = pl.callbacks.ModelCheckpoint(
+            dirpath=save_path, filename='best_model_loss', monitor='val_loss', 
             save_top_k=1, mode="min", save_last=False, save_weights_only=True)
         
         # saving the best model based on soft validation dice score
@@ -701,29 +676,30 @@ def main(args):
         
         # early_stopping = pl.callbacks.EarlyStopping(monitor="val_soft_dice", min_delta=0.00, patience=args.patience, 
         #                     verbose=False, mode="max")
-        early_stopping = pl.callbacks.EarlyStopping(monitor="val_csa_loss", min_delta=0.00, patience=args.patience, 
+        early_stopping = pl.callbacks.EarlyStopping(monitor="val_loss", min_delta=0.00, patience=args.patience, 
                             verbose=False, mode="min")
 
         lr_monitor = pl.callbacks.LearningRateMonitor(logging_interval='epoch')
+
+        # Saving training script to wandb
+        wandb.save("main.py")
+        wandb.save("transforms.py")
 
         # initialise Lightning's trainer.
         trainer = pl.Trainer(
             devices=1, accelerator="gpu", # strategy="ddp",
             logger=exp_logger,
-            callbacks=[checkpoint_callback_csa, checkpoint_callback_dice, lr_monitor, early_stopping],
+            callbacks=[checkpoint_callback_loss, checkpoint_callback_dice, lr_monitor, early_stopping],
             check_val_every_n_epoch=args.check_val_every_n_epochs,
             max_epochs=args.max_epochs, 
             precision=32,   # TODO: see if 16-bit precision is stable
             # deterministic=True,
-            enable_progress_bar=args.enable_progress_bar, 
-            profiler="simple",)     # to profile the training time taken for each step
+            enable_progress_bar=args.enable_progress_bar,) 
+            # profiler="simple",)     # to profile the training time taken for each step
 
         # Train!
         trainer.fit(pl_model)        
         logger.info(f" Training Done!")
-
-        # Saving training script to wandb
-        wandb.save("main.py")
 
         # Test!
         trainer.test(pl_model)
