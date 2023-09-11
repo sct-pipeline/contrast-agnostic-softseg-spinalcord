@@ -5,7 +5,6 @@ from monai.transforms import (SpatialPadd, Compose, CropForegroundd, LoadImaged,
             RandWeightedCropd, RandAdjustContrastd, EnsureChannelFirstd, RandGaussianNoised, 
             RandGaussianSmoothd, Orientationd, Rand3DElasticd, RandBiasFieldd, RandSimulateLowResolutiond,
             ResizeWithPadOrCropd)
-# import torchio as tio
 
 # median image size in voxels - taken from nnUNet
 # median_size = (123, 255, 214)  as per 0.9 iso resampling and patch_size = (80, 192, 160)
@@ -84,9 +83,19 @@ def val_transforms(lbl_key="label"):
     return Compose([
             LoadImaged(keys=["image", lbl_key]),
             EnsureChannelFirstd(keys=["image", lbl_key]),
-            Orientationd(keys=["image", lbl_key], axcodes="RPI"),
+            # Orientationd(keys=["image", lbl_key], axcodes="RPI"),
             CropForegroundd(keys=["image", lbl_key], source_key="image"),
+            Spacingd(keys=["image", lbl_key], pixdim=(1.0, 1.0, 1.0), mode=(2, 1)), # mode=("bilinear", "bilinear"),),
             NormalizeIntensityd(keys=["image"], nonzero=False, channel_wise=False),
-            Spacingd(keys=["image", lbl_key], pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "bilinear"),),
-            # SpatialPadd(keys=["image", lbl_key], spatial_size=(123, 255, 214), method="symmetric"),
+        ])
+
+def val_transforms_with_center_crop(crop_size, lbl_key="label"):
+    return Compose([
+            LoadImaged(keys=["image", lbl_key]),
+            EnsureChannelFirstd(keys=["image", lbl_key]),
+            # CropForegroundd(keys=["image", lbl_key], source_key="image"),
+            Spacingd(keys=["image", lbl_key], pixdim=(1.0, 1.0, 1.0), mode=(2, 1)), # mode=("bilinear", "bilinear"),),
+            ResizeWithPadOrCropd(keys=["image", lbl_key], spatial_size=crop_size,),
+            # TODO: do cropping only in R-L so sth like (48, -1, -1)
+            NormalizeIntensityd(keys=["image"], nonzero=False, channel_wise=False),
         ])
