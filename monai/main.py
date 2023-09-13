@@ -23,19 +23,16 @@ from monai.data import (DataLoader, Dataset, CacheDataset, load_decathlon_datali
 from monai.transforms import (Compose, EnsureType, EnsureTyped, Invertd, SaveImaged, SaveImage)
 
 # TODO:
-# 1. Remove centerCropping but train with AdapWingLoss
-# 2. Modify probs of transformations; add new ones
+# 1. increase omega in adapwingloss
 
 # create a "model"-agnostic class with PL to use different models
 class Model(pl.LightningModule):
-    def __init__(self, args, data_root, fold_num, net, loss_function, optimizer_class, 
-                 exp_id=None, results_path=None):
+    def __init__(self, args, data_root, net, loss_function, optimizer_class, exp_id=None, results_path=None):
         super().__init__()
         self.args = args
-        self.save_hyperparameters(ignore=['net'])
+        self.save_hyperparameters(ignore=['net', 'loss_function'])
 
         self.root = data_root
-        self.fold_num = fold_num
         self.net = net
         self.lr = args.learning_rate
         self.loss_function = loss_function
@@ -53,7 +50,8 @@ class Model(pl.LightningModule):
         # which could be sub-optimal. 
         # On the other hand, ivadomed used a patch-size that's heavily padded along the R-L direction so that 
         # only the SC is in context. 
-        self.voxel_cropping_size = (48, 176, 288)
+        # self.voxel_cropping_size = (48, 176, 288)
+        self.voxel_cropping_size = (48, 192, 256)
         self.inference_roi_size = self.voxel_cropping_size
         self.spacing = (1.0, 1.0, 1.0)
 
@@ -101,8 +99,8 @@ class Model(pl.LightningModule):
             num_samples_pv=self.args.num_samples_per_volume,
             lbl_key='label'
         )
-        # transforms_val = val_transforms(lbl_key='label')
-        transforms_val = val_transforms_with_center_crop(crop_size=self.voxel_cropping_size, lbl_key='label')
+        transforms_val = val_transforms(lbl_key='label')
+        # transforms_val = val_transforms_with_center_crop(crop_size=self.voxel_cropping_size, lbl_key='label')
         
         # load the dataset
         dataset = os.path.join(self.root, f"spine-generic-ivado-comparison_dataset.json")
@@ -120,8 +118,8 @@ class Model(pl.LightningModule):
         self.val_ds = CacheDataset(data=val_files, transform=transforms_val, cache_rate=0.25, num_workers=4)
 
         # define test transforms
-        # transforms_test = val_transforms(lbl_key='label')
-        transforms_test = val_transforms_with_center_crop(crop_size=self.voxel_cropping_size, lbl_key='label')
+        transforms_test = val_transforms(lbl_key='label')
+        # transforms_test = val_transforms_with_center_crop(crop_size=self.voxel_cropping_size, lbl_key='label')
         
         # define post-processing transforms for testing; taken (with explanations) from 
         # https://github.com/Project-MONAI/tutorials/blob/main/3d_segmentation/torch/unet_inference_dict.py#L66
@@ -175,7 +173,7 @@ class Model(pl.LightningModule):
         # NOTE: surprisingly, filtering out empty patches is adding more CSA bias; TODO: verify with new patch size
         # check if any label image patch is empty in the batch
         if check_empty_patch(labels) is None:
-            print(f"Empty label patch found. Skipping training step ...")
+            # print(f"Empty label patch found. Skipping training step ...")
             return None
 
         output = self.forward(inputs)   # logits
@@ -317,7 +315,7 @@ class Model(pl.LightningModule):
 
         # NOTE: this calculates the loss on the entire image after sliding window
         outputs = sliding_window_inference(inputs, self.inference_roi_size, mode="gaussian",
-                                           sw_batch_size=1, predictor=self.forward, overlap=0.5,) 
+                                           sw_batch_size=4, predictor=self.forward, overlap=0.5,) 
         # outputs shape: (B, C, <original H x W x D>)
                 
         if self.args.model == "nnunet" and self.args.enable_DS:
@@ -440,7 +438,7 @@ class Model(pl.LightningModule):
         # print(batch["label_meta_dict"]["filename_or_obj"][0])
         # print(f"test_input.shape: {test_input.shape} \t test_label.shape: {test_label.shape}")
         batch["pred"] = sliding_window_inference(test_input, self.inference_roi_size, 
-                                                 sw_batch_size=1, predictor=self.forward, overlap=0.5)
+                                                 sw_batch_size=4, predictor=self.forward, overlap=0.5)
         # print(f"batch['pred'].shape: {batch['pred'].shape}")
         
         if self.args.model == "nnunet" and self.args.enable_DS:
@@ -449,9 +447,6 @@ class Model(pl.LightningModule):
 
         # normalize the logits
         batch["pred"] = F.relu(batch["pred"]) / F.relu(batch["pred"]).max() if bool(F.relu(batch["pred"]).max()) else F.relu(batch["pred"])
-
-        # # upon fsleyes visualization, observed that very small values need to be set to zero, but NOT fully binarizing the pred
-        # batch["pred"][batch["pred"] < 0.099] = 0.0
 
         post_test_out = [self.test_post_pred(i) for i in decollate_batch(batch)]
 
@@ -471,13 +466,13 @@ class Model(pl.LightningModule):
             save_folder = os.path.join(self.results_path, subject_name.split("_")[0])
             pred_saver = SaveImage(
                 output_dir=save_folder, output_postfix="pred", output_ext=".nii.gz", 
-                separate_folder=False, print_log=False)
+                separate_folder=False, print_log=False, resample=True)
             # save the prediction
             pred_saver(pred)
 
             label_saver = SaveImage(
                 output_dir=save_folder, output_postfix="gt", output_ext=".nii.gz", 
-                separate_folder=False, print_log=False)
+                separate_folder=False, print_log=False, resample=True)
             # save the label
             label_saver(label)
             
@@ -579,10 +574,11 @@ def main(args):
         logger.info(f" Using ivadomed's UNet model! ")
         # this is the ivadomed unet model
         net = ModifiedUNet3D(in_channels=1, out_channels=1, init_filters=args.init_filters)
-        patch_size = "48x176x288"   # "160x224x96"   # "64x128x64"
-        #                 f"_CSAdiceL_nspv={args.num_samples_per_volume}" \
-        save_exp_id =f"ivado_reImp_{args.model}_nf={args.init_filters}_opt={args.optimizer}_lr={args.learning_rate}" \
-                        f"_AdapW_ValCCrop_Splin_bs={args.batch_size}_{patch_size}"
+        patch_size = "48x192x256"   # "160x224x96" 
+        save_exp_id =f"ivado_{args.model}_nf={args.init_filters}_opt={args.optimizer}_lr={args.learning_rate}" \
+                        f"_AdapW_nspv={args.num_samples_per_volume}_bs={args.batch_size}_{patch_size}"
+        if args.debug:
+            save_exp_id = f"DEBUG_{save_exp_id}"
 
 
     elif args.model in ["unetr"]:
