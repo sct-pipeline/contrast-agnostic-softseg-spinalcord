@@ -630,30 +630,43 @@ def main(args):
     timestamp = datetime.now().strftime(f"%Y%m%d-%H%M")   # prints in YYYYMMDD-HHMMSS format
     save_exp_id = f"{save_exp_id}_{timestamp}"
 
-    # to save the best model on validation
-    save_path = os.path.join(args.save_path, f"{save_exp_id}")
-    if not os.path.exists(save_path):
-        os.makedirs(save_path, exist_ok=True)
+    # define callbacks
+    # early_stopping = pl.callbacks.EarlyStopping(monitor="val_soft_dice", min_delta=0.00, patience=args.patience, 
+    #                     verbose=False, mode="max")
+    early_stopping = pl.callbacks.EarlyStopping(monitor="val_loss", min_delta=0.00, patience=args.patience, 
+                        verbose=False, mode="min")
 
-    # to save the results/model predictions 
-    results_path = os.path.join(args.results_dir, f"{save_exp_id}")
-    if not os.path.exists(results_path):
-        os.makedirs(results_path, exist_ok=True)
+    lr_monitor = pl.callbacks.LearningRateMonitor(logging_interval='epoch')
 
-    # train across all folds of the dataset
-    for fold in range(args.num_cv_folds):
-        logger.info(f" Training on fold {fold+1} out of {args.num_cv_folds} folds! ")
 
-        # timestamp = datetime.now().strftime(f"%Y%m%d-%H%M")   # prints in YYYYMMDD-HHMMSS format
-        # save_exp_id = f"{save_exp_id}_fold={fold}_{timestamp}"
+    if not args.continue_from_checkpoint:
+        # to save the best model on validation
+        save_path = os.path.join(args.save_path, f"{save_exp_id}")
+        if not os.path.exists(save_path):
+            os.makedirs(save_path, exist_ok=True)
+
+        # to save the results/model predictions 
+        results_path = os.path.join(args.results_dir, f"{save_exp_id}")
+        if not os.path.exists(results_path):
+            os.makedirs(results_path, exist_ok=True)
 
         # i.e. train by loading weights from scratch
-        pl_model = Model(args, data_root=dataset_root, fold_num=fold, 
-                         optimizer_class=optimizer_class, loss_function=loss_func, net=net, 
-                         exp_id=save_exp_id, results_path=results_path)
-
-        # don't use wandb logger if in debug mode
-        # if not args.debug:
+        pl_model = Model(args, data_root=dataset_root,
+                            optimizer_class=optimizer_class, loss_function=loss_func, net=net, 
+                            exp_id=save_exp_id, results_path=results_path)
+                
+        # saving the best model based on validation loss
+        checkpoint_callback_loss = pl.callbacks.ModelCheckpoint(
+            dirpath=save_path, filename='best_model_loss', monitor='val_loss', 
+            save_top_k=1, mode="min", save_last=True, save_weights_only=False)
+        
+        # saving the best model based on soft validation dice score
+        checkpoint_callback_dice = pl.callbacks.ModelCheckpoint(
+            dirpath=save_path, filename='best_model_dice', monitor='val_soft_dice', 
+            save_top_k=1, mode="max", save_last=False, save_weights_only=True)
+        
+        logger.info(f" Starting training from scratch! ")
+        # wandb logger
         grp = f"monai_ivado_{args.model}" if args.model == "unet" else f"monai_{args.model}"
         exp_logger = pl.loggers.WandbLogger(
                             name=save_exp_id,
@@ -663,23 +676,6 @@ def main(args):
                             project='contrast-agnostic',
                             entity='naga-karthik',
                             config=args)
-                
-        # saving the best model based on validation CSA loss
-        checkpoint_callback_loss = pl.callbacks.ModelCheckpoint(
-            dirpath=save_path, filename='best_model_loss', monitor='val_loss', 
-            save_top_k=1, mode="min", save_last=False, save_weights_only=True)
-        
-        # saving the best model based on soft validation dice score
-        checkpoint_callback_dice = pl.callbacks.ModelCheckpoint(
-            dirpath=save_path, filename='best_model_dice', monitor='val_soft_dice', 
-            save_top_k=1, mode="max", save_last=False, save_weights_only=True)
-        
-        # early_stopping = pl.callbacks.EarlyStopping(monitor="val_soft_dice", min_delta=0.00, patience=args.patience, 
-        #                     verbose=False, mode="max")
-        early_stopping = pl.callbacks.EarlyStopping(monitor="val_loss", min_delta=0.00, patience=args.patience, 
-                            verbose=False, mode="min")
-
-        lr_monitor = pl.callbacks.LearningRateMonitor(logging_interval='epoch')
 
         # Saving training script to wandb
         wandb.save("main.py")
@@ -701,33 +697,89 @@ def main(args):
         trainer.fit(pl_model)        
         logger.info(f" Training Done!")
 
-        # Test!
-        trainer.test(pl_model)
-        logger.info(f"TESTING DONE!")
+    else:
+        logger.info(f" Resuming training from the latest checkpoint! ")
 
-        # closing the current wandb instance so that a new one is created for the next fold
-        wandb.finish()
+        # check if wandb run folder is provided to resume using the same run
+        if args.wandb_run_folder is None:
+            raise ValueError("Please provide the wandb run folder to resume training using the same run on WandB!")
+        else:
+            wandb_run_folder = os.path.basename(args.wandb_run_folder)
+            wandb_run_id = wandb_run_folder.split("-")[-1]
+
+        save_exp_id = args.save_path
+        save_path = os.path.dirname(args.save_path)
+        print(f"save_path: {save_path}")
+        results_path = args.results_dir
+
+        # i.e. train by loading weights from scratch
+        pl_model = Model(args, data_root=dataset_root,
+                            optimizer_class=optimizer_class, loss_function=loss_func, net=net, 
+                            exp_id=save_exp_id, results_path=results_path)
+                
+        # saving the best model based on validation CSA loss
+        checkpoint_callback_loss = pl.callbacks.ModelCheckpoint(
+            dirpath=save_path, filename='best_model_loss', monitor='val_loss', 
+            save_top_k=1, mode="min", save_last=True, save_weights_only=True)
         
-        # TODO: Figure out saving test metrics to a file
-        with open(os.path.join(results_path, 'test_metrics.txt'), 'a') as f:
-            print('\n-------------- Test Metrics ----------------', file=f)
-            print(f"\nSeed Used: {args.seed}", file=f)
-            print(f"\ninitf={args.init_filters}_lr={args.learning_rate}_bs={args.batch_size}_{timestamp}", file=f)
-            print(f"\npatch_size={pl_model.voxel_cropping_size}", file=f)
-            
-            print('\n-------------- Test Hard Dice Scores ----------------', file=f)
-            print("Hard Dice --> Mean: %0.3f, Std: %0.3f" % (pl_model.avg_test_dice_hard, pl_model.std_test_dice_hard), file=f)
+        # saving the best model based on soft validation dice score
+        checkpoint_callback_dice = pl.callbacks.ModelCheckpoint(
+            dirpath=save_path, filename='best_model_dice', monitor='val_soft_dice', 
+            save_top_k=1, mode="max", save_last=False, save_weights_only=True)
 
-            print('\n-------------- Test Soft Dice Scores ----------------', file=f)
-            print("Soft Dice --> Mean: %0.3f, Std: %0.3f" % (pl_model.avg_test_dice, pl_model.std_test_dice), file=f)
+        # wandb logger
+        grp = f"monai_ivado_{args.model}" if args.model == "unet" else f"monai_{args.model}"
+        exp_logger = pl.loggers.WandbLogger(
+                            save_dir=save_path,
+                            group=grp,
+                            log_model=True, # save best model using checkpoint callback
+                            project='contrast-agnostic',
+                            entity='naga-karthik',
+                            config=args, 
+                            id=wandb_run_id, resume='must')
 
-            print('\n-------------- Test Precision Scores ----------------', file=f)
-            print("Precision --> Mean: %0.3f" % (pl_model.avg_test_precision), file=f)
+        # initialise Lightning's trainer.
+        trainer = pl.Trainer(
+            devices=1, accelerator="gpu", # strategy="ddp",
+            logger=exp_logger,
+            callbacks=[checkpoint_callback_loss, checkpoint_callback_dice, lr_monitor, early_stopping],
+            check_val_every_n_epoch=args.check_val_every_n_epochs,
+            max_epochs=args.max_epochs, 
+            precision=32,
+            enable_progress_bar=args.enable_progress_bar,) 
+            # profiler="simple",)     # to profile the training time taken for each step
 
-            print('\n-------------- Test Recall Scores -------------------', file=f)
-            print("Recall --> Mean: %0.3f" % (pl_model.avg_test_recall), file=f)
+        # Train!
+        trainer.fit(pl_model, ckpt_path=os.path.join(save_exp_id, "last.ckpt"),) 
+        logger.info(f" Training Done!")
 
-            print('-------------------------------------------------------', file=f)
+    # Test!
+    trainer.test(pl_model)
+    logger.info(f"TESTING DONE!")
+
+    # closing the current wandb instance so that a new one is created for the next fold
+    wandb.finish()
+    
+    # TODO: Figure out saving test metrics to a file
+    with open(os.path.join(results_path, 'test_metrics.txt'), 'a') as f:
+        print('\n-------------- Test Metrics ----------------', file=f)
+        print(f"\nSeed Used: {args.seed}", file=f)
+        print(f"\ninitf={args.init_filters}_lr={args.learning_rate}_bs={args.batch_size}_{timestamp}", file=f)
+        print(f"\npatch_size={pl_model.voxel_cropping_size}", file=f)
+        
+        print('\n-------------- Test Hard Dice Scores ----------------', file=f)
+        print("Hard Dice --> Mean: %0.3f, Std: %0.3f" % (pl_model.avg_test_dice_hard, pl_model.std_test_dice_hard), file=f)
+
+        print('\n-------------- Test Soft Dice Scores ----------------', file=f)
+        print("Soft Dice --> Mean: %0.3f, Std: %0.3f" % (pl_model.avg_test_dice, pl_model.std_test_dice), file=f)
+
+        print('\n-------------- Test Precision Scores ----------------', file=f)
+        print("Precision --> Mean: %0.3f" % (pl_model.avg_test_precision), file=f)
+
+        print('\n-------------- Test Recall Scores -------------------', file=f)
+        print("Recall --> Mean: %0.3f" % (pl_model.avg_test_recall), file=f)
+
+        print('-------------------------------------------------------', file=f)
 
 
 if __name__ == "__main__":
@@ -739,7 +791,6 @@ if __name__ == "__main__":
     parser.add_argument('--enable_DS', default=False, action='store_true', help='Enable Deep Supervision')
     # dataset
     parser.add_argument('-nspv', '--num_samples_per_volume', default=4, type=int, help="Number of samples to crop per volume")    
-    parser.add_argument('-ncv', '--num_cv_folds', default=5, type=int, help="Number of cross validation folds")
     
     # unet model 
     parser.add_argument('-initf', '--init_filters', default=16, type=int, help="Number of Filters in Init Layer")
@@ -769,12 +820,13 @@ if __name__ == "__main__":
     parser.add_argument('-sp', '--save_path', 
                         default=f"/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/saved_models", 
                         type=str, help='Path to the saved models directory')
-    parser.add_argument('-c', '--continue_from_checkpoint', default=False, action='store_true', 
-                            help='Load model from checkpoint and continue training')
     parser.add_argument('-se', '--seed', default=42, type=int, help='Set seeds for reproducibility')
     parser.add_argument('-debug', default=False, action='store_true', help='if true, results are not logged to wandb')
     parser.add_argument('-stp', '--save_test_preds', default=False, action='store_true',
                             help='if true, test predictions are saved in `save_path`')
+    parser.add_argument('-c', '--continue_from_checkpoint', default=False, action='store_true', 
+                            help='Load model from checkpoint and continue training')
+    parser.add_argument('-wdb-run', '--wandb-run-folder', default=None, type=str, help='Path to the wandb run folder')
     # testing
     parser.add_argument('-rd', '--results_dir', 
                     default=f"/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/results", 
