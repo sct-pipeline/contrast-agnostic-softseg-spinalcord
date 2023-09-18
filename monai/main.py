@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 from utils import precision_score, recall_score, dice_score, compute_average_csa, \
                     PolyLRScheduler, plot_slices, check_empty_patch
 from losses import SoftDiceLoss, AdapWingLoss
-from transforms import train_transforms, val_transforms, val_transforms_with_center_crop
+from transforms import train_transforms, val_transforms
 from models import ModifiedUNet3D, create_nnunet_from_plans
 
 from monai.utils import set_determinism
@@ -51,9 +51,12 @@ class Model(pl.LightningModule):
         # On the other hand, ivadomed used a patch-size that's heavily padded along the R-L direction so that 
         # only the SC is in context. 
         # self.voxel_cropping_size = (48, 176, 288)
-        self.voxel_cropping_size = (48, 192, 256)
-        self.inference_roi_size = self.voxel_cropping_size
         self.spacing = (1.0, 1.0, 1.0)
+        self.voxel_cropping_size = (48, 160, 320)
+        self.inference_roi_size = tuple([int(i) for i in args.val_crop_size.split("x")])
+        if self.inference_roi_size == (-1,):   # means no cropping is required
+            logger.info(f"Using full image for validation ...")
+            self.inference_roi_size = (-1, -1, -1)
 
         # define post-processing transforms for validation, nothing fancy just making sure that it's a tensor (default)
         self.val_post_pred = Compose([EnsureType()]) 
@@ -99,7 +102,7 @@ class Model(pl.LightningModule):
             num_samples_pv=self.args.num_samples_per_volume,
             lbl_key='label'
         )
-        transforms_val = val_transforms(lbl_key='label')
+        transforms_val = val_transforms(crop_size=self.inference_roi_size, lbl_key='label')
         # transforms_val = val_transforms_with_center_crop(crop_size=self.voxel_cropping_size, lbl_key='label')
         
         # load the dataset
@@ -118,7 +121,7 @@ class Model(pl.LightningModule):
         self.val_ds = CacheDataset(data=val_files, transform=transforms_val, cache_rate=0.25, num_workers=4)
 
         # define test transforms
-        transforms_test = val_transforms(lbl_key='label')
+        transforms_test = val_transforms(crop_size=self.inference_roi_size, lbl_key='label')
         # transforms_test = val_transforms_with_center_crop(crop_size=self.voxel_cropping_size, lbl_key='label')
         
         # define post-processing transforms for testing; taken (with explanations) from 
@@ -183,7 +186,7 @@ class Model(pl.LightningModule):
         if self.args.model == "nnunet" and self.args.enable_DS:
 
             # calculate dice loss for each output
-            dice_loss, train_soft_dice = 0.0, 0.0
+            loss, train_soft_dice = 0.0, 0.0
             for i in range(len(output)):
                 # give each output a weight which decreases exponentially (division by 2) as the resolution decreases
                 # this gives higher resolution outputs more weight in the loss
@@ -192,7 +195,7 @@ class Model(pl.LightningModule):
                 # (instead of upsampling each deepsupervision feature map output to the final resolution)
                 downsampled_gt = F.interpolate(labels, size=output[i].shape[-3:], mode='trilinear', align_corners=False)
                 # print(f"downsampled_gt.shape: {downsampled_gt.shape} \t output[i].shape: {output[i].shape}")
-                dice_loss += (0.5 ** i) * self.loss_function(output[i], downsampled_gt)
+                loss += (0.5 ** i) * self.loss_function(output[i], downsampled_gt)
 
                 # get probabilities from logits
                 out = F.relu(output[i]) / F.relu(output[i]).max() if bool(F.relu(output[i]).max()) else F.relu(output[i])
@@ -203,8 +206,8 @@ class Model(pl.LightningModule):
                 train_soft_dice += self.soft_dice_metric(out, downsampled_gt) 
             
             # average dice loss across the outputs
-            dice_loss = dice_loss / len(output)
-            train_soft_dice = train_soft_dice / len(output)
+            loss /= len(output)
+            train_soft_dice /= len(output)
 
             # # binarize the predictions and the labels (take only the final feature map i.e. the final prediction)
             # output = (output[0].detach() > 0.5).float()
@@ -547,7 +550,7 @@ def main(args):
             [2, 2, 2],
             [2, 2, 2],
             [2, 2, 2],
-            [1, 2, 2]   # dims 0 and 2 of nnunet and monai images are swapped. Hence, 2x2x1 instead of 1x2x2
+            [1, 2, 2] 
         ],
         "conv_kernel_sizes": [
             [3, 3, 3],
@@ -574,9 +577,9 @@ def main(args):
         logger.info(f" Using ivadomed's UNet model! ")
         # this is the ivadomed unet model
         net = ModifiedUNet3D(in_channels=1, out_channels=1, init_filters=args.init_filters)
-        patch_size = "48x192x256"   # "160x224x96" 
+        patch_size = "48x160x320"   # "160x224x96" 
         save_exp_id =f"ivado_{args.model}_nf={args.init_filters}_opt={args.optimizer}_lr={args.learning_rate}" \
-                        f"_AdapW_nspv={args.num_samples_per_volume}_bs={args.batch_size}_{patch_size}"
+                        f"_AdapW_valCCrop_bs={args.batch_size}_{patch_size}"
         if args.debug:
             save_exp_id = f"DEBUG_{save_exp_id}"
 
@@ -611,16 +614,11 @@ def main(args):
 
         # define model
         net = create_nnunet_from_plans(plans=nnunet_plans, num_input_channels=1, num_classes=1, deep_supervision=args.enable_DS)
-        patch_size = "160x192x80"
+        patch_size = "48x160x320"   
         save_exp_id =f"{args.model}_nf={args.init_filters}_DS={int(args.enable_DS)}" \
                         f"_opt={args.optimizer}_lr={args.learning_rate}" \
-                        f"_CSAdiceL_sameTFs_nspv={args.num_samples_per_volume}" \
+                        f"_AdapW_CCrop" \
                         f"_bs={args.batch_size}_{patch_size}"
-
-    # define loss function
-    # loss_func = SoftDiceLoss(p=1, smooth=1.0)
-    loss_func = AdapWingLoss(theta=0.5, omega=8, alpha=2.1, epsilon=1, reduction="sum")
-    logger.info(f"Using AdapWingLoss with theta={loss_func.theta}, omega={loss_func.omega}, alpha={loss_func.alpha}, epsilon={loss_func.epsilon}!")
 
     # TODO: move this inside the for loop when using more folds
     timestamp = datetime.now().strftime(f"%Y%m%d-%H%M")   # prints in YYYYMMDD-HHMMSS format
@@ -786,7 +784,11 @@ if __name__ == "__main__":
                         default='unet', type=str, help='Model type to be used')
     parser.add_argument('--enable_DS', default=False, action='store_true', help='Enable Deep Supervision')
     # dataset
-    parser.add_argument('-nspv', '--num_samples_per_volume', default=4, type=int, help="Number of samples to crop per volume")    
+    parser.add_argument('-nspv', '--num_samples_per_volume', default=4, type=int, help="Number of samples to crop per volume")
+    # define args for cropping size. inputs should be in the format of "48x192x256"
+    parser.add_argument('-val-crop', '--val_crop_size', type=str, default="48x192x256", 
+                        help='Center crop size for validation and testing. Values correspond to R-L, A-P, I-S axes'
+                        'of the image. Use -1 if no cropping is intended.  Default: 48x160x320')
     
     # unet model 
     parser.add_argument('-initf', '--init_filters', default=16, type=int, help="Number of Filters in Init Layer")
