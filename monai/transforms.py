@@ -80,7 +80,7 @@ def train_transforms(crop_size, num_samples_pv, lbl_key="label"):
 
     return Compose(monai_transforms) 
 
-def val_transforms(lbl_key="label"):
+def val_transforms_without_center_crop(lbl_key="label"):
     return Compose([
             LoadImaged(keys=["image", lbl_key], image_only=False),
             EnsureChannelFirstd(keys=["image", lbl_key]),
@@ -90,7 +90,19 @@ def val_transforms(lbl_key="label"):
             NormalizeIntensityd(keys=["image"], nonzero=False, channel_wise=False),
         ])
 
-def val_transforms_with_center_crop(crop_size, lbl_key="label"):
+def val_transforms_with_orientation_and_crop(crop_size, lbl_key="label"):
+    return Compose([
+            LoadImaged(keys=["image", lbl_key], image_only=False),
+            EnsureChannelFirstd(keys=["image", lbl_key]),
+            # CropForegroundd(keys=["image", lbl_key], source_key="image"),
+            Orientationd(keys=["image", lbl_key], axcodes="RPI"),
+            Spacingd(keys=["image", lbl_key], pixdim=(1.0, 1.0, 1.0), mode=(2, 1)), # mode=("bilinear", "bilinear"),),
+            ResizeWithPadOrCropd(keys=["image", lbl_key], spatial_size=crop_size,),
+            # TODO: do cropping only in R-L so sth like (48, -1, -1)
+            NormalizeIntensityd(keys=["image"], nonzero=False, channel_wise=False),
+        ])
+
+def val_transforms(crop_size, lbl_key="label"):
     return Compose([
             LoadImaged(keys=["image", lbl_key], image_only=False),
             EnsureChannelFirstd(keys=["image", lbl_key]),
