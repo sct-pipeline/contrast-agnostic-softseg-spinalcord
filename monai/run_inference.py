@@ -59,24 +59,35 @@ def get_parser():
                         help="Name of the dataset to run inference on")
     parser.add_argument("--model", type=str, default="unet", required=True,
                          help="Name of the model to use for inference")
-    
+    parser.add_argument("--best-model-type", type=str, default="dice", required=True, choices=["csa", "dice", "loss", "all"],
+                            help="Type of the best model to use for inference i.e. based on csa/dice/both")
+    # define args for cropping size. inputs should be in the format of "48x192x256"
+    parser.add_argument('-crop', '--crop-size', type=str, default="48x160x320", 
+                        help='Patch size used for center cropping the images during inference. Values correspond to R-L, A-P, I-S axes'
+                        'of the image. Sliding window will be run across the cropped images. Use -1 if no cropping is intended '
+                        '(sliding window will run across the whole image). Note, heavy R-L, A-P cropping is recommmended for best '
+                        'results.  Default: 48x160x320')
+    parser.add_argument('-debug', default=False, action='store_true', 
+                        help='run inference only on a few images to check if things are working')
+    parser.add_argument('--device', default="gpu", type=str, choices=["gpu", "cpu"],
+                        help='Device to run inference on. Default: gpu')
+
     return parser
 
 
 # --------------------------------
 # DATA
 # --------------------------------
-def prepare_data(root, dataset_name="spine-generic"):
+def prepare_data(root, dataset_name="spine-generic", crop_size=(48, 160, 320)):
     # set deterministic training for reproducibility
     # set_determinism(seed=self.args.seed)
             
     # load the dataset
     dataset = os.path.join(root, f"{dataset_name}_dataset.json")
-    # dataset = os.path.join(root, f"dataset_ivado_comparison.json")
     test_files = load_decathlon_datalist(dataset, True, "test")
 
-    if DEBUG: # args.debug:
-        test_files = test_files[:3]
+    if args.debug:
+        test_files = test_files[:6]
     
     # define test transforms
     transforms_test = val_transforms_with_orientation_and_crop(crop_size=crop_size, lbl_key='label')
@@ -100,11 +111,16 @@ def main(args):
     # define start time
     start = time()
 
+    # define device
+    if args.device == "gpu" and not torch.cuda.is_available():
+        logger.warning("GPU not available, using CPU instead")
+        DEVICE = torch.device("cpu")
+    else:
+        DEVICE = torch.device("cuda" if torch.cuda.is_available() and args.device == "gpu" else "cpu")
+    
     # define root path for finding datalists
     dataset_root = args.path_json
     dataset_name = args.dataset_name
-
-    # chkp_path = os.path.join(args.chkp_path, "best_model.ckpt")
 
     results_path = args.path_out
     model_name = args.chkp_path.split("/")[-1]
@@ -154,9 +170,7 @@ def main(args):
             test_input = batch["image"].to(DEVICE)
 
             # load the checkpoints
-            for chkp in os.listdir(args.chkp_path):
-                chkp_path = os.path.join(args.chkp_path, chkp)
-                # print(f"Loading checkpoint: {chkp_path}")
+            for chkp_path in chkp_paths:
             
                 checkpoint = torch.load(chkp_path, map_location=torch.device(DEVICE))["state_dict"]
                 # NOTE: remove the 'net.' prefix from the keys because of how the model was initialized in lightning
@@ -172,7 +186,7 @@ def main(args):
                 net.eval()
 
                 # run inference            
-                batch["pred"] = sliding_window_inference(test_input, INFERENCE_ROI_SIZE, mode="gaussian",
+                batch["pred"] = sliding_window_inference(test_input, inference_roi_size, mode="gaussian",
                                                         sw_batch_size=4, predictor=net, overlap=0.5, progress=False)
 
                 if ENABLE_DS and args.model == "nnunet":
@@ -188,7 +202,6 @@ def main(args):
                 post_test_out = [test_post_pred(i) for i in decollate_batch(batch)]
 
                 # make sure that the shapes of prediction and GT label are the same
-                # print(f"pred shape: {post_test_out[0]['pred'].shape}, label shape: {post_test_out[0]['label'].shape}")
                 assert post_test_out[0]['pred'].shape == post_test_out[0]['label'].shape
                 
                 pred, label = post_test_out[0]['pred'].cpu(), post_test_out[0]['label'].cpu()
@@ -198,7 +211,7 @@ def main(args):
 
             # save the (soft) prediction and label
             subject_name = (batch["image_meta_dict"]["filename_or_obj"][0]).split("/")[-1].replace(".nii.gz", "")
-            print(f"Saving subject: {subject_name}")
+            logger.info(f"Saving subject: {subject_name}")
 
             # take the average of the predictions
             pred = torch.stack(preds_stack).mean(dim=0)
@@ -214,12 +227,6 @@ def main(args):
                 separate_folder=False, print_log=False)
             # save the prediction
             pred_saver(pred)
-
-            # label_saver = SaveImage(
-            #     output_dir=save_folder, output_postfix="gt", output_ext=".nii.gz", 
-            #     separate_folder=False, print_log=False)
-            # # save the label
-            # label_saver(label)
                 
             # NOTE: Important point from the SoftSeg paper - binarize predictions before computing metrics
             # calculate all metrics here
@@ -287,9 +294,9 @@ def main(args):
 
     end = time()
 
-    print("=====================================================================")
-    print(f"Total time taken for inference: {(end - start) / 60:.2f} minutes")
-    print("=====================================================================")
+    logger.info("=====================================================================")
+    logger.info(f"Total time taken for inference: {(end - start) / 60:.2f} minutes")
+    logger.info("=====================================================================")
 
 
 if __name__ == "__main__":
