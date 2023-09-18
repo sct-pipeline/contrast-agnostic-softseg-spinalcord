@@ -12,23 +12,38 @@ from monai.inferers import sliding_window_inference
 from monai.data import (DataLoader, CacheDataset, load_decathlon_datalist, decollate_batch)
 from monai.transforms import (Compose, EnsureTyped, Invertd, SaveImage)
 
-from transforms import val_transforms
+from transforms import val_transforms, val_transforms_with_orientation_and_crop
 from utils import precision_score, recall_score, dice_score
-from models import ModifiedUNet3D
-from monai.networks.nets import UNETR
+from models import ModifiedUNet3D, create_nnunet_from_plans
 
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-DEBUG = False
-INFERENCE_ROI_SIZE = (160, 224, 96)   # (80, 192, 160)
-# UNET params
-INIT_FILTERS=8
-# UNETR params
-FEATURE_SIZE = 8
-HIDDEN_SIZE = 512
-MLP_DIM = 1024
-NUM_HEADS = 8
 
-EXAMPLE_INPUT = torch.randn(1, 1, 160, 224, 96).to(DEVICE)
+# NNUNET global params
+INIT_FILTERS=32
+ENABLE_DS = True
+
+nnunet_plans = {
+    "UNet_class_name": "PlainConvUNet",
+    "UNet_base_num_features": INIT_FILTERS,
+    "n_conv_per_stage_encoder": [2, 2, 2, 2, 2, 2],
+    "n_conv_per_stage_decoder": [2, 2, 2, 2, 2],
+    "pool_op_kernel_sizes": [
+        [1, 1, 1],
+        [2, 2, 2],
+        [2, 2, 2],
+        [2, 2, 2],
+        [2, 2, 2],
+        [1, 2, 2]
+    ],
+    "conv_kernel_sizes": [
+        [3, 3, 3],
+        [3, 3, 3],
+        [3, 3, 3],
+        [3, 3, 3],
+        [3, 3, 3],
+        [3, 3, 3]
+    ],
+    "unet_max_num_features": 320,
+}
 
 
 def get_parser():
@@ -64,7 +79,7 @@ def prepare_data(root, dataset_name="spine-generic"):
         test_files = test_files[:3]
     
     # define test transforms
-    transforms_test = val_transforms(lbl_key='label')
+    transforms_test = val_transforms_with_orientation_and_crop(crop_size=crop_size, lbl_key='label')
     
     # define post-processing transforms for testing; taken (with explanations) from 
     # https://github.com/Project-MONAI/tutorials/blob/main/3d_segmentation/torch/unet_inference_dict.py#L66
@@ -93,31 +108,36 @@ def main(args):
 
     results_path = args.path_out
     model_name = args.chkp_path.split("/")[-1]
-    results_path = os.path.join(results_path, dataset_name, model_name)
+    if args.best_model_type == "dice":
+        chkp_paths = [os.path.join(args.chkp_path, "best_model_dice.ckpt")]
+        results_path = os.path.join(results_path, dataset_name, model_name, "best_dice")
+    elif args.best_model_type == "loss":
+        chkp_paths = [os.path.join(args.chkp_path, "best_model_loss.ckpt")]
+        results_path = os.path.join(results_path, dataset_name, model_name)
+
+    # save terminal outputs to a file
+    logger.add(os.path.join(results_path, "logs.txt"), rotation="10 MB", level="INFO")
+
+    logger.info(f"Saving results to: {results_path}")
     if not os.path.exists(results_path):
         os.makedirs(results_path, exist_ok=True)
 
+    # define cropping size
+    inference_roi_size = tuple([int(i) for i in args.crop_size.split("x")])
+    if inference_roi_size == (-1,):   # means no cropping is required
+        logger.info(f"Doing Sliding Window Inference on Whole Images ...")
+        inference_roi_size = (-1, -1, -1)
+
     # define the dataset and dataloader
-    test_ds, test_post_pred = prepare_data(dataset_root, dataset_name)
+    test_ds, test_post_pred = prepare_data(dataset_root, dataset_name, crop_size=inference_roi_size)
     test_loader = DataLoader(test_ds, batch_size=1, shuffle=False, num_workers=4, pin_memory=True)
 
     if args.model == "unet":
         # initialize ivadomed unet model
         net = ModifiedUNet3D(in_channels=1, out_channels=1, init_filters=INIT_FILTERS)
-    elif args.model == "unetr":
-        # initialize unetr model
-        net = UNETR(spatial_dims=3,
-                    in_channels=1, out_channels=1, 
-                    img_size=INFERENCE_ROI_SIZE,
-                    feature_size=FEATURE_SIZE,
-                    hidden_size=HIDDEN_SIZE,
-                    mlp_dim=MLP_DIM,
-                    num_heads=NUM_HEADS,
-                    pos_embed="conv", 
-                    norm_name="instance", 
-                    res_block=True, 
-                    dropout_rate=0.2,
-                )
+    elif args.model == "nnunet":
+        # define model
+        net = create_nnunet_from_plans(plans=nnunet_plans, num_input_channels=1, num_classes=1, deep_supervision=ENABLE_DS)
 
     # define list to collect the test metrics
     test_step_outputs = []
@@ -154,6 +174,11 @@ def main(args):
                 # run inference            
                 batch["pred"] = sliding_window_inference(test_input, INFERENCE_ROI_SIZE, mode="gaussian",
                                                         sw_batch_size=4, predictor=net, overlap=0.5, progress=False)
+
+                if ENABLE_DS and args.model == "nnunet":
+                    # take only the highest resolution prediction
+                    batch["pred"] = batch["pred"][0]
+
                 # NOTE: monai's models do not normalize the output, so we need to do it manually
                 if bool(F.relu(batch["pred"]).max()):
                     batch["pred"] = F.relu(batch["pred"]) / F.relu(batch["pred"]).max() 
