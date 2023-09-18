@@ -407,14 +407,15 @@ class Model(pl.LightningModule):
             self.best_val_loss = mean_val_loss
             self.best_val_epoch = self.current_epoch
 
-        print(
-            f"Current epoch: {self.current_epoch}"
+        logger.info(
+            f"\nCurrent epoch: {self.current_epoch}"
             f"\nAverage Soft Dice (VAL): {mean_val_soft_dice:.4f}"
             f"\nAverage Hard Dice (VAL): {mean_val_hard_dice:.4f}"
             f"\nAverage AdapWing Loss (VAL): {mean_val_loss:.4f}"
             f"\nBest Average Soft Dice: {self.best_val_dice:.4f} at Epoch: {self.best_val_epoch}"
             # f"\nBest Average AdapWing Loss: {self.best_val_loss:.4f} at Epoch: {self.best_val_epoch}"
             f"\n----------------------------------------------------")
+        
 
         # log on to wandb
         self.log_dict(wandb_logs)
@@ -463,7 +464,7 @@ class Model(pl.LightningModule):
         if self.args.save_test_preds:
 
             subject_name = (batch["image_meta_dict"]["filename_or_obj"][0]).split("/")[-1].replace(".nii.gz", "")
-            print(f"Saving subject: {subject_name}")
+            logger.info(f"Saving subject: {subject_name}")
 
             # image saver class
             save_folder = os.path.join(self.results_path, subject_name.split("_")[0])
@@ -624,6 +625,13 @@ def main(args):
     timestamp = datetime.now().strftime(f"%Y%m%d-%H%M")   # prints in YYYYMMDD-HHMMSS format
     save_exp_id = f"{save_exp_id}_{timestamp}"
 
+    # save output to a log file
+    logger.add(os.path.join(args.save_path, f"{save_exp_id}", "logs.txt"), rotation="10 MB", level="INFO")
+
+    # define loss function
+    loss_func = AdapWingLoss(theta=0.5, omega=8, alpha=2.1, epsilon=1, reduction="sum")
+    logger.info(f"Using AdapWingLoss with theta={loss_func.theta}, omega={loss_func.omega}, alpha={loss_func.alpha}, epsilon={loss_func.epsilon}!")
+
     # define callbacks
     # early_stopping = pl.callbacks.EarlyStopping(monitor="val_soft_dice", min_delta=0.00, patience=args.patience, 
     #                     verbose=False, mode="max")
@@ -650,6 +658,7 @@ def main(args):
                             exp_id=save_exp_id, results_path=results_path)
                 
         # saving the best model based on validation loss
+        logger.info(f"Saving best model to {save_path}!")
         checkpoint_callback_loss = pl.callbacks.ModelCheckpoint(
             dirpath=save_path, filename='best_model_loss', monitor='val_loss', 
             save_top_k=1, mode="min", save_last=True, save_weights_only=False)
@@ -703,7 +712,7 @@ def main(args):
 
         save_exp_id = args.save_path
         save_path = os.path.dirname(args.save_path)
-        print(f"save_path: {save_path}")
+        logger.info(f"save_path: {save_path}")
         results_path = args.results_dir
 
         # i.e. train by loading weights from scratch
@@ -713,12 +722,12 @@ def main(args):
                 
         # saving the best model based on validation CSA loss
         checkpoint_callback_loss = pl.callbacks.ModelCheckpoint(
-            dirpath=save_path, filename='best_model_loss', monitor='val_loss', 
+            dirpath=save_exp_id, filename='best_model_loss', monitor='val_loss', 
             save_top_k=1, mode="min", save_last=True, save_weights_only=True)
         
         # saving the best model based on soft validation dice score
         checkpoint_callback_dice = pl.callbacks.ModelCheckpoint(
-            dirpath=save_path, filename='best_model_dice', monitor='val_soft_dice', 
+            dirpath=save_exp_id, filename='best_model_dice', monitor='val_soft_dice', 
             save_top_k=1, mode="max", save_last=False, save_weights_only=True)
 
         # wandb logger
