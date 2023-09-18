@@ -1,3 +1,16 @@
+"""
+Script to run inference on a MONAI-based model for contrast-agnostic soft segmentation of the spinal cord.
+Predictions are stored in independent folders for each subject. Summary of the test metrics (both per subject and overall)
+are stored in a json file, along with the time taken for inference.
+
+Usage:
+    python run_inference.py --path-json <path/to/json> --chkp-path <path/to/checkpoint> --path-out <path/to/output> 
+                --model <unet/nnunet> --best-model-type <dice/loss> --crop_size <48x160x320> --device <gpu/cpu>
+
+Author: Naga Karthik
+
+"""
+
 import os
 import argparse
 import numpy as np
@@ -6,7 +19,6 @@ import torch.nn.functional as F
 import torch
 import json
 from time import time
-from tqdm import tqdm
 
 from monai.inferers import sliding_window_inference
 from monai.data import (DataLoader, CacheDataset, load_decathlon_datalist, decollate_batch)
