@@ -22,6 +22,8 @@ from monai.transforms import (SpatialPadd, Compose, CropForegroundd, LoadImaged,
 # 2. CenterCrop using 46x176x288
 # 3. RandomAffine --> RandomElastic --> RandomGamma --> RandomBiasField --> RandomBlur --> NormalizeInstance
 
+# TODO: Use cropping on R-L (56) and A-P (176) but not on S-I to avoid cropping the last few slices
+# At test time, check performance on cropped and uncropped full images
 
 def train_transforms(crop_size, num_samples_pv, lbl_key="label"):
 
@@ -29,18 +31,18 @@ def train_transforms(crop_size, num_samples_pv, lbl_key="label"):
         # pre-processing
         LoadImaged(keys=["image", lbl_key]),
         EnsureChannelFirstd(keys=["image", lbl_key]),
-        CropForegroundd(keys=["image", lbl_key], source_key="image"),     # crops >0 values with a bounding box
+        # CropForegroundd(keys=["image", lbl_key], source_key="image"),     # crops >0 values with a bounding box
         # NOTE: spine interpolation with order=2 is spline, order=1 is linear
         Spacingd(keys=["image", "label"], pixdim=(1.0, 1.0, 1.0), mode=(2, 1)),
+        ResizeWithPadOrCropd(keys=["image", lbl_key], spatial_size=crop_size,),
         # data-augmentation
-        # SpatialPadd(keys=["image", lbl_key], spatial_size=(192, 228, 106), method="symmetric"),
-        SpatialPadd(keys=["image", lbl_key], spatial_size=crop_size, method="symmetric"),   # pad with the same size as crop_size
-        # NOTE: used with neg together to calculate the ratio pos / (pos + neg) for the probability to pick a 
-        # foreground voxel as a center rather than a background voxel.
-        RandCropByPosNegLabeld(keys=["image", "label"], label_key="label",
-                            spatial_size=crop_size, pos=3, neg=1, num_samples=num_samples_pv, 
-                            # if num_samples=4, then 4 samples/image are randomly generated
-                            image_key="image", image_threshold=0.),
+        # SpatialPadd(keys=["image", lbl_key], spatial_size=crop_size, method="symmetric"),   # pad with the same size as crop_size
+        # # NOTE: used with neg together to calculate the ratio pos / (pos + neg) for the probability to pick a 
+        # # foreground voxel as a center rather than a background voxel.
+        # RandCropByPosNegLabeld(keys=["image", "label"], label_key="label",
+        #                     spatial_size=crop_size, pos=3, neg=1, num_samples=num_samples_pv, 
+        #                     # if num_samples=4, then 4 samples/image are randomly generated
+        #                     image_key="image", image_threshold=0.),
         # re-ordering transforms as used by nnunet
         RandAffined(keys=["image", lbl_key], mode=(2, 1), prob=0.75,
                     rotate_range=(-20. / 360 * 2. * np.pi, 20. / 360 * 2. * np.pi),    # monai expects in radians 
