@@ -275,7 +275,7 @@ for file_path in "${contrasts[@]}";do
   mkdir -p $PATH_DATA_PROCESSED/$SUBJECT/${type}
   # Copy source images
   # Note: we use '/./' in order to include the sub-folder 'ses-0X'
-  rsync -Ravzh ${PATH_DATA}/${SUBJECT}/${file_path}.* $type
+  rsync -Ravzh ${PATH_DATA}/${SUBJECT}/${file_path}.* .
 
   # Get manual hard GT to get labeled segmentation
   FILESEG="${file_path}_seg"
