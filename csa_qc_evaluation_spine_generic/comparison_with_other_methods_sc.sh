@@ -261,6 +261,7 @@ for file_path in "${contrasts[@]}";do
     contrast="t2s"
   elif [[ $file_path == *"T2w"* ]];then
     contrast_seg="T2w"
+    contrast="t2"
   elif [[ $file_path == *"T1w"* ]];then
     contrast_seg="T1w"
     contrast="t1"  # For segmentation
@@ -271,6 +272,7 @@ for file_path in "${contrasts[@]}";do
     contrast_seg="dwi"
     contrast="dwi"
   fi
+  
   # Find if anat or dwi folder
   type=$(find_contrast $file_path)
   file=${file_path/#"$type"}  # add sub folder in file name
