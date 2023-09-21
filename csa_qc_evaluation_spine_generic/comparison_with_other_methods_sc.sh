@@ -82,7 +82,7 @@ echo "SUBJECT: ${SUBJECT}"
 # CONVENIENCE FUNCTIONS
 # ------------------------------------------------------------------------------
 # Get ANIMA binaries path
-#anima_binaries_path=$(grep "^anima = " ~/.anima/config.txt | sed "s/.* = //" | sed 's/\/$//')
+anima_binaries_path=$(grep "^anima = " ~/.anima/config.txt | sed "s/.* = //" | sed 's/\/$//')
 
 # Check if manual label already exists. If it does, copy it locally.
 # NOTE: manual disc labels should go from C1-C2 to C7-T1.
@@ -130,7 +130,7 @@ segment_sc() {
       echo "${FILESEG},${execution_time}" >> ${PATH_RESULTS}/execution_time.csv
 
       # Compute ANIMA segmentation performance metrics
-     # compute_anima_metrics ${FILESEG} ${file}_seg-manual.nii.gz
+      compute_anima_metrics ${FILESEG} ${file}_seg.nii.gz
 
   elif [[ $method == 'propseg' ]]; then
       FILESEG="${file}_seg_${method}"
@@ -150,31 +150,8 @@ segment_sc() {
       rm ${file}_centerline.nii.gz
       cd ..
       # Compute ANIMA segmentation performance metrics
-      #compute_anima_metrics ${FILESEG} ${file}_seg-manual.nii.gz
+      compute_anima_metrics ${FILESEG} ${file}_seg.nii.gz
   fi
-}
-
-# Segment spinal cord using our nnUNet model
-segment_sc_nnUNet(){
-  local file="$1"
-  local kernel="$2"     # 2d or 3d
-
-  FILESEG="${file}_seg_nnunet_${kernel}"
-
-  # Get the start time
-  start_time=$(date +%s)
-  # Run SC segmentation
-  python ${PATH_NNUNET_SCRIPT} -i ${file}.nii.gz -o ${FILESEG}.nii.gz -path-model ${PATH_NNUNET_MODEL}/nnUNet_${kernel} -pred-type sc
-  # Get the end time
-  end_time=$(date +%s)
-  # Calculate the time difference
-  execution_time=$(python3 -c "print($end_time - $start_time)")
-  echo "${FILESEG},${execution_time}" >> ${PATH_RESULTS}/execution_time.csv
-
-  # Generate QC report
-  sct_qc -i ${file}.nii.gz -s ${FILESEG}.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
-  # Compute ANIMA segmentation performance metrics
-  #compute_anima_metrics ${FILESEG} ${file}_seg-manual.nii.gz
 }
 
 # Compute ANIMA segmentation performance metrics
@@ -182,7 +159,7 @@ compute_anima_metrics(){
   # We have to copy qform matrix from seg-manual to the automatically generated segmentation to avoid ITK error:
   # "Description: ITK ERROR: SegmentationMeasuresImageFilter(): Inputs do not occupy the same physical space!"
   # Related to the following issue : https://github.com/spinalcordtoolbox/spinalcordtoolbox/pull/4135
-  sct_image -i ${file}_seg-manual.nii.gz -copy-header ${FILESEG}.nii.gz -o ${FILESEG}_updated_header.nii.gz
+  sct_image -i ${file}_seg.nii.gz -copy-header ${FILESEG}.nii.gz -o ${FILESEG}_updated_header.nii.gz
 
   # Compute ANIMA segmentation performance metrics
   # -i : input segmentation
@@ -191,8 +168,7 @@ compute_anima_metrics(){
   # -d : surface distances evaluation
   # -s : compute metrics to evaluate a segmentation
   # -X : stores results into a xml file.
-  ${anima_binaries_path}/animaSegPerfAnalyzer -i ${FILESEG}_updated_header.nii.gz -r ${file}_seg-manual.nii.gz -o ${PATH_RESULTS}/${FILESEG} -d -s -X
-
+  ${anima_binaries_path}/animaSegPerfAnalyzer -i ${FILESEG}_updated_header.nii.gz -r ${file}_softseg.nii.gz -o ${PATH_RESULTS}/${FILESEG} -d -s -X
   rm ${FILESEG}_updated_header.nii.gz
 }
 
@@ -272,7 +248,7 @@ for file_path in "${contrasts[@]}";do
     contrast_seg="dwi"
     contrast="dwi"
   fi
-  
+
   # Find if anat or dwi folder
   type=$(find_contrast $file_path)
   file=${file_path/#"$type"}  # add sub folder in file name
@@ -290,6 +266,16 @@ for file_path in "${contrasts[@]}";do
   if [[ -e $FILESEGMANUAL ]]; then
     echo "Found! Using manual segmentation."
     rsync -avzh $FILESEGMANUAL "${FILESEG}.nii.gz"
+  fi
+
+  # Get manual SOFT GT to get labeled segmentation
+  FILESEGSOFT="${file_path}_softseg"
+  FILESEGMANUAL="${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/${FILESEG}.nii.gz"
+  echo
+  echo "Looking for manual segmentation: $FILESEGMANUAL"
+  if [[ -e $FILESEGMANUAL ]]; then
+    echo "Found! Using manual segmentation."
+    rsync -avzh $FILESEGMANUAL "${FILESEGSOFT}.nii.gz"
   fi
   # Create labeled segmentation of vertebral levels (only if it does not exist) 
   label_if_does_not_exist $file_path $FILESEG $type
