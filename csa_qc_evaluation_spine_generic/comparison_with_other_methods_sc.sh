@@ -130,7 +130,7 @@ segment_sc() {
       echo "${FILESEG},${execution_time}" >> ${PATH_RESULTS}/execution_time.csv
 
       # Compute ANIMA segmentation performance metrics
-      compute_anima_metrics ${FILESEG} ${file}_softseg_bin.nii.gz
+      compute_anima_metrics ${FILESEG} ${file}_softseg_bin
 
   elif [[ $method == 'propseg' ]]; then
       FILESEG="${file}_seg_${method}"
@@ -150,7 +150,7 @@ segment_sc() {
       rm ${file}_centerline.nii.gz
       cd ..
       # Compute ANIMA segmentation performance metrics
-      compute_anima_metrics $type${FILESEG} $type${file}_softseg_bin.nii.gz
+      compute_anima_metrics $type${FILESEG} $type${file}_softseg_bin
   fi
 }
 
