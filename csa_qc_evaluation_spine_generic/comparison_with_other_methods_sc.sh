@@ -232,8 +232,8 @@ sct_check_dependencies -short
 # Go to folder where data will be copied and processed
 cd $PATH_DATA_PROCESSED
 
-# Copy source images
-rsync -av -f"+ */" -f"- *" $PATH_DATA/$SUBJECT .
+# Create directory
+mkdir -p $PATH_DATA_PROCESSED/$SUBJECT
 
 # Go to subject folder for source images
 cd ${SUBJECT}
@@ -272,6 +272,7 @@ for file_path in "${contrasts[@]}";do
   type=$(find_contrast $file_path)
   file=${file_path/#"$type"}  # add sub folder in file name
   file_path=${type}$file
+  mkdir -p $PATH_DATA_PROCESSED/$SUBJECT$type
   # Copy source images
   # Note: we use '/./' in order to include the sub-folder 'ses-0X'
   rsync -Ravzh ${PATH_DATA}/${SUBJECT}/*/${file}.* $type
