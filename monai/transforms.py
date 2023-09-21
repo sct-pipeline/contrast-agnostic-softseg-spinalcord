@@ -44,7 +44,7 @@ def train_transforms(crop_size, num_samples_pv, lbl_key="label"):
         #                     # if num_samples=4, then 4 samples/image are randomly generated
         #                     image_key="image", image_threshold=0.),
         # re-ordering transforms as used by nnunet
-        RandAffined(keys=["image", lbl_key], mode=(2, 1), prob=0.75,
+        RandAffined(keys=["image", lbl_key], mode=(2, 1), prob=0.9,
                     rotate_range=(-20. / 360 * 2. * np.pi, 20. / 360 * 2. * np.pi),    # monai expects in radians 
                     scale_range=(-0.2, 0.2),   
                     translate_range=(-0.1, 0.1)),
