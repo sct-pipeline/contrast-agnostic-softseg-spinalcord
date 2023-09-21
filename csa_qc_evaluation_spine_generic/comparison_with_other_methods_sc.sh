@@ -296,31 +296,31 @@ for file_path in "${contrasts[@]}";do
   ###################
   mkdir -p $PATH_QC/deepseg2d
   segment_sc "${file_path}" $contrast 'deepseg' '2d' $PATH_QC/deepseg2d
-  mv ${file_path}_seg.nii.gz ${file_path}_seg_deepseg2d.nii.gz
-  pred_seg=${file_path}_seg_deepseg2d
+  pred_seg=${file_path}_seg_deepseg_2d
   # Compute CSA
   # Compute average cord CSA between C2 and C3
-  sct_process_segmentation -i ${pred_seg}.nii.gz -vert 2:3 -vertfile ${file_seg_labeled}.nii.gz -o ${PATH_RESULTS}/csa_pred_${contrast_seg}_deepseg2d.csv -append 1
+  mkdir -p ${PATH_RESULTS}/deepseg2d
+  sct_process_segmentation -i ${pred_seg}.nii.gz -vert 2:3 -vertfile ${file_seg_labeled}.nii.gz -o ${PATH_RESULTS}/deepseg2d/csa_pred_${contrast_seg}.csv -append 1
 
   # deepseg_sc 3D
   ###################
   mkdir -p $PATH_QC/deepseg3d
   segment_sc "${file_path}" $contrast 'deepseg' '3d' $PATH_QC/deepseg3d
-  mv ${file_path}_seg.nii.gz ${file_path}_seg_deepseg3d.nii.gz
-  pred_seg=${file_path}_seg_deepseg3d
+  pred_seg=${file_path}_seg_deepseg_3d
   # Compute CSA
   # Compute average cord CSA between C2 and C3
-  sct_process_segmentation -i ${pred_seg}.nii.gz -vert 2:3 -vertfile ${file_seg_labeled}.nii.gz -o ${PATH_RESULTS}/csa_pred_${contrast_seg}_deepseg3d.csv -append 1
+  mkdir -p ${PATH_RESULTS}/deepseg3d
+  sct_process_segmentation -i ${pred_seg}.nii.gz -vert 2:3 -vertfile ${file_seg_labeled}.nii.gz -o ${PATH_RESULTS}/deepseg3d/csa_pred_${contrast_seg}.csv -append 1
   
   # propseg
   ##################
   mkdir -p $PATH_QC/propseg
   segment_sc "${file_path}" $contrast 'propseg' '1' $PATH_QC/propseg
-  mv ${file_path}_seg.nii.gz ${file_path}_seg_propseg.nii.gz
   pred_seg=${file_path}_seg_propseg
   # Compute CSA
   # Compute average cord CSA between C2 and C3
-  sct_process_segmentation -i ${pred_seg}.nii.gz -vert 2:3 -vertfile ${file_seg_labeled}.nii.gz -o ${PATH_RESULTS}/csa_pred_${contrast_seg}_propseg.csv -append 1
+  mkdir -p ${PATH_RESULTS}/propseg
+  sct_process_segmentation -i ${pred_seg}.nii.gz -vert 2:3 -vertfile ${file_seg_labeled}.nii.gz -o ${PATH_RESULTS}/propseg/csa_pred_${contrast_seg}.csv -append 1
 
   # segment_sc_nnUNet "${file_t2}" '2d'
   # segment_sc_nnUNet "${file_t2}" '3d'
