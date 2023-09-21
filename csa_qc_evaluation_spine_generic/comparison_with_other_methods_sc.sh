@@ -272,10 +272,10 @@ for file_path in "${contrasts[@]}";do
   type=$(find_contrast $file_path)
   file=${file_path/#"$type"}  # add sub folder in file name
   file_path=${type}$file
-  mkdir -p $PATH_DATA_PROCESSED/$SUBJECT$type
+  mkdir -p $PATH_DATA_PROCESSED/$SUBJECT/${type}
   # Copy source images
   # Note: we use '/./' in order to include the sub-folder 'ses-0X'
-  rsync -Ravzh ${PATH_DATA}/${SUBJECT}/*/${file}.* $type
+  rsync -Ravzh ${PATH_DATA}/${SUBJECT}/${file_path}.* $type
 
   # Get manual hard GT to get labeled segmentation
   FILESEG="${file_path}_seg"
