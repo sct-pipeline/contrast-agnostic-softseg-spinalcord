@@ -82,8 +82,8 @@ echo "SUBJECT: ${SUBJECT}"
 # CONVENIENCE FUNCTIONS
 # ------------------------------------------------------------------------------
 # Get ANIMA binaries path
-anima_binaries_path=$(grep "^anima = " ~/.anima/config.txt | sed "s/.* = //" | sed 's/\/$//')
-
+#anima_binaries_path=$(grep "^anima = " ~/.anima/config.txt | sed "s/.* = //" | sed 's/\/$//')
+anima_binaries_path="~/.anima"
 # Check if manual label already exists. If it does, copy it locally.
 # NOTE: manual disc labels should go from C1-C2 to C7-T1.
 label_if_does_not_exist(){
