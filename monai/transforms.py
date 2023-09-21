@@ -2,7 +2,7 @@
 import numpy as np
 from monai.transforms import (SpatialPadd, Compose, CropForegroundd, LoadImaged, RandFlipd, 
             RandCropByPosNegLabeld, Spacingd, RandScaleIntensityd, NormalizeIntensityd, RandAffined,
-            RandWeightedCropd, RandAdjustContrastd, EnsureChannelFirstd, RandGaussianNoised, 
+            DivisiblePadd, RandAdjustContrastd, EnsureChannelFirstd, RandGaussianNoised, 
             RandGaussianSmoothd, Orientationd, Rand3DElasticd, RandBiasFieldd, RandSimulateLowResolutiond,
             ResizeWithPadOrCropd)
 
@@ -92,7 +92,7 @@ def val_transforms_without_center_crop(lbl_key="label"):
             NormalizeIntensityd(keys=["image"], nonzero=False, channel_wise=False),
         ])
 
-def val_transforms_with_orientation_and_crop(crop_size, lbl_key="label"):
+def inference_transforms(crop_size, lbl_key="label"):
     return Compose([
             LoadImaged(keys=["image", lbl_key], image_only=False),
             EnsureChannelFirstd(keys=["image", lbl_key]),
@@ -100,7 +100,7 @@ def val_transforms_with_orientation_and_crop(crop_size, lbl_key="label"):
             Orientationd(keys=["image", lbl_key], axcodes="RPI"),
             Spacingd(keys=["image", lbl_key], pixdim=(1.0, 1.0, 1.0), mode=(2, 1)), # mode=("bilinear", "bilinear"),),
             ResizeWithPadOrCropd(keys=["image", lbl_key], spatial_size=crop_size,),
-            # TODO: do cropping only in R-L so sth like (48, -1, -1)
+            DivisiblePadd(keys=["image", lbl_key], k=2**5),   # pad inputs to ensure divisibility by no. of layers nnUNet has (5)
             NormalizeIntensityd(keys=["image"], nonzero=False, channel_wise=False),
         ])
 
