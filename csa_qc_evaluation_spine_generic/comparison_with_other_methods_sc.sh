@@ -137,7 +137,8 @@ segment_sc() {
       # Get the start time
       start_time=$(date +%s)
       # Run SC segmentation
-      sct_propseg -i ${file}.nii.gz -o ${FILESEG}.nii.gz -c ${contrast} -qc ${PATH_QC_SEG} -qc-subject ${SUBJECT}
+      sct_propseg -i ${file}.nii.gz -c ${contrast} -qc ${PATH_QC_SEG} -qc-subject ${SUBJECT}
+      mv ${file}_seg.nii.gz  ${FILESEG}.nii.gz
       # Get the end time
       end_time=$(date +%s)
       # Calculate the time difference
