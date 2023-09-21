@@ -72,7 +72,7 @@ echo "PATH_QC: ${PATH_QC}"
 
 SUBJECT=$1
 #PATH_NNUNET_SCRIPT=$2
-PATH_NNUNET_MODEL=$3
+#PATH_NNUNET_MODEL=$3
 
 echo "SUBJECT: ${SUBJECT}"
 #echo "PATH_NNUNET_SCRIPT: ${PATH_NNUNET_SCRIPT}"
@@ -82,7 +82,7 @@ echo "SUBJECT: ${SUBJECT}"
 # CONVENIENCE FUNCTIONS
 # ------------------------------------------------------------------------------
 # Get ANIMA binaries path
-anima_binaries_path=$(grep "^anima = " ~/.anima/config.txt | sed "s/.* = //" | sed 's/\/$//')
+#anima_binaries_path=$(grep "^anima = " ~/.anima/config.txt | sed "s/.* = //" | sed 's/\/$//')
 
 # Check if manual label already exists. If it does, copy it locally.
 # NOTE: manual disc labels should go from C1-C2 to C7-T1.
