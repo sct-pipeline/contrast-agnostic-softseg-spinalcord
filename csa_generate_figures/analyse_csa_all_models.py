@@ -193,6 +193,8 @@ def main():
         'csa_nnunet_2023-08-24': 'nnUNet_avg_bin',
         'csa_monai_unet_bestValCSA': 'MONAI_UNet_avg',
         # 'csa_monai_unetr_bestValCSA': 'MONAI_UNetR_avg_bin',       # Added folder name here
+        'csa_monai_nnunet_2023-09-04': 'MONAI_nnUnet',
+        'csa_monai_ivado_reImp': 'csa_monai_ivado_reImp',
         'csa_gt_2023-08-08': 'GT_soft_avg_bin'
     }
 
