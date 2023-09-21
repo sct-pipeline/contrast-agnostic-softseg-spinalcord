@@ -83,7 +83,7 @@ echo "SUBJECT: ${SUBJECT}"
 # ------------------------------------------------------------------------------
 # Get ANIMA binaries path
 #anima_binaries_path=$(grep "^anima = " ~/.anima/config.txt | sed "s/.* = //" | sed 's/\/$//')
-anima_binaries_path="~/.anima"
+anima_binaries_path=$HOME/.anima/
 # Check if manual label already exists. If it does, copy it locally.
 # NOTE: manual disc labels should go from C1-C2 to C7-T1.
 label_if_does_not_exist(){
@@ -168,7 +168,7 @@ compute_anima_metrics(){
   # -d : surface distances evaluation
   # -s : compute metrics to evaluate a segmentation
   # -X : stores results into a xml file.
-  ${anima_binaries_path}/animaSegPerfAnalyzer -i ${FILESEG}_updated_header.nii.gz -r ${file}_softseg.nii.gz -o ${PATH_RESULTS}/${FILESEG} -d -s -X
+  ${anima_binaries_path}/animaSegPerfAnalyzer -i ${FILESEG}_updated_header.nii.gz -r ${file}_softseg_bin.nii.gz -o ${PATH_RESULTS}/${FILESEG} -d -s -X
   rm ${FILESEG}_updated_header.nii.gz
 }
 
@@ -277,6 +277,9 @@ for file_path in "${contrasts[@]}";do
     echo "Found! Using manual segmentation."
     rsync -avzh $FILESEGMANUAL "${FILESEGSOFT}.nii.gz"
   fi
+  # Binarize softseg
+  sct_maths -i ${FILESEGSOFT}.nii.gz -bin 0.5 -o ${FILESEGSOFT}_bin.nii.gz
+  
   # Create labeled segmentation of vertebral levels (only if it does not exist) 
   label_if_does_not_exist $file_path $FILESEG $type
 
