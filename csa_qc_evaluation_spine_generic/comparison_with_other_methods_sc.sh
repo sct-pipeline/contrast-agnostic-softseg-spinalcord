@@ -247,9 +247,8 @@ file_t1w="${SUBJECT}_flip-2_mt-off_MTS"
 file_mton="${SUBJECT}_flip-1_mt-on_MTS"
 file_dwi_mean="${SUBJECT}_rec-average_dwi"
 contrasts=($file_t1 $file_t2 $file_t2s $file_t1w $file_mton $file_dwi_mean)
-inc_contrasts=()
 
-for file_path in "${inc_contrasts[@]}";do
+for file_path in "${contrasts[@]}";do
   # Find contrast to do compute CSA
   if [[ $file_path == *"flip-2_mt-off_MTS"* ]];then
     contrast_seg="flip-2_mt-off_MTS"
