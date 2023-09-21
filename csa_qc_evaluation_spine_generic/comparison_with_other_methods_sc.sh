@@ -270,7 +270,7 @@ for file_path in "${contrasts[@]}";do
 
   # Get manual SOFT GT to get labeled segmentation
   FILESEGSOFT="${file_path}_softseg"
-  FILESEGMANUAL="${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/${FILESEG}.nii.gz"
+  FILESEGMANUAL="${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/${FILESEGSOFT}.nii.gz"
   echo
   echo "Looking for manual segmentation: $FILESEGMANUAL"
   if [[ -e $FILESEGMANUAL ]]; then
