@@ -114,6 +114,7 @@ segment_sc() {
   local method="$3"     # deepseg or propseg
   local kernel="$4"     # 2d or 3d; only relevant for deepseg
   local PATH_QC_SEG="$5"
+  local type="$6"
   # Segment spinal cord
   if [[ $method == 'deepseg' ]];then
       FILESEG="${file}_seg_${method}_${kernel}"
@@ -137,8 +138,8 @@ segment_sc() {
       # Get the start time
       start_time=$(date +%s)
       # Run SC segmentation
-      sct_propseg -i ${file}.nii.gz -c ${contrast} -qc ${PATH_QC_SEG} -qc-subject ${SUBJECT}
-      mv ${file}_seg.nii.gz  ${FILESEG}.nii.gz
+      cd $type
+      sct_propseg -i ${file}.nii.gz -o ${FILESEG}.nii.gz -c ${contrast} -qc ${PATH_QC_SEG} -qc-subject ${SUBJECT}
       # Get the end time
       end_time=$(date +%s)
       # Calculate the time difference
@@ -147,6 +148,7 @@ segment_sc() {
 
       # Remove centerline (we don't need it)
       rm ${file}_centerline.nii.gz
+      cd ..
       # Compute ANIMA segmentation performance metrics
       #compute_anima_metrics ${FILESEG} ${file}_seg-manual.nii.gz
   fi
@@ -316,7 +318,7 @@ for file_path in "${contrasts[@]}";do
   # propseg
   ##################
   mkdir -p $PATH_QC/propseg
-  segment_sc "${file_path}" $contrast 'propseg' '1' $PATH_QC/propseg
+  segment_sc "${file}" $contrast 'propseg' '1' $PATH_QC/propseg "${type}"
   pred_seg=${file_path}_seg_propseg
   # Compute CSA
   # Compute average cord CSA between C2 and C3
