@@ -232,6 +232,8 @@ sct_check_dependencies -short
 # Go to folder where data will be copied and processed
 cd $PATH_DATA_PROCESSED
 
+# Copy source images
+rsync -av -f"+ */" -f"- *" $PATH_DATA/$SUBJECT .
 
 # Go to subject folder for source images
 cd ${SUBJECT}
