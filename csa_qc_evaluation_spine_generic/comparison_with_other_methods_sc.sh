@@ -271,10 +271,10 @@ for file_path in "${contrasts[@]}";do
   # Find if anat or dwi folder
   type=$(find_contrast $file_path)
   file=${file_path/#"$type"}  # add sub folder in file name
-
+  file_path=${type}$file
   # Copy source images
   # Note: we use '/./' in order to include the sub-folder 'ses-0X'
-  rsync -Ravzh ${PATH_DATA}/${SUBJECT}/${file}.* .
+  rsync -Ravzh ${PATH_DATA}/${SUBJECT}/*/${file}.* .
 
   # Get manual hard GT to get labeled segmentation
   FILESEG="${file_path}_seg"
