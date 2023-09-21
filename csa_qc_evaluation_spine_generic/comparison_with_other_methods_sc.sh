@@ -130,7 +130,7 @@ segment_sc() {
       echo "${FILESEG},${execution_time}" >> ${PATH_RESULTS}/execution_time.csv
 
       # Compute ANIMA segmentation performance metrics
-      compute_anima_metrics ${FILESEG} ${file}_seg.nii.gz
+      compute_anima_metrics ${FILESEG} ${file}_softseg_bin.nii.gz
 
   elif [[ $method == 'propseg' ]]; then
       FILESEG="${file}_seg_${method}"
@@ -150,16 +150,18 @@ segment_sc() {
       rm ${file}_centerline.nii.gz
       cd ..
       # Compute ANIMA segmentation performance metrics
-      compute_anima_metrics ${FILESEG} ${file}_seg.nii.gz
+      compute_anima_metrics $type${FILESEG} $type${file}_softseg_bin.nii.gz
   fi
 }
 
 # Compute ANIMA segmentation performance metrics
 compute_anima_metrics(){
+  FILESEG=$1
+  segmanual=$2
   # We have to copy qform matrix from seg-manual to the automatically generated segmentation to avoid ITK error:
   # "Description: ITK ERROR: SegmentationMeasuresImageFilter(): Inputs do not occupy the same physical space!"
   # Related to the following issue : https://github.com/spinalcordtoolbox/spinalcordtoolbox/pull/4135
-  sct_image -i ${file}_seg.nii.gz -copy-header ${FILESEG}.nii.gz -o ${FILESEG}_updated_header.nii.gz
+  sct_image -i ${segmanual}.nii.gz -copy-header ${FILESEG}.nii.gz -o ${FILESEG}_updated_header.nii.gz
 
   # Compute ANIMA segmentation performance metrics
   # -i : input segmentation
@@ -168,7 +170,7 @@ compute_anima_metrics(){
   # -d : surface distances evaluation
   # -s : compute metrics to evaluate a segmentation
   # -X : stores results into a xml file.
-  ${anima_binaries_path}/animaSegPerfAnalyzer -i ${FILESEG}_updated_header.nii.gz -r ${file}_softseg_bin.nii.gz -o ${PATH_RESULTS}/${FILESEG} -d -s -X
+  ${anima_binaries_path}/animaSegPerfAnalyzer -i ${FILESEG}_updated_header.nii.gz -r ${segmanual}.nii.gz -o ${PATH_RESULTS}/${FILESEG} -d -s -X
   rm ${FILESEG}_updated_header.nii.gz
 }
 
