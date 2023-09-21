@@ -324,7 +324,7 @@ for file_path in "${inc_contrasts[@]}";do
 
   # segment_sc_nnUNet "${file_t2}" '2d'
   # segment_sc_nnUNet "${file_t2}" '3d'
-fi
+done
 
 # ------------------------------------------------------------------------------
 # End
