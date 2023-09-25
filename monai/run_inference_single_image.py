@@ -19,12 +19,12 @@ import torch
 import json
 from time import time
 
+from models import create_nnunet_from_plans
 from monai.inferers import sliding_window_inference
 from monai.data import (DataLoader, CacheDataset, load_decathlon_datalist, decollate_batch)
-from monai.transforms import (Compose, EnsureTyped, Invertd, SaveImage)
-
-from transforms import inference_transforms_single_image
-from models import create_nnunet_from_plans
+from monai.transforms import (Compose, EnsureTyped, Invertd, SaveImage, Spacingd,
+                              LoadImaged, NormalizeIntensityd, EnsureChannelFirstd, 
+                              DivisiblePadd, Orientationd, ResizeWithPadOrCropd)
 
 
 # NNUNET global params
@@ -75,6 +75,18 @@ def get_parser():
 
     return parser
 
+
+# define transforms for inference
+def inference_transforms_single_image(crop_size):
+    return Compose([
+            LoadImaged(keys=["image"], image_only=False),
+            EnsureChannelFirstd(keys=["image"]),
+            Orientationd(keys=["image"], axcodes="RPI"),
+            Spacingd(keys=["image"], pixdim=(1.0, 1.0, 1.0), mode=(2)),
+            ResizeWithPadOrCropd(keys=["image"], spatial_size=crop_size,),
+            DivisiblePadd(keys=["image"], k=2**5),   # pad inputs to ensure divisibility by no. of layers nnUNet has (5)
+            NormalizeIntensityd(keys=["image"], nonzero=False, channel_wise=False),
+        ])
 
 # --------------------------------
 # DATA
