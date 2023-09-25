@@ -2,7 +2,7 @@
 
 The following steps are required for using the contrast-agnostic model. 
 
-### Step 1: Setting up the environment and Installing dependencies
+### Setting up the environment and Installing dependencies
 
 The following commands show how to set up the environment. Note that the documentation assumes that the user has `conda` installed on their system. Instructions on installing `conda` can be found [here](https://conda.io/projects/conda/en/latest/user-guide/install/index.html).
 
@@ -24,7 +24,22 @@ conda activate venv_monai
 pip install -r requirements_inference.txt
 ```
 
-### Step 2: Creating a datalist
+### Method 1: Running inference on a single image
+
+```bash
+python run_inference_single_image.py --path-img /path/to/my-awesome-SC-image.nii.gz --chkp-path /path/to/best/model --path-out /path/to/output/folder --crop-size <64x160x320> --device <cpu/gpu>
+```
+    
+`--path-img` - Path to the image to be segmented
+`--chkp-path` - Path to the model checkpoint. This folder should contain the `best_model_loss.ckpt`
+`--path-out` - Path to the output folder where the predictions will be saved
+`--crop_size` - Crop size used for center cropping the image before running inference. Recommended to be set to a multiple of 32
+`--device` - Device to be used for inference. Currently, only `gpu` and `cpu` are supported
+
+
+### Method 2: Running inference on a dataset
+
+#### Creating a datalist
 
 The inference script assumes the dataset to be in Medical Segmentation Decathlon-style `json` file format containing image-label pairs. The `create_inference_msd_datalist.py` script allows to create one for your dataset. Use the following command to create the datalist:
 
@@ -41,7 +56,7 @@ python create_inference_msd_datalist.py --dataset-name spine-generic --path-data
 > This script is not meant to run off-the-shelf. Placeholders are provided to update the script with the .... TODO
 
 
-### Step 3: Running inference
+#### Running inference
 
 Use the following command:
 
