@@ -59,6 +59,10 @@ else:
     # Use the training split to further split into training and validation splits
     train_subjects, val_subjects = train_test_split(train_subjects, test_size=val_ratio / (train_ratio + val_ratio),
                                                     random_state=args.seed, )
+    # sort the subjects
+    train_subjects = sorted(train_subjects)
+    val_subjects = sorted(val_subjects)
+    test_subjects = sorted(test_subjects)
 
 logger.info(f"Number of training subjects: {len(train_subjects)}")
 logger.info(f"Number of validation subjects: {len(val_subjects)}")
