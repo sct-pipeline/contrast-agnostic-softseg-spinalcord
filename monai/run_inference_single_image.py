@@ -65,11 +65,11 @@ def get_parser():
     parser.add_argument("--chkp-path", type=str, required=True, help="Path to the checkpoint folder")
     parser.add_argument("--path-out", type=str, required=True, 
                         help="Path to the output folder where to store the predictions and associated metrics")
-    parser.add_argument('-crop', '--crop-size', type=str, default="48x160x320", 
+    parser.add_argument('-crop', '--crop-size', type=str, default="64x160x320", 
                         help='Patch size used for center cropping the images during inference. Values correspond to R-L, A-P, I-S axes'
-                        'of the image. Sliding window will be run across the cropped images. Use -1 if no cropping is intended '
-                        '(sliding window will run across the whole image). Note, heavy R-L, A-P cropping is recommmended for best '
-                        'results.  Default: 48x160x320')
+                        ' *in mm*. All images are resampled to 1mm isotropic before cropping. Inference is run on the cropped images.'
+                        ' Use -1 if no cropping is intended. Note, heavy R-L cropping that positions the SC at the center of the image '
+                        'is recommmended for best results.  Default: 64x160x320')
     parser.add_argument('--device', default="gpu", type=str, choices=["gpu", "cpu"],
                         help='Device to run inference on. Default: gpu')
 
@@ -91,7 +91,7 @@ def inference_transforms_single_image(crop_size):
 # --------------------------------
 # DATA
 # --------------------------------
-def prepare_data(path_image, path_out, crop_size=(48, 160, 320)):
+def prepare_data(path_image, path_out, crop_size=(64, 160, 320)):
 
     # create a temporary datalist containing the image
     # boiler plate keys to be defined in the MSD-style datalist
