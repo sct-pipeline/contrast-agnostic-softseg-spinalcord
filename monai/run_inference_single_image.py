@@ -2,10 +2,6 @@
 Script to run inference on a MONAI-based model for contrast-agnostic soft segmentation of the spinal cord.
 Prediction is stored in an independent folder given by subject name. The time taken for inference is stored in a json file.
 
-Usage:
-    python run_inference_single_image.py --path-img /path/to/my-awesome-SC-image.nii.gz --chkp-path /path/to/best/model 
-                --path-out /path/to/output/folder --crop-size <64x160x320> --device <cpu/gpu>
-
 Author: Naga Karthik
 
 """
