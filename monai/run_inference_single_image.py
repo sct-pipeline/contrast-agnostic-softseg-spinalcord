@@ -66,12 +66,13 @@ def get_parser():
     parser.add_argument("--path-out", type=str, required=True, 
                         help="Path to the output folder where to store the predictions and associated metrics")
     parser.add_argument('-crop', '--crop-size', type=str, default="64x160x320", 
-                        help='Patch size used for center cropping the images during inference. Values correspond to R-L, A-P, I-S axes'
-                        ' *in mm*. All images are resampled to 1mm isotropic before cropping. Inference is run on the cropped images.'
-                        ' Use -1 if no cropping is intended. Note, heavy R-L cropping that positions the SC at the center of the image '
-                        'is recommmended for best results.  Default: 64x160x320')
+                        help='Size of the window used to crop the volume before inference (NOTE: Images are resampled to 1mm'
+                        ' isotropic before cropping). The window is centered in the middle of the volume. Dimensions are in the'
+                        ' order R-L, A-P, I-S. Use -1 for no cropping in a specific axis, example: “64x160x-1”.'
+                        ' NOTE: heavy R-L cropping is recommended for positioning the SC at the center of the image.'
+                        ' Default: 64x160x320')
     parser.add_argument('--device', default="gpu", type=str, choices=["gpu", "cpu"],
-                        help='Device to run inference on. Default: gpu')
+                        help='Device to run inference on. Default: cpu')
 
     return parser
 
