@@ -169,8 +169,9 @@ sct_run_batch -jobs -1 -path-data ~/duke/projects/ivadomed/contrast-agnostic-seg
 To generate violin plots and analyse results, put all CSA results file in the same folder (here `csa_nnunet_vs_ivadomed`) and run:
 
 ```
-python analyse_csa_nnunet_ivadomed.py -i-folder ~/duke/projects/ivadomed/contrast-agnostic-seg/csa_measures_pred/csa_nnunet_vs_ivadomed/ \
-                                      -include ivado_hard_GT ivado_avg_bin_no_crop ivado_soft_no_crop csa_nnunet_soft_avg_all_no_crop \
+python analyse_csa_all_models.py -i-folder ~/duke/projects/ivadomed/contrast-agnostic-seg/csa_measures_pred/csa_ivadomed_vs_nnunet_vs_monai/ \
+                                 -include csa_monai_nnunet_2023-09-18 csa_monai_nnunet_per_contrast csa_gt_2023-08-08 csa_gt_hard_2023-08-08 \
+                                          csa_nnunet_2023-08-24 csa_other_methods_2023-09-21-all csa_monai_nnunet_2023-09-18_hard csa_monai_nnunet_diceL
 ```
 * `-i-folder`: Path to folder containing CSA results from models to analyse
 * `-include`: names of the folder names to include in the analysis (one model = one foler)
