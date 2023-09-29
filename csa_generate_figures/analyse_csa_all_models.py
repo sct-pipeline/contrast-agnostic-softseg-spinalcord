@@ -17,12 +17,13 @@ FNAME_LOG = 'log_stats.txt'
 
 
 color_palette = {
-        'nnUnet': '#fc8d62',
+        'nnUNet': '#fc8d62',
         'GT_soft': '#b3b3b3',
         'deepseg2d': '#e78ac3',
         'deepseg3d': '#e31a1c',
         'propseg': '#ffd92f',
         'hard_all': '#8da0cb',
+        'soft_all_AdapWing': '#66c2a5',
         'soft_all': '#66c2a5',
         'soft_per_contrast': '#386cb0',
         'GT_hard': '#b3b3b3',
@@ -79,15 +80,15 @@ def get_csa(csa_filename):
 
 
 def violin_plot(df, y_label, title, path_out, filename, set_ylim=False):
+    
     sns.set_style('whitegrid', rc={'xtick.bottom': True,
                                    'ytick.left': True})
     fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(12, 10))
-    plt.rcParams['legend.title_fontsize'] = 'x-large'
-    plt.yticks(fontsize="x-large")
+    plt.rcParams['legend.title_fontsize'] = 16
     if "violin_plot_all" in filename :
         # NOTE: we're adding cut=0 because the STD CSA violin plot extends beyond zero
         df_filt = df.copy()
-        df_filt = df_filt[(np.abs(stats.zscore(df_filt)) < 3).all(axis=1)] 
+        df_filt = df_filt[(np.abs(stats.zscore(df_filt)) < 3).all(axis=1)]
         sns.violinplot(data=df_filt, ax=ax, inner="box", linewidth=2, palette=color_palette, cut=0,
                        showmeans=True, meanprops={"marker": "^", "markerfacecolor":"white", "markerscale": "3"})
         x_bot, x_top = plt.xlim()
@@ -114,9 +115,8 @@ def violin_plot(df, y_label, title, path_out, filename, set_ylim=False):
             yabs_max = abs(max(ax.get_ylim(), key=abs))
             y_top = yabs_max+2
             y_pos = (maximum[i])/(y_top-y_bot) + 0.1
-            print(y_pos, maximum[i])
-            ax.text((i+0.5)/length, y_pos, textstr_F, transform=ax.transAxes, fontsize=13,
-                    verticalalignment='top', horizontalalignment='center')
+            ax.text((i+0.5)/length, y_pos, textstr_F, transform=ax.transAxes, fontsize=15,
+                    verticalalignment='top', horizontalalignment='center',  fontname="Helvatica")
 
     else:
         sns.violinplot(data=df, ax=ax, inner="box", linewidth=2, palette="Set2",
@@ -130,14 +130,16 @@ def violin_plot(df, y_label, title, path_out, filename, set_ylim=False):
         plt.xlim(x_bot, x_top)
 
     plt.setp(ax.collections, alpha=.9)
-    ax.set_title(title, pad=20, fontweight="bold", fontsize=17)
+    ax.set_title(title, pad=20, fontweight="bold", fontsize=17, fontname="Arial")
     ax.xaxis.set_tick_params(direction='out')
     ax.xaxis.set_ticks_position('bottom')
     ax.xaxis.grid(True, which='minor')
     plt.yticks(fontsize=17)
-    plt.xticks(fontsize=15)
+    plt.xticks(fontsize=17)
     ax.tick_params(direction='out', axis='both')
-    ax.set_ylabel(y_label, fontsize=17, fontweight="bold")
+    ax.set_ylabel(y_label, fontsize=17, fontweight="bold", fontname="Helvatica")
+   # ax.set_xlabel(x_label, fontsize=17, fontweight="bold")
+   # ax.set_yticklabels(ax.get_xticks(), size = 15)
     if set_ylim:
         if 'error' in filename:
             ax.set_ylim([-2.5, 14])
@@ -148,7 +150,6 @@ def violin_plot(df, y_label, title, path_out, filename, set_ylim=False):
     else:
         yabs_max = abs(max(ax.get_ylim(), key=abs))
         ax.set_ylim(ymax=(yabs_max + 2))
-
     plt.tight_layout()
     outfile = os.path.join(path_out, filename)
     plt.savefig(outfile, dpi=300, bbox_inches="tight")
@@ -248,7 +249,7 @@ def main():
 
     # To compare only monai model and the GT
     rename = {
-        'csa_nnunet_2023-08-24': 'nnUnet',
+        'csa_nnunet_2023-08-24': 'nnUNet',
         'csa_gt_2023-08-08': 'GT_soft',
         'csa_other_methods_2023-09-21-all/results/deepseg2d': 'deepseg2d',
         'csa_other_methods_2023-09-21-all/results/deepseg3d': 'deepseg3d',
@@ -323,26 +324,25 @@ def main():
 
     # Compare dice loss
     logger.info('\nComparing Dice Loss')
-    include_loss = ['nnUnet', 'soft_all_dice_loss', 'soft_all'] # include nnunet or not?
+    include_loss = ['nnUNet', 'soft_all_dice_loss', 'soft_all'] # include nnunet or not?
     gt = ['GT_soft']
-
     # Plot STD
-    violin_plot(stds[gt+include_loss],
+    violin_plot(stds[gt+include_loss].rename(columns={'soft_all': 'soft_all_AdapWing'}),
                 y_label=r'Standard deviation ($\bf{mm^2}$)',
-                title="Variability of CSA across MRI contrasts - Dice Loss vs Adaptwing Loss",
+                title="Variability of CSA across MRI contrasts - Dice Loss vs AdapWing Loss",
                 path_out=exp_folder,
                 filename='violin_plot_all_std_diceloss.png')
 
     # Plot CSA error:
-    violin_plot(error_csa_prediction[include_loss],
+    violin_plot(error_csa_prediction[include_loss].rename(columns={'soft_all': 'soft_all_AdapWing'}),
                 y_label=r'Mean absolute CSA error ($\bf{mm^2}$)',
-                title="Absolute CSA error between prediction and GT - Dice Loss vs Adaptwing Loss",
+                title="Absolute CSA error between prediction and GT - Dice Loss vs AdapWing Loss",
                 path_out=exp_folder,
                 filename='violin_plot_all_csa_error_diceloss.png')
 
     # Compare MONAI_nnunet vs nnUnet vs deepseg_sc
     logger.info('\nComparing with other methods.')
-    include_other_methods = ['deepseg3d', 'propseg','deepseg2d','nnUnet','soft_all']
+    include_other_methods = ['deepseg3d', 'propseg','deepseg2d','nnUNet','soft_all']
     gt = ['GT_soft']
 
     # Plot STD
