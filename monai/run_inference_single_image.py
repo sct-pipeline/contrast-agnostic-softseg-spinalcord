@@ -1,6 +1,5 @@
 """
 Script to run inference on a MONAI-based model for contrast-agnostic soft segmentation of the spinal cord.
-Prediction is stored in an independent folder given by subject name. The time taken for inference is stored in a json file.
 
 Author: Naga Karthik
 
@@ -73,7 +72,9 @@ def get_parser():
     return parser
 
 
-# define transforms for inference
+# ===========================================================================
+#                          Test-time Transforms
+# ===========================================================================
 def inference_transforms_single_image(crop_size):
     return Compose([
             LoadImaged(keys=["image"], image_only=False),
@@ -133,10 +134,10 @@ def prepare_data(path_image, path_out, crop_size=(64, 160, 320)):
     return test_ds, test_post_pred
 
 
+# ===========================================================================
+#                           Inference method
+# ===========================================================================
 def main(args):
-
-    # define start time
-    start = time()
 
     # define device
     if args.device == "gpu" and not torch.cuda.is_available():
@@ -224,9 +225,8 @@ def main(args):
 
             # this takes about 0.25s on average on a CPU
             # image saver class
-            save_folder = os.path.join(results_path, subject_name.split("_")[0])
             pred_saver = SaveImage(
-                output_dir=save_folder, output_postfix="pred", output_ext=".nii.gz", 
+                output_dir=results_path, output_postfix="pred", output_ext=".nii.gz", 
                 separate_folder=False, print_log=False)
             # save the prediction
             pred_saver(pred)
@@ -263,12 +263,6 @@ def main(args):
         test_step_outputs.clear()
         test_summary.clear()
         os.remove(os.path.join(results_path, "temp_msd_datalist.json"))
-
-    end = time()
-
-    # logger.info("===============================================================")
-    # logger.info(f"Total time taken for inference: {(end - start) / 60:.2f} minutes")
-    # logger.info("===============================================================")
 
 
 if __name__ == "__main__":
