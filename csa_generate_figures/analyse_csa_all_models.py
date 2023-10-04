@@ -84,9 +84,15 @@ def get_pairwise_csa(df, path_out, filename):
         ax.annotate(f'$r^2 = {r_value ** 2:.2f}$\nEq: ${slope:.2f}x{intercept:+.2f}$',
                     xy=(.05, .95), xycoords=ax.transAxes, fontsize=10,
                     color='darkred', backgroundcolor='#FFFFFF99', ha='left', va='top')
+    def plot_diag(x, y, ax=None, **kws):
+        ax = ax or plt.gca()
+        ax.plot([50, 100], [50, 100], ls="--", c=".3")
 
     g = sns.pairplot(df, kind='reg', corner=True, plot_kws={'line_kws': {'color': 'red'}})
     g.map_lower(r2)
+    # ensure axes match on each pairplot
+    g.set(xlim=(55,95), ylim = (55,95))
+    g.map_offdiag(plot_diag)
     plt.tight_layout()
     outfile = os.path.join(path_out, filename)
     plt.savefig(outfile, dpi=300, bbox_inches="tight")
@@ -95,12 +101,16 @@ def get_pairwise_csa(df, path_out, filename):
 
     # Plot only T1w and T2w
     fig, ax = plt.subplots(figsize=(5, 5))
-    plt.title('T1w CSA vs T2w CSA')
+    plt.title('T1w CSA vs T2w CSA', fontsize=15, fontweight="bold")
     sns.regplot(x=df['T1w'], y=df['T2w'])
+    plt.plot([50, 100], [50, 100], ls="--", c=".3")  # add diagonal line
     r2(x=df['T1w'], y=df['T2w'], ax=ax)
-    ax.set_xlabel('T1w CSA (${mm^2}$)')
-    ax.set_ylabel('T2w CSA (${mm^2}$)')
-   # plt.tight_layout()
+    plt.gca().set_aspect("equal", adjustable="box")
+    plt.xlim(55, 95)
+    plt.ylim(55, 95)
+    ax.set_xlabel('T1w CSA (${mm^2}$)', fontsize=14, fontweight="bold")
+    ax.set_ylabel('T2w CSA (${mm^2}$)', fontsize=14, fontweight="bold")
+    plt.tight_layout()
     filename_t1_t2 = 'pairplot_t1_t2.png'
     outfile = os.path.join(path_out, filename_t1_t2)
     plt.savefig(outfile, dpi=300, bbox_inches="tight")
@@ -180,7 +190,7 @@ def violin_plot(df, y_label, title, path_out, filename, set_ylim=False, annonate
     plt.yticks(fontsize=18)
     plt.xticks(fontsize=18)
     ax.tick_params(direction='out', axis='both')
-    ax.set_ylabel(y_label, fontsize=20, fontweight="bold", fontname="Helvatica")
+    ax.set_ylabel(y_label, fontsize=20, fontweight="bold")
     if set_ylim:
         if 'error' in filename:
             ax.set_ylim([-2.5, 15])
