@@ -27,7 +27,7 @@ color_palette = {
         'soft_all': '#66c2a5',
         'soft_per_contrast': '#386cb0',
         'GT_hard': '#b3b3b3',
-        'soft_all_dice_loss': '#a6d854'
+        'soft_all\ndice_loss': '#a6d854'
     }
 
 #MY_PAL = {"PMJ": "cornflowerblue", "Disc": "lightyellow", "Spinal Roots":"gold"}
@@ -51,7 +51,8 @@ def get_parser():
                         default=[],
                         help="Folder names to include" +
                         "predictions are (for the specified contrasts).")
-
+    parser.add_argument('-annotate-graph',
+                        action='store_true')
     return parser
 
 
@@ -74,16 +75,43 @@ def get_csa(csa_filename):
     return csa
 
 
-#def get_pairwise_csa(dict, path_out, filename):
-#    plt.subplots(figsize=(15, 15))
-#    for method, df in dict.items():
+def get_pairwise_csa(df, path_out, filename):
+    fig, axs = plt.subplots(figsize=(10, 10))
+
+    def r2(x, y, ax=None, **kws):
+        ax = ax or plt.gca()
+        slope, intercept, r_value, p_value, std_err = stats.linregress(x=x, y=y)
+        ax.annotate(f'$r^2 = {r_value ** 2:.2f}$\nEq: ${slope:.2f}x{intercept:+.2f}$',
+                    xy=(.05, .95), xycoords=ax.transAxes, fontsize=10,
+                    color='darkred', backgroundcolor='#FFFFFF99', ha='left', va='top')
+
+    g = sns.pairplot(df, kind='reg', corner=True, plot_kws={'line_kws': {'color': 'red'}})
+    g.map_lower(r2)
+    plt.tight_layout()
+    outfile = os.path.join(path_out, filename)
+    plt.savefig(outfile, dpi=300, bbox_inches="tight")
+    logger.info(f'Saving {outfile}')
+    plt.close()
+
+    # Plot only T1w and T2w
+    fig, ax = plt.subplots(figsize=(5, 5))
+    plt.title('T1w CSA vs T2w CSA')
+    sns.regplot(x=df['T1w'], y=df['T2w'])
+    r2(x=df['T1w'], y=df['T2w'], ax=ax)
+    ax.set_xlabel('T1w CSA (${mm^2}$)')
+    ax.set_ylabel('T2w CSA (${mm^2}$)')
+   # plt.tight_layout()
+    filename_t1_t2 = 'pairplot_t1_t2.png'
+    outfile = os.path.join(path_out, filename_t1_t2)
+    plt.savefig(outfile, dpi=300, bbox_inches="tight")
+    logger.info(f'Saving {outfile}')
+    plt.close()
 
 
-def violin_plot(df, y_label, title, path_out, filename, set_ylim=False):
-    
+def violin_plot(df, y_label, title, path_out, filename, set_ylim=False, annonate=False):
     sns.set_style('whitegrid', rc={'xtick.bottom': True,
                                    'ytick.left': True})
-    fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(12, 10))
+    fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(12, 8))
     plt.rcParams['legend.title_fontsize'] = 16
     if "violin_plot_all" in filename :
         # NOTE: we're adding cut=0 because the STD CSA violin plot extends beyond zero
@@ -93,7 +121,7 @@ def violin_plot(df, y_label, title, path_out, filename, set_ylim=False):
                        showmeans=True, meanprops={"marker": "^", "markerfacecolor":"white", "markerscale": "3"})
         x_bot, x_top = plt.xlim()
         # overlay scatter plot on the violin plot to show individual data points
-        sns.swarmplot(data=df, ax=ax, alpha=0.5, size=3, palette='dark:black')
+        sns.swarmplot(data=df, ax=ax, alpha=0.5, size=2, palette='dark:black')
         # Compute mean to add on plot:
         Means = df.mean()
         maximum = df_filt.max()
@@ -116,40 +144,54 @@ def violin_plot(df, y_label, title, path_out, filename, set_ylim=False):
             y_top = yabs_max+2
             y_pos = (maximum[i])/(y_top-y_bot) + 0.1
             ax.text((i+0.5)/length, y_pos, textstr_F, transform=ax.transAxes, fontsize=15,
-                    verticalalignment='top', horizontalalignment='center',  fontname="Helvatica")
+                    verticalalignment='top', horizontalalignment='center')
 
     else:
         sns.violinplot(data=df, ax=ax, inner="box", linewidth=2, palette="Set2",
                        showmeans=True, meanprops={"marker": "^", "markerfacecolor": "white", "markerscale": "3"})
         x_bot, x_top = plt.xlim()
         # overlay scatter plot on the violin plot to show individual data points
-        sns.swarmplot(data=df, ax=ax, alpha=0.5, size=3, palette='dark:black')
+        sns.swarmplot(data=df, ax=ax, alpha=0.5, size=2, palette='dark:black')
         # Compute mean to add on plot:
         Means = df.mean()
         plt.scatter(x=df.columns, y=Means, c="w", marker="^", s=25, zorder=15)
         plt.xlim(x_bot, x_top)
+        maximum = df.max()
+        STD = df.std()
+        # Add mean ± std on top of each violin plot
+        length = len(Means)
+        if 'error' in filename:
+            ydiff = 15 + 2.5
+            ymin = -2.5
+        else:
+            ydiff = 115 - 40
+            ymin = 40 - 7
+        if annonate:
+            for i in np.arange(len(Means)):
+                textstr_F = '{:.2f} ± {:.2f}'.format(Means[i], STD[i])# + r' $mm^2$'
+                y_pos = (maximum[i]-ymin)/(ydiff) + 0.15
+                ax.text((i+0.5)/length, y_pos, textstr_F, transform=ax.transAxes, fontsize=14,
+                        verticalalignment='top', horizontalalignment='center')
 
     plt.setp(ax.collections, alpha=.9)
-    ax.set_title(title, pad=20, fontweight="bold", fontsize=17, fontname="Arial")
+    ax.set_title(title, pad=20, fontweight="bold", fontsize=20)
     ax.xaxis.set_tick_params(direction='out')
     ax.xaxis.set_ticks_position('bottom')
-    ax.xaxis.grid(True, which='minor')
-    plt.yticks(fontsize=17)
-    plt.xticks(fontsize=17)
+    plt.yticks(fontsize=18)
+    plt.xticks(fontsize=18)
     ax.tick_params(direction='out', axis='both')
-    ax.set_ylabel(y_label, fontsize=17, fontweight="bold", fontname="Helvatica")
-   # ax.set_xlabel(x_label, fontsize=17, fontweight="bold")
-   # ax.set_yticklabels(ax.get_xticks(), size = 15)
+    ax.set_ylabel(y_label, fontsize=20, fontweight="bold", fontname="Helvatica")
     if set_ylim:
         if 'error' in filename:
-            ax.set_ylim([-2.5, 14])
+            ax.set_ylim([-2.5, 15])
         else:
-            ax.set_ylim([40, 105])
+            ax.set_ylim([40, 115])
             # show y-axis values in interval of 5
-            ax.set_yticks(np.arange(40, 105, 5))
+            ax.set_yticks(np.arange(40, 115, 5))
     else:
         yabs_max = abs(max(ax.get_ylim(), key=abs))
         ax.set_ylim(ymax=(yabs_max + 2))
+    ax.xaxis.grid(True, which='minor')
     plt.tight_layout()
     outfile = os.path.join(path_out, filename)
     plt.savefig(outfile, dpi=300, bbox_inches="tight")
@@ -168,6 +210,7 @@ def main():
     logging.root.addHandler(fh)
 
     args = get_parser().parse_args()
+    annonate = args.annotate_graph
     path_in = args.i_folder
     logger.info(path_in)
     csa_folders = os.listdir(path_in)
@@ -258,7 +301,7 @@ def main():
         'csa_monai_nnunet_2023-09-18_hard': 'hard_all',
         'csa_monai_nnunet_per_contrast': 'soft_per_contrast',
         'csa_gt_hard_2023-08-08': 'GT_hard',
-        'csa_monai_nnunet_diceL': 'soft_all_dice_loss'
+        'csa_monai_nnunet_diceL': 'soft_all\ndice_loss'
     }
 
     print(dfs.keys())
@@ -297,48 +340,30 @@ def main():
             error_csa_prediction[method] = pd.concat(oneCol, ignore_index=True)
             # Plot error per contrast
             violin_plot(error,
-                        y_label=r'Absolute CSA Error($\bf{mm^2}$)',
-                        title="CSA Error across MRI contrasts " + method,
+                        y_label=r'Absolute CSA Error ($\bf{mm^2}$)',
+                        title="Absolute CSA Error across MRI contrasts " + method,
                         path_out=exp_folder,
                         filename='violin_plot_csa_percontrast_error_'+method+'.png',
                         set_ylim=True)
 
     logger.info(f'Number of subject in test set: {len(stds.index)}')
     # Compare one model per contrast vs one for all
-    include_one_vs_all = ['hard_all', 'soft_per_contrast', 'soft_all']
+    include_one_vs_all = ['hard_all', 'soft_all\ndice_loss', 'soft_per_contrast', 'soft_all']
     gt = ['GT_hard', 'GT_soft']
     logger.info('\nComparing one model vs one for all')
     # Plot STD
     violin_plot(stds[gt+include_one_vs_all],
                 y_label=r'Standard deviation ($\bf{mm^2}$)', 
-                title="Variability of CSA across MRI contrasts - One model per contrast vs one for all contrast",
+                title="Variability of CSA across MRI contrasts",
                 path_out=exp_folder,
                 filename='violin_plot_all_std_onevsall.png')
 
     # Plot CSA error:
     violin_plot(error_csa_prediction[include_one_vs_all],
-                y_label=r'Mean absolute CSA error($\bf{mm^2}$)', 
-                title="Absolute CSA error between prediction and GT - One model per contrast vs one for all contrast",
+                y_label=r'Absolute CSA error ($\bf{mm^2}$)', 
+                title="Absolute CSA error between prediction and GT",
                 path_out=exp_folder,
                 filename='violin_plot_all_csa_error_all_onevsall.png')
-
-    # Compare dice loss
-    logger.info('\nComparing Dice Loss')
-    include_loss = ['nnUNet', 'soft_all_dice_loss', 'soft_all'] # include nnunet or not?
-    gt = ['GT_soft']
-    # Plot STD
-    violin_plot(stds[gt+include_loss].rename(columns={'soft_all': 'soft_all_AdapWing'}),
-                y_label=r'Standard deviation ($\bf{mm^2}$)',
-                title="Variability of CSA across MRI contrasts - Dice Loss vs AdapWing Loss",
-                path_out=exp_folder,
-                filename='violin_plot_all_std_diceloss.png')
-
-    # Plot CSA error:
-    violin_plot(error_csa_prediction[include_loss].rename(columns={'soft_all': 'soft_all_AdapWing'}),
-                y_label=r'Mean absolute CSA error ($\bf{mm^2}$)',
-                title="Absolute CSA error between prediction and GT - Dice Loss vs AdapWing Loss",
-                path_out=exp_folder,
-                filename='violin_plot_all_csa_error_diceloss.png')
 
     # Compare MONAI_nnunet vs nnUnet vs deepseg_sc
     logger.info('\nComparing with other methods.')
@@ -348,18 +373,36 @@ def main():
     # Plot STD
     violin_plot(stds[gt+include_other_methods],
                 y_label=r'Standard deviation ($\bf{mm^2}$)', 
-                title="Variability of CSA across MRI contrasts - Comparison with other methods",
+                title="Variability of CSA across contrasts\nComparison with baselines",
                 path_out=exp_folder,
                 filename='violin_plot_all_std_other_methods.png')
 
     # Plot CSA error:
     violin_plot(error_csa_prediction[include_other_methods],
-                y_label=r'Mean absolute CSA error ($\bf{mm^2}$)',
-                title="Absolute CSA error between prediction and GT - Comparison with other methods",
+                y_label=r'Absolute CSA error ($\bf{mm^2}$)',
+                title="Absolute CSA error between prediction and GT\nComparison with baselines",
                 path_out=exp_folder,
                 filename='violin_plot_all_csa_error_all_other_methods.png')
+    # Zoomed version
+    include_other_methods = ['deepseg2d', 'nnUNet', 'soft_all']
+
+    # Plot STD
+    violin_plot(stds[gt+include_other_methods],
+                y_label=r'Standard deviation ($\bf{mm^2}$)',
+                title="Variability of CSA across MRI contrasts\nComparison with other methods",
+                path_out=exp_folder,
+                filename='violin_plot_all_std_other_methods_zoomed.png')
+
+    # Plot CSA error:
+    violin_plot(error_csa_prediction[include_other_methods],
+                y_label=r'Mean absolute CSA error ($\bf{mm^2}$)',
+                title="Absolute CSA error between prediction and GT\nComparison with other methods",
+                path_out=exp_folder,
+                filename='violin_plot_all_csa_error_all_other_methods_zoomed.png')
+
 
     # Do T1w CSA vs T2w CSA plots
+    get_pairwise_csa(dfs['soft_all'], path_out=exp_folder, filename='pairwise_soft_all.png')
     # one with all 6 contrasts for the final model
 
 
