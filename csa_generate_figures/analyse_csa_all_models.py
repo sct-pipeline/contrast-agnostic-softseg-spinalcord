@@ -329,12 +329,13 @@ def main():
         logger.info(f'{method} STD CSA: \n{dfs[method].std()}')
         logger.info(std.sort_values(ascending=False))
         stds[method] = std
-        violin_plot(dfs[method],
+        violin_plot(dfs[method].rename(columns={"mt-off": "GRE-T1w"}),
                     y_label=r'CSA ($\bf{mm^2}$)',
                     title="CSA across MRI contrasts " + method,
                     path_out=exp_folder,
                     filename='violin_plot_csa_percontrast_'+method+'.png',
-                    set_ylim=True)
+                    set_ylim=True,
+                    annonate=annonate)
 
         # Compute CSA error
         if method != 'GT_soft':
@@ -349,14 +350,16 @@ def main():
                 oneCol.append(error[column])
             error_csa_prediction[method] = pd.concat(oneCol, ignore_index=True)
             # Plot error per contrast
-            violin_plot(error,
+            violin_plot(error.rename(columns={"mt-off": "GRE-T1w"}),
                         y_label=r'Absolute CSA Error ($\bf{mm^2}$)',
                         title="Absolute CSA Error across MRI contrasts " + method,
                         path_out=exp_folder,
                         filename='violin_plot_csa_percontrast_error_'+method+'.png',
-                        set_ylim=True)
+                        set_ylim=True,
+                        annonate=annonate)
 
     logger.info(f'Number of subject in test set: {len(stds.index)}')
+
     # Compare one model per contrast vs one for all
     include_one_vs_all = ['hard_all', 'soft_all\ndice_loss', 'soft_per_contrast', 'soft_all']
     gt = ['GT_hard', 'GT_soft']
@@ -393,20 +396,21 @@ def main():
                 title="Absolute CSA error between prediction and GT\nComparison with baselines",
                 path_out=exp_folder,
                 filename='violin_plot_all_csa_error_all_other_methods.png')
+    
     # Zoomed version
     include_other_methods = ['deepseg2d', 'nnUNet', 'soft_all']
 
     # Plot STD
     violin_plot(stds[gt+include_other_methods],
                 y_label=r'Standard deviation ($\bf{mm^2}$)',
-                title="Variability of CSA across MRI contrasts\nComparison with other methods",
+                title="Variability of CSA across MRI contrasts\nComparison with baselines",
                 path_out=exp_folder,
                 filename='violin_plot_all_std_other_methods_zoomed.png')
 
     # Plot CSA error:
     violin_plot(error_csa_prediction[include_other_methods],
                 y_label=r'Mean absolute CSA error ($\bf{mm^2}$)',
-                title="Absolute CSA error between prediction and GT\nComparison with other methods",
+                title="Absolute CSA error between prediction and GT\nComparison with baselines",
                 path_out=exp_folder,
                 filename='violin_plot_all_csa_error_all_other_methods_zoomed.png')
 
