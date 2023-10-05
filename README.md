@@ -30,7 +30,7 @@ This repo creates a series of preparations for comparing the newly trained ivado
 ## 2.Dataset
 The source data are from the [spine-generic multi-subject](https://github.com/spine-generic/data-multi-subject/).
 
-The processed data are located on `duke:projects/ivadomed/contrast-agnostic-seg/data_processed_sg_2023-03-10_NO_CROP\data_processed_clean`.
+The processed data are located on `duke:projects/ivadomed/contrast-agnostic-seg/data_processed_sg_2023-08-08_NO_CROP\data_processed_clean`.
 
 ## 3.Processing
 Main processing steps include:
@@ -176,15 +176,6 @@ python analyse_csa_all_models.py -i-folder ~/duke/projects/ivadomed/contrast-agn
 * `-i-folder`: Path to folder containing CSA results from models to analyse
 * `-include`: names of the folder names to include in the analysis (one model = one foler)
 
-### 6.1.Analyse CSA IVADOMED only
-To generate violin plots to compare 4 ivadomed models (original):
-
-```
-python gen_charts.py --contrasts T1w T2w T2star rec-average_dwi \
-       --predictions_folder ../duke/projects/ivadomed/contrast-agnostic-seg/csa_measures_pred/group8-9_combined-2022-12-21/ \
-       --baseline_folder ../duke/projects/ivadomed/contrast-agnostic-seg/archive_derivatives_softsegs-seg/contrast-agnostic-centerofmass-preprocess-clean-all-2022-10-22\results_MTS_renamed
-```
-  
 ## 7. Run QC report on prediction masks from other datasets
 
 1. Got inside the `scripts` folder:
