@@ -25,10 +25,6 @@ from dynamic_network_architectures.building_blocks.helper import get_matching_in
 from dynamic_network_architectures.initialization.weight_init import init_last_bn_before_add_to_0
 
 
-# TODO:
-# 1. Add options for hard/soft labels, post-processing, etc.?
-# sct_deepseg already has these https://spinalcordtoolbox.com/user_section/command-line.html#sct-deepseg
-
 # NNUNET global params
 INIT_FILTERS=32
 ENABLE_DS = True
@@ -306,9 +302,11 @@ def main(args):
             pred = post_test_out[0]['pred'].cpu()
             
             # clip the prediction between 0.5 and 1
+            # turns out this sets the background to 0.5 and the SC to 1 (which is not correct)
+            # details: https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord/issues/71
             pred = torch.clamp(pred, 0.5, 1)
-            # # threshold the prediction
-            # pred = (pred > 0.1).float()
+            # set background values to 0
+            pred[pred <= 0.5] = 0
                 
             # get subject name
             subject_name = (batch["image_meta_dict"]["filename_or_obj"][0]).split("/")[-1].replace(".nii.gz", "")
