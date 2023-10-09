@@ -106,7 +106,8 @@ class Model(pl.LightningModule):
         # transforms_val = val_transforms_with_center_crop(crop_size=self.voxel_cropping_size, lbl_key='label')
         
         # load the dataset
-        dataset = os.path.join(self.root, f"spine-generic-ivado-comparison_dataset.json")
+        dataset = os.path.join(self.root, f"dataset_{self.args.contrast}_{self.args.label_type}_seed15.json")
+        logger.info(f"Loading dataset: {dataset}")
         train_files = load_decathlon_datalist(dataset, True, "train")
         val_files = load_decathlon_datalist(dataset, True, "validation")
         test_files = load_decathlon_datalist(dataset, True, "test")
@@ -565,7 +566,7 @@ def main(args):
     }
 
     # define root path for finding datalists
-    dataset_root = "/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/contrast-agnostic-softseg-spinalcord/monai"
+    dataset_root = "/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/datalists/spine-generic/seed15"
 
     # define optimizer
     if args.optimizer in ["adam", "Adam"]:
@@ -793,12 +794,11 @@ if __name__ == "__main__":
                         default='unet', type=str, help='Model type to be used')
     parser.add_argument('--enable_DS', default=False, action='store_true', help='Enable Deep Supervision')
     # dataset
-    parser.add_argument('-nspv', '--num_samples_per_volume', default=4, type=int, help="Number of samples to crop per volume")
-    # define args for cropping size. inputs should be in the format of "48x192x256"
-    parser.add_argument('-val-crop', '--val_crop_size', type=str, default="48x192x256", 
-                        help='Center crop size for validation and testing. Values correspond to R-L, A-P, I-S axes'
-                        'of the image. Use -1 if no cropping is intended.  Default: 48x160x320')
-    
+    parser.add_argument("--contrast", default="t2w", type=str, help="Contrast to use for training", 
+                    choices=["t1w", "t2w", "t2star", "mton", "mtoff", "dwi", "all"])
+    parser.add_argument('--label-type', default='soft', type=str, help="Type of labels to use for training",
+                    choices=['hard', 'soft'])
+
     # unet model 
     parser.add_argument('-initf', '--init_filters', default=16, type=int, help="Number of Filters in Init Layer")
     # parser.add_argument('-ps', '--patch_size', type=int, default=128, help='List containing subvolume size')
