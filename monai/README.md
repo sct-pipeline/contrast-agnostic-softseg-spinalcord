@@ -26,18 +26,16 @@ pip install -r requirements_inference.txt
 
 ### Method 1: Running inference on a single image
 
-```bash
-python run_inference_single_image.py --path-img /path/to/my-awesome-SC-image.nii.gz --chkp-path /path/to/best/model --path-out /path/to/output/folder --crop-size <64x160x320> --device <cpu/gpu>
+The script for running inference is `run_inference_single_image.py`. Please run 
 ```
-    
-`--path-img` - Path to the image to be segmented
-`--chkp-path` - Path to the model checkpoint. This folder should contain the `best_model_loss.ckpt`
-`--path-out` - Path to the output folder where the predictions will be saved
-`--crop_size` - Crop size used for center cropping the image before running inference. Recommended to be set to a multiple of 32
-`--device` - Device to be used for inference. Currently, only `gpu` and `cpu` are supported
+python run_inference_single_image.py -h
+```
+to get the list of arguments and their descriptions.
 
 
-### Method 2: Running inference on a dataset
+### Method 2: Running inference on a dataset (Advanced)
+
+NOTE: This section is experimental and for advanced users only. Please use Method 1 for running inference.
 
 #### Creating a datalist
 
