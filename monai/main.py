@@ -50,13 +50,12 @@ class Model(pl.LightningModule):
         # which could be sub-optimal. 
         # On the other hand, ivadomed used a patch-size that's heavily padded along the R-L direction so that 
         # only the SC is in context. 
-        # self.voxel_cropping_size = (48, 176, 288)
         self.spacing = (1.0, 1.0, 1.0)
-        self.voxel_cropping_size = (48, 160, 320)
-        self.inference_roi_size = tuple([int(i) for i in args.val_crop_size.split("x")])
-        if self.inference_roi_size == (-1,):   # means no cropping is required
-            logger.info(f"Using full image for validation ...")
-            self.inference_roi_size = (-1, -1, -1)
+        self.voxel_cropping_size = self.inference_roi_size = tuple([int(i) for i in args.crop_size.split("x")])
+        # self.inference_roi_size = tuple([int(i) for i in args.val_crop_size.split("x")])
+        # if self.inference_roi_size == (-1,):   # means no cropping is required
+        #     logger.info(f"Using full image for validation ...")
+        #     self.inference_roi_size = (-1, -1, -1)
 
         # define post-processing transforms for validation, nothing fancy just making sure that it's a tensor (default)
         self.val_post_pred = Compose([EnsureType()]) 
@@ -794,6 +793,10 @@ if __name__ == "__main__":
                         default='unet', type=str, help='Model type to be used')
     parser.add_argument('--enable_DS', default=False, action='store_true', help='Enable Deep Supervision')
     # dataset
+    # define args for cropping size
+    parser.add_argument('-crop', '--crop_size', type=str, default="64x192x320", 
+                        help='Center crop size for training/validation. Values correspond to R-L, A-P, I-S axes'
+                        'of the image after 1mm isotropic resampling.  Default: 64x192x320')
     parser.add_argument("--contrast", default="t2w", type=str, help="Contrast to use for training", 
                     choices=["t1w", "t2w", "t2star", "mton", "mtoff", "dwi", "all"])
     parser.add_argument('--label-type', default='soft', type=str, help="Type of labels to use for training",
