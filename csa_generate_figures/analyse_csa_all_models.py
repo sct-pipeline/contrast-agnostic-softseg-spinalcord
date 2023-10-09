@@ -12,6 +12,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy import stats
 from charts_utils import create_experiment_folder
+import itertools
+from statsmodels.sandbox.stats.multicomp import multipletests
 
 FNAME_LOG = 'log_stats.txt'
 
@@ -209,6 +211,19 @@ def violin_plot(df, y_label, title, path_out, filename, set_ylim=False, annonate
     plt.close()
 
 
+def compute_paired_t_test(data):
+    columns = list(data.columns)
+    combinations = list(itertools.combinations(columns, 2))
+    logger.info(combinations)
+    # Run Wilcoxon (groups are dependent, same subjects)
+    pvals = []
+    for i in range(len(combinations)):
+        stat, pval = stats.wilcoxon(x=data[combinations[i][0]], y=data[combinations[i][1]])
+        pvals.append(pval)
+    p_adjusted = multipletests(pvals, method='bonferroni',alpha=0.05)
+    logger.info(p_adjusted)
+
+
 def main():
     exp_folder = create_experiment_folder()
     print(exp_folder)
@@ -377,6 +392,9 @@ def main():
                 title="Absolute CSA error between prediction and GT",
                 path_out=exp_folder,
                 filename='violin_plot_all_csa_error_all_onevsall.png')
+    # Compare STDs soft_all vs soft_percontrast
+    compute_paired_t_test(stds[include_one_vs_all])
+    compute_paired_t_test(error_csa_prediction[include_one_vs_all])
 
     # Compare MONAI_nnunet vs nnUnet vs deepseg_sc
     logger.info('\nComparing with other methods.')
@@ -396,7 +414,11 @@ def main():
                 title="Absolute CSA error between prediction and GT\nComparison with baselines",
                 path_out=exp_folder,
                 filename='violin_plot_all_csa_error_all_other_methods.png')
-    
+
+    compute_paired_t_test(stds[include_other_methods])
+    compute_paired_t_test(error_csa_prediction[include_other_methods])
+
+
     # Zoomed version
     include_other_methods = ['deepseg2d', 'nnUNet', 'soft_all']
 
@@ -418,6 +440,8 @@ def main():
     # Do T1w CSA vs T2w CSA plots
     get_pairwise_csa(dfs['soft_all'], path_out=exp_folder, filename='pairwise_soft_all.png')
     # one with all 6 contrasts for the final model
+
+
 
 
 if __name__ == "__main__":
