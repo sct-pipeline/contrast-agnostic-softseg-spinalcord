@@ -10,20 +10,18 @@ import pytorch_lightning as pl
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
 
-from utils import precision_score, recall_score, dice_score, compute_average_csa, \
+from utils import precision_score, recall_score, dice_score, \
                     PolyLRScheduler, plot_slices, check_empty_patch
 from losses import SoftDiceLoss, AdapWingLoss
 from transforms import train_transforms, val_transforms
-from models import ModifiedUNet3D, create_nnunet_from_plans
+from models import create_nnunet_from_plans
 
 from monai.utils import set_determinism
 from monai.inferers import sliding_window_inference
-from monai.networks.nets import UNet, UNETR, DynUNet
+from monai.networks.nets import UNETR
 from monai.data import (DataLoader, Dataset, CacheDataset, load_decathlon_datalist, decollate_batch)
-from monai.transforms import (Compose, EnsureType, EnsureTyped, Invertd, SaveImaged, SaveImage)
+from monai.transforms import (Compose, EnsureType, EnsureTyped, Invertd, SaveImage)
 
-# TODO:
-# 1. increase omega in adapwingloss
 
 # create a "model"-agnostic class with PL to use different models
 class Model(pl.LightningModule):
@@ -41,7 +39,6 @@ class Model(pl.LightningModule):
         self.results_path = results_path
 
         self.best_val_dice, self.best_val_epoch = 0, 0
-        # self.best_val_csa = float("inf")
         self.best_val_loss = float("inf")
 
         # define cropping and padding dimensions
@@ -53,9 +50,6 @@ class Model(pl.LightningModule):
         self.spacing = (1.0, 1.0, 1.0)
         self.voxel_cropping_size = self.inference_roi_size = tuple([int(i) for i in args.crop_size.split("x")])
         # self.inference_roi_size = tuple([int(i) for i in args.val_crop_size.split("x")])
-        # if self.inference_roi_size == (-1,):   # means no cropping is required
-        #     logger.info(f"Using full image for validation ...")
-        #     self.inference_roi_size = (-1, -1, -1)
 
         # define post-processing transforms for validation, nothing fancy just making sure that it's a tensor (default)
         self.val_post_pred = Compose([EnsureType()]) 
@@ -74,8 +68,6 @@ class Model(pl.LightningModule):
     # FORWARD PASS
     # --------------------------------
     def forward(self, x):
-        # x, context_features = self.encoder(x)
-        # preds = self.decoder(x, context_features)
         
         out = self.net(x)  
         # # NOTE: MONAI's models only output the logits, not the output after the final activation function
@@ -98,11 +90,9 @@ class Model(pl.LightningModule):
         # define training and validation transforms
         transforms_train = train_transforms(
             crop_size=self.voxel_cropping_size, 
-            num_samples_pv=self.args.num_samples_per_volume,
             lbl_key='label'
         )
         transforms_val = val_transforms(crop_size=self.inference_roi_size, lbl_key='label')
-        # transforms_val = val_transforms_with_center_crop(crop_size=self.voxel_cropping_size, lbl_key='label')
         
         # load the dataset
         dataset = os.path.join(self.root, f"dataset_{self.args.contrast}_{self.args.label_type}_seed15.json")
@@ -122,7 +112,6 @@ class Model(pl.LightningModule):
 
         # define test transforms
         transforms_test = val_transforms(crop_size=self.inference_roi_size, lbl_key='label')
-        # transforms_test = val_transforms_with_center_crop(crop_size=self.voxel_cropping_size, lbl_key='label')
         
         # define post-processing transforms for testing; taken (with explanations) from 
         # https://github.com/Project-MONAI/tutorials/blob/main/3d_segmentation/torch/unet_inference_dict.py#L66
@@ -140,7 +129,6 @@ class Model(pl.LightningModule):
     # DATA LOADERS
     # --------------------------------
     def train_dataloader(self):
-        # NOTE: if num_samples=4 in RandCropByPosNegLabeld and batch_size=2, then 2 x 4 images are generated for network training
         return DataLoader(self.train_ds, batch_size=self.args.batch_size, shuffle=True, num_workers=16, 
                             pin_memory=True, persistent_workers=True) 
 
@@ -173,14 +161,12 @@ class Model(pl.LightningModule):
 
         inputs, labels = batch["image"], batch["label"]
 
-        # NOTE: surprisingly, filtering out empty patches is adding more CSA bias; TODO: verify with new patch size
         # check if any label image patch is empty in the batch
         if check_empty_patch(labels) is None:
             # print(f"Empty label patch found. Skipping training step ...")
             return None
 
         output = self.forward(inputs)   # logits
-        # if using dynunet, output.shape = (B, num_upsample_layers+1, C, H, W, D)
         # print(f"labels.shape: {labels.shape} \t output.shape: {output.shape}")
         
         if self.args.model == "nnunet" and self.args.enable_DS:
@@ -209,24 +195,8 @@ class Model(pl.LightningModule):
             loss /= len(output)
             train_soft_dice /= len(output)
 
-            # # binarize the predictions and the labels (take only the final feature map i.e. the final prediction)
-            # output = (output[0].detach() > 0.5).float()
-            # labels = (labels.detach() > 0.5).float()
-            
-            # # compute CSA for each element of the batch
-            # # NOTE: the CSA is computed only for the final feature map (i.e. the prediction, not the intermediate deepsupervision feature maps)
-            # csa_loss = 0.0
-            # for batch_idx in range(output.shape[0]):
-            #     pred_patch_csa = compute_average_csa(output[batch_idx].squeeze(), self.spacing)
-            #     gt_patch_csa = compute_average_csa(labels[batch_idx].squeeze(), self.spacing)
-            #     csa_loss += (pred_patch_csa - gt_patch_csa) ** 2
-            # # average CSA loss across the batch
-            # csa_loss = csa_loss / output.shape[0]
-
         else:
             # calculate training loss   
-            # NOTE: the diceLoss expects the input to be logits (which it then normalizes inside)
-            # dice_loss = self.loss_function(output, labels)
             loss = self.loss_function(output, labels)
 
             # get probabilities from logits
@@ -236,28 +206,9 @@ class Model(pl.LightningModule):
             # NOTE: this is done on patches (and not entire 3D volume) because SlidingWindowInference is not used here
             # So, take this dice score with a lot of salt
             train_soft_dice = self.soft_dice_metric(output, labels) 
-            # train_hard_dice = self.soft_dice_metric((output.detach() > 0.5).float(), (labels.detach() > 0.5).float())
-
-            # # binarize the predictions and the labels
-            # output = (output.detach() > 0.5).float()
-            # labels = (labels.detach() > 0.5).float()
-            
-            # # compute CSA for each element of the batch
-            # csa_loss = 0.0
-            # for batch_idx in range(output.shape[0]):
-            #     pred_patch_csa = compute_average_csa(output[batch_idx].squeeze(), self.spacing)
-            #     gt_patch_csa = compute_average_csa(labels[batch_idx].squeeze(), self.spacing)
-            #     csa_loss += (pred_patch_csa - gt_patch_csa) ** 2
-            # # average CSA loss across the batch
-            # csa_loss = csa_loss / output.shape[0]
-
-        # # total loss
-        # loss = dice_loss + csa_loss
 
         metrics_dict = {
             "loss": loss.cpu(),
-            # "dice_loss": dice_loss.cpu(),
-            # "csa_loss": csa_loss.cpu(),
             "train_soft_dice": train_soft_dice.detach().cpu(),
             "train_number": len(inputs),
             # "train_image": inputs[0].detach().cpu().squeeze(),
@@ -274,25 +225,18 @@ class Model(pl.LightningModule):
             # means the training step was skipped because of empty input patch
             return None
         else:
-            train_loss, train_dice_loss, train_csa_loss, train_soft_dice = 0, 0, 0, 0
+            train_loss, train_soft_dice = 0, 0
             num_items = len(self.train_step_outputs)
             for output in self.train_step_outputs:
                 train_loss += output["loss"].item()
-                # train_dice_loss += output["dice_loss"].item()
-                # train_csa_loss += output["csa_loss"].item()
                 train_soft_dice += output["train_soft_dice"].item()
-                # num_items += output["train_number"]
             
             mean_train_loss = (train_loss / num_items)
-            # mean_train_dice_loss = (train_dice_loss / num_items)
-            # mean_train_csa_loss = (train_csa_loss / num_items)
             mean_train_soft_dice = (train_soft_dice / num_items)
 
             wandb_logs = {
                 "train_soft_dice": mean_train_soft_dice, 
                 "train_loss": mean_train_loss,
-                # "train_dice_loss": mean_train_dice_loss,
-                # "train_csa_loss": mean_train_csa_loss,
             }
             self.log_dict(wandb_logs)
 
@@ -326,7 +270,6 @@ class Model(pl.LightningModule):
             outputs = outputs[0]
         
         # calculate validation loss
-        # dice_loss = self.loss_function(outputs, labels)
         loss = self.loss_function(outputs, labels)
 
         # get probabilities from logits
@@ -340,26 +283,11 @@ class Model(pl.LightningModule):
         hard_preds, hard_labels = (post_outputs[0].detach() > 0.5).float(), (post_labels[0].detach() > 0.5).float()
         val_hard_dice = self.soft_dice_metric(hard_preds, hard_labels)
 
-        # # compute val CSA loss
-        # val_csa_loss = 0.0
-        # for batch_idx in range(hard_preds.shape[0]):
-        #     pred_patch_csa = compute_average_csa(hard_preds[batch_idx].squeeze(), self.spacing)
-        #     gt_patch_csa = compute_average_csa(hard_labels[batch_idx].squeeze(), self.spacing)
-        #     val_csa_loss += (pred_patch_csa - gt_patch_csa) ** 2
-
-        # # average CSA loss across the batch
-        # val_csa_loss = val_csa_loss / hard_preds.shape[0]
-
-        # # total loss
-        # loss = dice_loss + val_csa_loss
-
         # NOTE: there was a massive memory leak when storing cuda tensors in this dict. Hence,
         # using .detach() to avoid storing the whole computation graph
         # Ref: https://discuss.pytorch.org/t/cuda-memory-leak-while-training/82855/2
         metrics_dict = {
             "val_loss": loss.detach().cpu(),
-            # "val_dice_loss": dice_loss.detach().cpu(),
-            # "val_csa_loss": val_csa_loss.detach().cpu(),
             "val_soft_dice": val_soft_dice.detach().cpu(),
             "val_hard_dice": val_hard_dice.detach().cpu(),
             "val_number": len(post_outputs),
@@ -374,27 +302,20 @@ class Model(pl.LightningModule):
     def on_validation_epoch_end(self):
 
         val_loss, num_items, val_soft_dice, val_hard_dice = 0, 0, 0, 0
-        val_dice_loss, val_csa_loss = 0, 0
         for output in self.val_step_outputs:
             val_loss += output["val_loss"].sum().item()
             val_soft_dice += output["val_soft_dice"].sum().item()
             val_hard_dice += output["val_hard_dice"].sum().item()
-            # val_dice_loss += output["val_dice_loss"].sum().item()
-            # val_csa_loss += output["val_csa_loss"].sum().item()
             num_items += output["val_number"]
         
         mean_val_loss = (val_loss / num_items)
         mean_val_soft_dice = (val_soft_dice / num_items)
         mean_val_hard_dice = (val_hard_dice / num_items)
-        # mean_val_dice_loss = (val_dice_loss / num_items)
-        # mean_val_csa_loss = (val_csa_loss / num_items)
                 
         wandb_logs = {
             "val_soft_dice": mean_val_soft_dice,
             "val_hard_dice": mean_val_hard_dice,
             "val_loss": mean_val_loss,
-            # "val_dice_loss": mean_val_dice_loss,
-            # "val_csa_loss": mean_val_csa_loss,
         }
         # save the best model based on validation dice score
         if mean_val_soft_dice > self.best_val_dice:
@@ -402,7 +323,6 @@ class Model(pl.LightningModule):
             self.best_val_epoch = self.current_epoch
         
         # save the best model based on validation CSA loss
-        # if mean_val_loss < self.best_val_csa:
         if mean_val_loss < self.best_val_loss:    
             self.best_val_loss = mean_val_loss
             self.best_val_epoch = self.current_epoch
@@ -412,8 +332,8 @@ class Model(pl.LightningModule):
             f"\nAverage Soft Dice (VAL): {mean_val_soft_dice:.4f}"
             f"\nAverage Hard Dice (VAL): {mean_val_hard_dice:.4f}"
             f"\nAverage AdapWing Loss (VAL): {mean_val_loss:.4f}"
-            f"\nBest Average Soft Dice: {self.best_val_dice:.4f} at Epoch: {self.best_val_epoch}"
-            # f"\nBest Average AdapWing Loss: {self.best_val_loss:.4f} at Epoch: {self.best_val_epoch}"
+            # f"\nBest Average Soft Dice: {self.best_val_dice:.4f} at Epoch: {self.best_val_epoch}"
+            f"\nBest Average AdapWing Loss: {self.best_val_loss:.4f} at Epoch: {self.best_val_epoch}"
             f"\n----------------------------------------------------")
         
 
@@ -438,7 +358,7 @@ class Model(pl.LightningModule):
     # --------------------------------
     def test_step(self, batch, batch_idx):
         
-        test_input, test_label = batch["image"], batch["label"]
+        test_input = batch["image"]
         # print(batch["label_meta_dict"]["filename_or_obj"][0])
         # print(f"test_input.shape: {test_input.shape} \t test_label.shape: {test_label.shape}")
         batch["pred"] = sliding_window_inference(test_input, self.inference_roi_size, 
@@ -474,11 +394,11 @@ class Model(pl.LightningModule):
             # save the prediction
             pred_saver(pred)
 
-            label_saver = SaveImage(
-                output_dir=save_folder, output_postfix="gt", output_ext=".nii.gz", 
-                separate_folder=False, print_log=False, resample=True)
-            # save the label
-            label_saver(label)
+            # label_saver = SaveImage(
+            #     output_dir=save_folder, output_postfix="gt", output_ext=".nii.gz", 
+            #     separate_folder=False, print_log=False, resample=True)
+            # # save the label
+            # label_saver(label)
             
 
         # NOTE: Important point from the SoftSeg paper - binarize predictions before computing metrics
@@ -574,18 +494,7 @@ def main(args):
         optimizer_class = torch.optim.SGD
 
     # define models
-    if args.model in ["unet"]:
-        logger.info(f" Using ivadomed's UNet model! ")
-        # this is the ivadomed unet model
-        net = ModifiedUNet3D(in_channels=1, out_channels=1, init_filters=args.init_filters)
-        patch_size = "48x160x320"   # "160x224x96" 
-        save_exp_id =f"ivado_{args.model}_nf={args.init_filters}_opt={args.optimizer}_lr={args.learning_rate}" \
-                        f"_AdapW_valCCrop_bs={args.batch_size}_{patch_size}"
-        if args.debug:
-            save_exp_id = f"DEBUG_{save_exp_id}"
-
-
-    elif args.model in ["unetr"]:
+    if args.model in ["unetr"]:
         # define image size to be fed to the model
         img_size = (160, 224, 96)
         
@@ -615,11 +524,19 @@ def main(args):
 
         # define model
         net = create_nnunet_from_plans(plans=nnunet_plans, num_input_channels=1, num_classes=1, deep_supervision=args.enable_DS)
-        patch_size = "48x160x320"   
-        save_exp_id =f"{args.model}_nf={args.init_filters}_DS={int(args.enable_DS)}" \
+        patch_size = "64x192x320"   
+        save_exp_id =f"{args.model}_{args.contrast}_{args.label_type}_nf={args.init_filters}" \
                         f"_opt={args.optimizer}_lr={args.learning_rate}" \
-                        f"_AdapW_CCrop" \
+                        f"_AdapW" \
                         f"_bs={args.batch_size}_{patch_size}"
+        # save_exp_id =f"{args.model}_{args.contrast}_{args.label_type}_nf={args.init_filters}" \
+        #                 f"_opt={args.optimizer}_lr={args.learning_rate}" \
+        #                 f"_DiceL" \
+        #                 f"_bs={args.batch_size}_{patch_size}"
+
+        if args.debug:
+            save_exp_id = f"DEBUG_{save_exp_id}"
+
 
     # TODO: move this inside the for loop when using more folds
     timestamp = datetime.now().strftime(f"%Y%m%d-%H%M")   # prints in YYYYMMDD-HHMMSS format
@@ -629,7 +546,11 @@ def main(args):
     logger.add(os.path.join(args.save_path, f"{save_exp_id}", "logs.txt"), rotation="10 MB", level="INFO")
 
     # define loss function
+    # loss_func = SoftDiceLoss(p=1, smooth=1.0)
+    # logger.info(f"Using SoftDiceLoss with p={loss_func.p}, smooth={loss_func.smooth}!")
     loss_func = AdapWingLoss(theta=0.5, omega=8, alpha=2.1, epsilon=1, reduction="sum")
+    # NOTE: tried increasing omega and decreasing epsilon but results marginally worse than the above
+    # loss_func = AdapWingLoss(theta=0.5, omega=12, alpha=2.1, epsilon=0.5, reduction="sum")
     logger.info(f"Using AdapWingLoss with theta={loss_func.theta}, omega={loss_func.omega}, alpha={loss_func.alpha}, epsilon={loss_func.epsilon}!")
 
     # define callbacks
@@ -789,7 +710,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='Script for training custom models for SCI Lesion Segmentation.')
     # Arguments for model, data, and training and saving
-    parser.add_argument('-m', '--model', choices=['unet', 'unetr', 'nnunet'], 
+    parser.add_argument('-m', '--model', choices=['unetr', 'nnunet'], 
                         default='unet', type=str, help='Model type to be used')
     parser.add_argument('--enable_DS', default=False, action='store_true', help='Enable Deep Supervision')
     # dataset
@@ -804,8 +725,6 @@ if __name__ == "__main__":
 
     # unet model 
     parser.add_argument('-initf', '--init_filters', default=16, type=int, help="Number of Filters in Init Layer")
-    # parser.add_argument('-ps', '--patch_size', type=int, default=128, help='List containing subvolume size')
-    parser.add_argument('-dep', '--unet_depth', default=3, type=int, help="Depth of UNet model")
 
     # unetr model 
     parser.add_argument('-fs', '--feature_size', default=16, type=int, help="Feature Size")
