@@ -170,7 +170,7 @@ compute_anima_metrics(){
   # -d : surface distances evaluation
   # -s : compute metrics to evaluate a segmentation
   # -X : stores results into a xml file.
-  file_output=f="$(basename -- $FILESEG)"
+  file_output="$(basename -- $FILESEG)"
   ${anima_binaries_path}/animaSegPerfAnalyzer -i ${FILESEG}_updated_header.nii.gz -r ${segmanual}.nii.gz -o ${PATH_RESULTS}/${file_output} -d -s -X
   rm ${FILESEG}_updated_header.nii.gz
 }
