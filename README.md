@@ -4,23 +4,23 @@ Official repository for contrast-agnostic spinal cord segmentation project using
 This repo contains all the code for data preprocessing, training and running inference on other datasets. The code is mainly based on [Spinal Cord Toolbox](https://spinalcordtoolbox.com) and [MONAI](https://github.com/Project-MONAI/MONAI) (PyTorch).
 
 ## Table of contents
-* [1.Main Dependencies](#1main-dependencies)
-* [2.Dataset](#2dataset)
-* [3.Preprocessing](#3processing)
-    * [3.1.Launch processing](#31launch-processing)
-    * [3.2.Quality control](#32quality-control)
-* [4. Training](#4training)
-    * [4.1. Setting up the environment](#41setting-up-the-environment)
-    * [4.2. Datalist creation](#42datalist-creation)
-    * [4.3. Training](#43training)
-    * [4.4. Running inference](#44running-inference)
-* [5. Computing morphometric measures (CSA)](#5compute-csa)
-    * [5.1. Using MONAI model (best)](#51example-monai)
-    * [5.2. Using nnUNet](#52example-nnunet)
-* [6. Analyse CSA and QC results](#6analyse-csa-qc-results)
-* [7. Get QC reports for other datasets](#7get-qc-reports-for-other-datasets)  
-    * [7.1. Example running QC on prediction masks from nnUNet](#71example-running-qc-on-prediction-masks-from-nnunet)
-* [8. Active-learning-procedure](#8active-learning-procedure) (TODO)
+* [1. Main Dependencies](#1-main-dependencies)
+* [2. Dataset](#2-dataset)
+* [3. Preprocessing](#3-preprocessing)
+    * [3.1. Launch preprocessing](#31-launch-preprocessing)
+    * [3.2. Quality control](#32-quality-control)
+* [4. Training](#4-training)
+    * [4.1. Setting up the environment](#41-setting-up-the-environment)
+    * [4.2. Datalist creation](#42-datalist-creation)
+    * [4.3. Training](#43-training)
+    * [4.4. Running inference](#44-running-inference)
+* [5. Computing morphometric measures (CSA)](#5-computing-morphometric-measures-csa)
+    * [5.1. Using contrast-agnostic model (best)](#51-using-contrast-agnostic-model-best)
+    * [5.2. Using nnUNet model](#52-using-nnunet-model)
+* [6. Analyse CSA and QC reports](#6-analyse-csa-and-qc-reports)
+* [7. Get QC reports for other datasets](#7-get-qc-reports-for-other-datasets)  
+    * [7.1. Example running QC on prediction masks from nnUNet](#71-example-running-qc-on-prediction-masks-from-nnunet)
+* [8. Active learning procedure](#8-active-learning-procedure) (TODO)
 
 ## 1. Main Dependencies
 
@@ -183,13 +183,15 @@ sct_run_batch -jobs -1 -path-data /data_processed_clean/ -path-output <PATH_OUTP
 
 The CSA results will be under `<PATH_OUTPUT>/results`.
 
-### 5.1.Example nnUnet
+### 5.1. Using contrast-agnostic model (best)
+
+### 5.2. Using nnUNet model
  **Note:** For nnUnet, change `prefix` in the script `compute_csa_nnunet.sh` according to the preffix in the prediction name.
 Here is an example on how to compute CSA on nnUnet models.
 ```
 sct_run_batch -jobs -1 -path-data ~/duke/projects/ivadomed/contrast-agnostic-seg/data_processed_sg_2023-03-10_NO_CROP\data_processed_clean -path-output ~/results -script compute_csa_nnunet.sh -script-args ~/duke/temp/muena/contrast-agnostic/Dataset713_spineGNoCropSoftAvgBin_test
 ``` 
-## 6. Analyse CSA results
+## 6. Analyse CSA and QC reports
 To generate violin plots and analyse results, put all CSA results file in the same folder (here `csa_nnunet_vs_ivadomed`) and run:
 
 ```
@@ -200,7 +202,7 @@ python analyse_csa_all_models.py -i-folder ~/duke/projects/ivadomed/contrast-agn
 * `-i-folder`: Path to folder containing CSA results from models to analyse
 * `-include`: names of the folder names to include in the analysis (one model = one foler)
 
-## 7. Run QC report on prediction masks from other datasets
+## 7. Get QC reports for other datasets
 
 1. Got inside the `scripts` folder:
 ~~~
@@ -224,7 +226,7 @@ sct_run_batch -jobs 20 -path-data ~/data_nvme_sebeda/datasets/dcm-zurich/ \
                        -script-args ~/duke/temp/muena/contrast-agnostic/pure-inference/Dataset725_dcmZurichSagittalRPI/test713_softAvg/
 ~~~
 
-## 8.Active learning procedure
+## 8. Active learning procedure
 To extend the training set to other contrasts and to pathologies, we applided the segmentation model to other datasets, manually corrected the segmentations and added them to the training set.
 
 Here is the detailed procedure:
