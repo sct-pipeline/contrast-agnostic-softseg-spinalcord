@@ -4,11 +4,11 @@ Official repository for contrast-agnostic spinal cord segmentation project using
 This repo contains all the code for data preprocessing, training and running inference on other datasets. The code is mainly based on [Spinal Cord Toolbox](https://spinalcordtoolbox.com) and [MONAI](https://github.com/Project-MONAI/MONAI) (PyTorch).
 
 ## Table of contents
-* [1. Dependencies](#1dependencies)
-* [2. Dataset](#2dataset)
-* [3. Preprocessing](#3processing)
-    * [3.1. Launch processing](#31launch-processing)
-    * [3.2. Quality control](#32quality-control)
+* [1.Main Dependencies](#1main-dependencies)
+* [2.Dataset](#2dataset)
+* [3.Preprocessing](#3processing)
+    * [3.1.Launch processing](#31launch-processing)
+    * [3.2.Quality control](#32quality-control)
 * [4. Training](#4training)
     * [4.1. Setting up the environment](#41setting-up-the-environment)
     * [4.2. Datalist creation](#42datalist-creation)
