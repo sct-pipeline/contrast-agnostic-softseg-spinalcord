@@ -27,7 +27,7 @@ color_palette = {
         'hard_all': '#8da0cb',
         'soft_all_AdapWing': '#66c2a5',
         'soft_all': '#66c2a5',
-        'soft_per_contrast': '#386cb0',
+        'soft_per\ncontrast': '#386cb0',
         'GT_hard': '#b3b3b3',
         'soft_all\ndice_loss': '#a6d854'
     }
@@ -77,15 +77,19 @@ def get_csa(csa_filename):
     return csa
 
 
-def get_pairwise_csa(df, path_out, filename):
-    fig, axs = plt.subplots(figsize=(10, 10))
+def get_pairwise_csa(df, df_deepseg, path_out, filename):
+    fig, axs = plt.subplots(figsize=(7, 7))
 
-    def r2(x, y, ax=None, **kws):
+
+    def r2(x, y, ax=None, xy=(.95, .05), edgecolor='#66c2a5', **kws):
         ax = ax or plt.gca()
         slope, intercept, r_value, p_value, std_err = stats.linregress(x=x, y=y)
         ax.annotate(f'$r^2 = {r_value ** 2:.2f}$\nEq: ${slope:.2f}x{intercept:+.2f}$',
-                    xy=(.05, .95), xycoords=ax.transAxes, fontsize=10,
-                    color='darkred', backgroundcolor='#FFFFFF99', ha='left', va='top')
+                    xy=xy, xycoords=ax.transAxes, fontsize=12,
+                    color='black', backgroundcolor='#FFFFFF99', ha='right', va='bottom',
+                    bbox=dict(facecolor='#FFFFFF99', alpha=0.8, edgecolor=edgecolor, boxstyle="round"))
+
+
     def plot_diag(x, y, ax=None, **kws):
         ax = ax or plt.gca()
         ax.plot([50, 100], [50, 100], ls="--", c=".3")
@@ -103,15 +107,25 @@ def get_pairwise_csa(df, path_out, filename):
 
     # Plot only T1w and T2w
     fig, ax = plt.subplots(figsize=(5, 5))
-    plt.title('T1w CSA vs T2w CSA', fontsize=15, fontweight="bold")
-    sns.regplot(x=df['T1w'], y=df['T2w'])
+    plt.title('T1w CSA vs T2w CSA', fontsize=14, fontweight="bold")
+    sns.regplot(x=df['T1w'], y=df['T2w'], label='soft_all', scatter_kws={"color": "#66c2a5"}, line_kws={"color": "#66c2a5"})
+    sns.regplot(x=df_deepseg['T1w'], y=df_deepseg['T2w'], label='deepseg2D', scatter_kws={"color": "#e78ac3"}, line_kws={"color": "#e78ac3"})
     plt.plot([50, 100], [50, 100], ls="--", c=".3")  # add diagonal line
-    r2(x=df['T1w'], y=df['T2w'], ax=ax)
+    r2(x=df['T1w'], y=df['T2w'], ax=ax,  xy=(.95, .2))
+    r2(x=df_deepseg['T1w'], y=df_deepseg['T2w'], ax=ax, edgecolor='#e78ac3')
     plt.gca().set_aspect("equal", adjustable="box")
     plt.xlim(55, 95)
     plt.ylim(55, 95)
-    ax.set_xlabel('T1w CSA (${mm^2}$)', fontsize=14, fontweight="bold")
-    ax.set_ylabel('T2w CSA (${mm^2}$)', fontsize=14, fontweight="bold")
+    plt.legend(fontsize=11,
+              loc="upper left",
+              frameon=True,
+              fancybox=True,
+              framealpha=0.7,
+              borderpad=1)
+    ax.set_xlabel(r'T1w CSA ($\bf{mm^2}$)', fontsize=13, fontweight="bold")
+    ax.set_ylabel(r'T2w CSA ($\bf{mm^2}$)', fontsize=13, fontweight="bold")
+    plt.yticks(fontsize=12)
+    plt.xticks(fontsize=12)
     plt.tight_layout()
     filename_t1_t2 = 'pairplot_t1_t2.png'
     outfile = os.path.join(path_out, filename_t1_t2)
@@ -123,17 +137,17 @@ def get_pairwise_csa(df, path_out, filename):
 def violin_plot(df, y_label, title, path_out, filename, set_ylim=False, annonate=False):
     sns.set_style('whitegrid', rc={'xtick.bottom': True,
                                    'ytick.left': True})
-    fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(12, 8))
+    fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(10.5, 7))
     plt.rcParams['legend.title_fontsize'] = 16
     if "violin_plot_all" in filename :
         # NOTE: we're adding cut=0 because the STD CSA violin plot extends beyond zero
         df_filt = df.copy()
         df_filt = df_filt[(np.abs(stats.zscore(df_filt)) < 3).all(axis=1)]
         sns.violinplot(data=df_filt, ax=ax, inner="box", linewidth=2, palette=color_palette, cut=0,
-                       showmeans=True, meanprops={"marker": "^", "markerfacecolor":"white", "markerscale": "3"})
+                       showmeans=True, width=0.97, meanprops={"marker": "^", "markerfacecolor":"white", "markerscale": "3"})
         x_bot, x_top = plt.xlim()
         # overlay scatter plot on the violin plot to show individual data points
-        sns.swarmplot(data=df, ax=ax, alpha=0.5, size=2, palette='dark:black')
+        sns.swarmplot(data=df, ax=ax, alpha=0.5, size=3, palette='dark:black')
         # Compute mean to add on plot:
         Means = df.mean()
         maximum = df_filt.max()
@@ -151,19 +165,19 @@ def violin_plot(df, y_label, title, path_out, filename, set_ylim=False, annonate
         # Add mean ± std on top of each violin plot
         length = len(Means)
         for i in np.arange(len(Means)):
-            textstr_F = '{:.2f} ± {:.2f}'.format(Means[i], STD[i]) + r' $mm^2$'
+            textstr_F = '{:.2f} ± {:.2f}'.format(Means[i], STD[i])# + r' $mm^2$'
             yabs_max = abs(max(ax.get_ylim(), key=abs))
             y_top = yabs_max+2
-            y_pos = (maximum[i])/(y_top-y_bot) + 0.1
-            ax.text((i+0.5)/length, y_pos, textstr_F, transform=ax.transAxes, fontsize=15,
+            y_pos = (maximum[i])/(y_top-y_bot) + 0.11
+            ax.text((i+0.5)/length, y_pos, textstr_F, transform=ax.transAxes, fontsize=18,
                     verticalalignment='top', horizontalalignment='center')
 
     else:
-        sns.violinplot(data=df, ax=ax, inner="box", linewidth=2, palette="Set2",
+        sns.violinplot(data=df, ax=ax, inner="box", linewidth=2, palette="Set2", width=0.9,
                        showmeans=True, meanprops={"marker": "^", "markerfacecolor": "white", "markerscale": "3"})
         x_bot, x_top = plt.xlim()
         # overlay scatter plot on the violin plot to show individual data points
-        sns.swarmplot(data=df, ax=ax, alpha=0.5, size=2, palette='dark:black')
+        sns.swarmplot(data=df, ax=ax, alpha=0.5, size=3, palette='dark:black')
         # Compute mean to add on plot:
         Means = df.mean()
         plt.scatter(x=df.columns, y=Means, c="w", marker="^", s=25, zorder=15)
@@ -182,17 +196,17 @@ def violin_plot(df, y_label, title, path_out, filename, set_ylim=False, annonate
             for i in np.arange(len(Means)):
                 textstr_F = '{:.2f} ± {:.2f}'.format(Means[i], STD[i])# + r' $mm^2$'
                 y_pos = (maximum[i]-ymin)/(ydiff) + 0.15
-                ax.text((i+0.5)/length, y_pos, textstr_F, transform=ax.transAxes, fontsize=14,
+                ax.text((i+0.5)/length, y_pos, textstr_F, transform=ax.transAxes, fontsize=15,
                         verticalalignment='top', horizontalalignment='center')
 
     plt.setp(ax.collections, alpha=.9)
-    ax.set_title(title, pad=20, fontweight="bold", fontsize=20)
+    ax.set_title(title, pad=20, fontweight="bold", fontsize=24)
     ax.xaxis.set_tick_params(direction='out')
     ax.xaxis.set_ticks_position('bottom')
-    plt.yticks(fontsize=18)
-    plt.xticks(fontsize=18)
+    plt.yticks(fontsize=21)
+    plt.xticks(fontsize=21)
     ax.tick_params(direction='out', axis='both')
-    ax.set_ylabel(y_label, fontsize=20, fontweight="bold")
+    ax.set_ylabel(y_label, fontsize=22, fontweight="bold")
     if set_ylim:
         if 'error' in filename:
             ax.set_ylim([-2.5, 15])
@@ -220,7 +234,7 @@ def compute_paired_t_test(data):
     for i in range(len(combinations)):
         stat, pval = stats.wilcoxon(x=data[combinations[i][0]], y=data[combinations[i][1]])
         pvals.append(pval)
-    p_adjusted = multipletests(pvals, method='bonferroni',alpha=0.05)
+    p_adjusted = multipletests(pvals, method='bonferroni', alpha=0.05)
     logger.info(p_adjusted)
 
 
@@ -324,7 +338,7 @@ def main():
         'csa_other_methods_2023-09-21-all/results/propseg': 'propseg',
         'csa_monai_nnunet_2023-09-18': 'soft_all',
         'csa_monai_nnunet_2023-09-18_hard': 'hard_all',
-        'csa_monai_nnunet_per_contrast': 'soft_per_contrast',
+        'csa_monai_nnunet_per_contrast': 'soft_per\ncontrast',
         'csa_gt_hard_2023-08-08': 'GT_hard',
         'csa_monai_nnunet_diceL': 'soft_all\ndice_loss'
     }
@@ -344,7 +358,7 @@ def main():
         logger.info(f'{method} STD CSA: \n{dfs[method].std()}')
         logger.info(std.sort_values(ascending=False))
         stds[method] = std
-        violin_plot(dfs[method].rename(columns={"mt-off": "GRE-T1w"}),
+        violin_plot(dfs[method].rename(columns={"mt-off": "GRE-T1w", "T2star": "T2*w"}),
                     y_label=r'CSA ($\bf{mm^2}$)',
                     title="CSA across MRI contrasts " + method,
                     path_out=exp_folder,
@@ -365,7 +379,7 @@ def main():
                 oneCol.append(error[column])
             error_csa_prediction[method] = pd.concat(oneCol, ignore_index=True)
             # Plot error per contrast
-            violin_plot(error.rename(columns={"mt-off": "GRE-T1w"}),
+            violin_plot(error.rename(columns={"mt-off": "GRE-T1w", "T2star": "T2*w"}),
                         y_label=r'Absolute CSA Error ($\bf{mm^2}$)',
                         title="Absolute CSA Error across MRI contrasts " + method,
                         path_out=exp_folder,
@@ -376,7 +390,7 @@ def main():
     logger.info(f'Number of subject in test set: {len(stds.index)}')
 
     # Compare one model per contrast vs one for all
-    include_one_vs_all = ['hard_all', 'soft_all\ndice_loss', 'soft_per_contrast', 'soft_all']
+    include_one_vs_all = ['hard_all', 'soft_all\ndice_loss', 'soft_per\ncontrast', 'soft_all']
     gt = ['GT_hard', 'GT_soft']
     logger.info('\nComparing one model vs one for all')
     # Plot STD
@@ -393,7 +407,9 @@ def main():
                 path_out=exp_folder,
                 filename='violin_plot_all_csa_error_all_onevsall.png')
     # Compare STDs soft_all vs soft_percontrast
+    logger.info('STDS posthoc')
     compute_paired_t_test(stds[include_one_vs_all])
+    logger.info('errors posthoc')
     compute_paired_t_test(error_csa_prediction[include_one_vs_all])
 
     # Compare MONAI_nnunet vs nnUnet vs deepseg_sc
@@ -404,18 +420,19 @@ def main():
     # Plot STD
     violin_plot(stds[gt+include_other_methods],
                 y_label=r'Standard deviation ($\bf{mm^2}$)', 
-                title="Variability of CSA across contrasts\nComparison with baselines",
+                title="Variability of CSA across contrasts\nComparison with state-of-the-art",
                 path_out=exp_folder,
                 filename='violin_plot_all_std_other_methods.png')
 
     # Plot CSA error:
     violin_plot(error_csa_prediction[include_other_methods],
                 y_label=r'Absolute CSA error ($\bf{mm^2}$)',
-                title="Absolute CSA error between prediction and GT\nComparison with baselines",
+                title="Absolute CSA error between prediction and GT\nComparison with state-of-the-art",
                 path_out=exp_folder,
                 filename='violin_plot_all_csa_error_all_other_methods.png')
-
+    logger.info('STDS posthoc')
     compute_paired_t_test(stds[include_other_methods])
+    logger.info('Errors posthoc')
     compute_paired_t_test(error_csa_prediction[include_other_methods])
 
 
@@ -425,20 +442,20 @@ def main():
     # Plot STD
     violin_plot(stds[gt+include_other_methods],
                 y_label=r'Standard deviation ($\bf{mm^2}$)',
-                title="Variability of CSA across MRI contrasts\nComparison with baselines",
+                title="Variability of CSA across MRI contrasts\nComparison with state-of-the-art",
                 path_out=exp_folder,
                 filename='violin_plot_all_std_other_methods_zoomed.png')
 
     # Plot CSA error:
     violin_plot(error_csa_prediction[include_other_methods],
                 y_label=r'Mean absolute CSA error ($\bf{mm^2}$)',
-                title="Absolute CSA error between prediction and GT\nComparison with baselines",
+                title="Absolute CSA error between prediction and GT\nComparison with state-of-the-art",
                 path_out=exp_folder,
                 filename='violin_plot_all_csa_error_all_other_methods_zoomed.png')
 
 
     # Do T1w CSA vs T2w CSA plots
-    get_pairwise_csa(dfs['soft_all'], path_out=exp_folder, filename='pairwise_soft_all.png')
+    get_pairwise_csa(dfs['soft_all'], dfs['deepseg2d'], path_out=exp_folder, filename='pairwise_soft_all.png')
     # one with all 6 contrasts for the final model
 
 
