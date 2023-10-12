@@ -1,26 +1,43 @@
-# Contrast-agnostic soft segmentation of the spinal cord
-Contrast-agnostic spinal cord segmentation project with softseg
+# Towards Contrast-agnostic Soft Segmentation of the Spinal Cord
+Official repository for contrast-agnostic spinal cord segmentation project using SoftSeg. 
 
-This repo creates a series of preparations for comparing the newly trained ivadomed models (Pytorch based), with the old models that are currently implemented in spinal cord toolbox [SCT] (tensorflow based).
+This repo contains all the code for data preprocessing, training and running inference on other datasets. The code is mainly based on [Spinal Cord Toolbox](https://spinalcordtoolbox.com) and [MONAI](https://github.com/Project-MONAI/MONAI) (PyTorch).
 
-## Dependencies
+## Table of contents
+* [1. Main Dependencies](#1-main-dependencies)
+* [2. Dataset](#2-dataset)
+* [3. Preprocessing](#3-preprocessing)
+    * [3.1. Launch preprocessing](#31-launch-preprocessing)
+    * [3.2. Quality control](#32-quality-control)
+* [4. Training](#4-training)
+    * [4.1. Setting up the environment](#41-setting-up-the-environment)
+    * [4.2. Datalist creation](#42-datalist-creation)
+    * [4.3. Training](#43-training)
+    * [4.4. Running inference](#44-running-inference)
+* [5. Computing morphometric measures (CSA)](#5-computing-morphometric-measures-csa)
+    * [5.1. Using contrast-agnostic model (best)](#51-using-contrast-agnostic-model-best)
+    * [5.2. Using nnUNet model](#52-using-nnunet-model)
+* [6. Analyse CSA and QC reports](#6-analyse-csa-and-qc-reports)
+* [7. Get QC reports for other datasets](#7-get-qc-reports-for-other-datasets)  
+    * [7.1. Example running QC on prediction masks from nnUNet](#71-example-running-qc-on-prediction-masks-from-nnunet)
+* [8. Active learning procedure](#8-active-learning-procedure) (TODO)
 
-- [SCT 5.3.0](https://github.com/neuropoly/spinalcordtoolbox/releases/tag/5.3.0)
-- Python 3.7.
+## 1. Main Dependencies
 
-## Dataset
-The source data are from the [spine-generic multi-subject](https://github.com/spine-generic/data-multi-subject/).
+- [SCT 6.0](https://github.com/neuropoly/spinalcordtoolbox/releases/tag/6.0)
+- Python 3.9
 
-The processed data are located on `duke:projects/ivadomed/contrast-agnostic-seg/data`.
+## 2. Dataset
+The source data can be found at [spine-generic multi-subject](https://github.com/spine-generic/data-multi-subject/).
 
-> ⚠️ Currently, there are three processed datasets to account for the issue of ivadomed loader that cannot deal with the MTS files (https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord/issues/25). In the future, there should be only ONE processed dataset. 
+The preprocessed data are located at `duke:projects/ivadomed/contrast-agnostic-seg/data_processed_sg_2023-08-08_NO_CROP\data_processed_clean` (internal server)
 
-## Processing
-Main processing steps include:
+## 3. Preprocessing
+Main preprocessing steps include:
 
-For T1w and T2w :
+For T1w and T2w:
 * Resampling
-* Reorient to RPI
+* Reorientation to RPI
 * Remove suffix `_RPI_r`
 
 For T2star:
@@ -29,31 +46,49 @@ For T2star:
 
 For DWI:
 * Generate mean image after motion correction
-* Remove intermidiate files
+* Remove intermediate files
 
-Next steps are to generate a contrast-agnostic soft segmentation: 
+Next steps are to generate the contrast-agnostic soft segmentation: 
 - creates spinal cord segmentation (if it doesn't exist yet)
 - creates a mask around the T2 spinal cord
 - co-register all contrasts to the T2 spinal cord 
 - average all segmentations from each contrast within the same space (the T2)
 - bring back the segmentations to the original image space of each contrast (except for the T2)
-- Crop images, segmentations and soft segmentation around the spinal cord
 
 The output of this script is a new `derivatives/labels_softseg/` folder that contains the soft labels to be used in this contrast-agnostic segmentation project. All the registration were manually QC-ed (see [Quality Control](#quality-control)) and the problematic registrations were listed in [exclude.yml](https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord/blob/main/exclude.yml). The processing was run again to generate the soft segmentations. 
 
 Specify the path of preprocessed dataset with the flag `-path-data`. 
 
-### Launch processing
+### 3.1. Launch Preprocessing
+
+This section assumes that SCT is installed. The installation instructions can be found [here](https://spinalcordtoolbox.com/en/latest/user_section/installation.html).
 
 ```
+cd processing_spine_generic
 sct_run_batch -jobs -1 -path-data <PATH_DATA> -path-output <PATH-OUTPUT> -script process_data.sh -script-args exclude.yml
+```
+
+or use a config file:
+
+```
+Example config_process_data.json: 
+{
+  "path_data"   : "~/data_nvme_sebeda/datasets/data-multi-subject/",
+  "path_output" : "~/data_nvme_sebeda/data_processed_sg_2023-08-04_NO_CROP",
+  "script"      : "process_data.sh",
+  "jobs"        : 50,
+  "exclude_list": ["sub-brnoUhb02", "sub-brnoUhb03", "sub-brnoUhb07", "sub-brnoUhb08", "sub-brnoUhb08", "sub-brnoUhb08", "sub-ucdavis01", "sub-ucdavis02", "sub-ucdavis03", "sub-ucdavis04", "sub-ucdavis05", "sub-ucdavis06", "sub-ucdavis07", "sub-beijingVerio01", "sub-beijingVerio02", "sub-beijingVerio03", "sub-beijingVerio04", "sub-beijingGE01", "sub-beijingGE02", "sub-beijingGE03", "sub-beijingGE04", "sub-ubc01", "sub-oxfordOhba02"]
+}
+```
+```
+sct_run_batch -config config_process_data.json
 ```
 
 A `process_data_clean` folder is created in <PATH-OUTPUT> where the cropped data and derivatives are included. Here, only the images that have a manual segmentation and soft segmentation are transfered.
 
-### Quality control
+### 3.2. Quality control
 
-After running the analysis, check your Quality Control (qc) report by opening the file <PATH-OUTPUT>/qc/index.html. Use the "search" feature of the QC report to quickly jump to segmentations or labeling issues.
+After running the analysis, check your Quality Control (QC) report by opening the file <PATH-OUTPUT>/qc/index.html. Use the "search" feature of the QC report to quickly jump to segmentations or labeling issues.
 
 **1. Segmentations**
 
@@ -82,53 +117,125 @@ Re-run the analysis: [Launch processing](#launch-processing)
 * Upload the soft segmentations under `data-multi-subject/derivatives/labels_softseg`.
 * Re-run the analysis: [Launch processing](#launch-processing)
 
-## Training
+## 4. Training
 
-### config_generator.py
-The script helps create joblibs that are going to represent splits of our dataset. It will create a <code>joblibs</code> folder containing the data split for each sub-experiment (i.e. hard_hard, soft_soft ...). The way we leverage the aforementioned python script is by running the bash script <code>utils/create_joblibs.sh</code> that will execute the following command for each sub-experiment:
+### 4.1. Setting up the environment
+
+The following commands show how to set up the environment. Note that the documentation assumes that the user has `conda` installed on their system. Instructions on installing `conda` can be found [here](https://conda.io/projects/conda/en/latest/user-guide/install/index.html).
+
+1. Create a conda environment with the following command:
 ```
-python config_generator.py --config config_templates/hard_hard.json \
-                           --datasets path/to/data
-                           --ofolder path/to/joblib \
-                           --contrasts T1w T2w T2star rec-average_dwi \
-                           --seeds 15
+conda create -n venv_monai python=3.9
 ```
-in which one has to specify the config template for the sub-experiment, the dataset path, the joblibs output folder, the contrasts used for the experiment and the random generation seed(s) respectively.
 
-### training_scripts
-Once the joblibs describing how the data is split are generated, one can start training the different models within a sub-experiment. Notice that there are 3 folders in <code>training_scripts</code>, 2 of them are related to a specific MTS contrast and the last one is used to train models with the other contrasts. This flaw is due to the incompatibility of ivadomed's dataloader dealing with MTS contrasts properly, at the time of writing. We expect to address this problem in the next months so we can have a single bash script executing all the training experiments smoothly.
-For clarity, we go over a few examples about how to use the current training scripts.
-1. One wants to train MTS contrast-specific models. Then choose the right MTS contrast <code>acq-MTon_MTS</code> or <code>acq-T1w_MTS</code> and run the associated bash script. 
-2. One wants to train contrast-specific (without MTS) models AND generalist models (including MTS) then run the bash script in <code>training_scripts/all/training_run.sh</code>.
+2. Activate the environment with the following command:
+```
+conda activate ven_monai
+```
 
-All training runs are using the ivadomed's framework and logging training metrics in a <code>results</code> folder (optionally with wandb).
+3. Install the required packages with the following command:
+```
+pip install -r monai/requirements.txt
+```
 
-### inference.sh 
-Once the models are trained, one can use the <code>evaluation/inference.sh</code> bash script to segment SC for tests participants and qualitatively analyze the results. Again like in all bash scripts mentioned in this project, one has to change a few parameters to adapt to one's environment (e.g. dataset path ...).
+### 4.2. Datalist creation
 
-### Evaluation on spine-generic-multi-subject (MICCAI 2023)
-Once the inference is done for all models and to reproduce the results presented in our paper, one would have to run the <code>compute_evaluation_metrics.py</code> after specifying the experiment folder paths inside that python script. A <code>spine-generic-test-results</code> folder will be created, in which a json file with the DICE and Relative Volume Difference (RVD) metrics for each experiments on the test set. To obtain the aggregated results **per_contrast** and **all_contrast**, run the <code>miccai_results_models.py</code> script. It generates aggregated results by the aforementioned category of models and the associated Latex table used in the paper. 
+The training script expects a datalist file in the Medical Decathlon format containing image-label pairs. The datalist can be created by running the `create_msd_data.py` script. For example, creating the datalist for the `soft_all` model:
+```
+python monai/create_msd_data.py -pd ~/duke/projects/ivadomed/contrast-agnostic-seg/data_processed_sg_2023-08-08_NO_CROP\data_processed_clean> -po ~/datasets/contrast-agnostic/ --contrast all --label-type soft --seed 42
+```
 
-## Compute CSA on prediction masks
+> **Note** 
+> The output of the above command is just `.json` file pointing to the image-label pairs in the original BIDS dataset. It _does not_ copy the existing data to the output folder. 
 
-To compute CSA at C2-C3 vertebral levels on the prediction masks obtained from the trained models, the script `compute_csa.sh` is used. The input is the folder `data_processed_clean` (result from preprocessing) and the path of the prediction masks is added as an extra script argument `-script-args`.
+### 4.3. Training
+The training uses MONAI functions and is written in PyTorch Lightning. Example training command to run the `soft_all` model:
+```
+python monai/main.py -m nnunet -crop 64x192x320 --contrast all --label-type soft -initf 32 -me 200 -bs 2 -opt adam -lr 1e-3 -cve 5 -pat 20 -epb -stp --enable_DS
+```
 
+Example training command to run the `soft_per_contrast` model on the `dwi` contrast:
+```
+python monai/main.py -m nnunet -crop 64x192x320 --contrast dwi --label-type soft -initf 32 -me 3 -bs 2 -opt adam -lr 1e-3 -cve 5 -pat 20 -epb -stp --enable_DS
+```
+
+These commands assume that the datalist created in [Section 4.2](#42datalist-creation#) lies in the same folder as `monai/main.py`. Run `python monai/main.py -h` to see all the available arguments and their descriptions.
+
+> **Note**
+> WandB is used experiment tracking and is implemented via Lightning's Wandblogger. Make sure that the `project` and `entity` are changed to the appropriate values.
+
+### 4.4. Running inference
+Inference can be run on single images using the `monai/run_inference_single_image.py` script. Run `monai/run_inference_single_image.py -h` for usage instructions. Currently, only CPU inference is supported
+
+## 5. Computing morphometric measures (CSA)
+
+To compute CSA at C2-C3 vertebral levels on the prediction masks obtained from the trained models, the script `compute_csa_nnunet.sh` is used. The input is the folder `data_processed_clean` (result from preprocessing) and the path of the prediction masks is added as an extra script argument `-script-args`.
+  
 For every trained model, you can run:
 
 ```
-sct_run_batch -jobs -1 -path-data /data_processed_clean/ -path-output <PATH_OUTPUT> -script compute_csa.sh -script-args <PATH_PRED_MASKS>
+sct_run_batch -jobs -1 -path-data /data_processed_clean/ -path-output <PATH_OUTPUT> -script compute_csa_nnunet.sh -script-args <PATH_PRED_MASKS>
 ```
+* `-path-data`: Path to data from spine generic used for training.
+* `-path-output`: Path to save results
+* `-script`: Script to compute CSA : `compute_csa_nnunet.sh`
+* `-script-args`: Path to the prediction masks
+
 The CSA results will be under `<PATH_OUTPUT>/results`.
 
-To generate violin plots and analyse results, run the following command:
+### 5.1. Using contrast-agnostic model (best)
+
+### 5.2. Using nnUNet model
+ **Note:** For nnUnet, change `prefix` in the script `compute_csa_nnunet.sh` according to the preffix in the prediction name.
+Here is an example on how to compute CSA on nnUnet models.
+```
+sct_run_batch -jobs -1 -path-data ~/duke/projects/ivadomed/contrast-agnostic-seg/data_processed_sg_2023-03-10_NO_CROP\data_processed_clean -path-output ~/results -script compute_csa_nnunet.sh -script-args ~/duke/temp/muena/contrast-agnostic/Dataset713_spineGNoCropSoftAvgBin_test
+``` 
+## 6. Analyse CSA and QC reports
+To generate violin plots and analyse results, put all CSA results file in the same folder (here `csa_nnunet_vs_ivadomed`) and run:
 
 ```
-python gen_charts.py --contrasts T1w T2w T2star rec-average_dwi \
-       --predictions_folder ../duke/projects/ivadomed/contrast-agnostic-seg/csa_measures_pred/group8-9_combined-2022-12-21/ \
-       --baseline_folder ../duke/projects/ivadomed/contrast-agnostic-seg/archive_derivatives_softsegs-seg/contrast-agnostic-centerofmass-preprocess-clean-all-2022-10-22\results_MTS_renamed
+python analyse_csa_all_models.py -i-folder ~/duke/projects/ivadomed/contrast-agnostic-seg/csa_measures_pred/csa_ivadomed_vs_nnunet_vs_monai/ \
+                                 -include csa_monai_nnunet_2023-09-18 csa_monai_nnunet_per_contrast csa_gt_2023-08-08 csa_gt_hard_2023-08-08 \
+                                          csa_nnunet_2023-08-24 csa_other_methods_2023-09-21-all csa_monai_nnunet_2023-09-18_hard csa_monai_nnunet_diceL
 ```
-## Run qc report on prediction masks
+* `-i-folder`: Path to folder containing CSA results from models to analyse
+* `-include`: names of the folder names to include in the analysis (one model = one foler)
 
+## 7. Get QC reports for other datasets
+
+1. Got inside the `scripts` folder:
 ~~~
-sct_run_batch -path-data <PATH_DATA> -path-out <PATH-OUT> -script-args <PATH_PRED_MASK> -jobs 20 -script run_qc_prediction.sh
+cd scripts
 ~~~
+2. Run bash script to generate QC report from prediction masks.
+**Note:** For nnUnet, ensure `prefix` in the script `compute_csa_nnunet.sh` according to the preffix in the prediction name and `contrast` with the image contrast.
+~~~
+sct_run_batch -path-data <PATH_DATA> -path-out <PATH-OUT> -script-args <PATH_PRED_MASK> -jobs 20 -script run_qc_prediction_XXX.sh
+~~~
+* `-path-data`: Path to the original dataset used to run inferences.
+* `-path-output`: Path to the results folder to save QC report
+* `-script`: Script `run_qc_prediction_XXX` corresponding to the dataset.
+* `-script-args`: Path to prediction masks for the specific dataset
+  
+### 7.1.Example running QC on prediction masks from nnUnet from other datasets
+~~~
+sct_run_batch -jobs 20 -path-data ~/data_nvme_sebeda/datasets/dcm-zurich/ \
+                       -path-output ~/data_nvme_sebeda/qc_dcm_zurich_sag_nnUnet_2023-05-30 \
+                       -script run_qc_prediction_dcm_zurich_sag.sh \
+                       -script-args ~/duke/temp/muena/contrast-agnostic/pure-inference/Dataset725_dcmZurichSagittalRPI/test713_softAvg/
+~~~
+
+## 8. Active learning procedure
+To extend the training set to other contrasts and to pathologies, we applided the segmentation model to other datasets, manually corrected the segmentations and added them to the training set.
+
+Here is the detailed procedure:
+
+1. Run inference on other datasets for the selected models and generate the QC report from prediction masks.
+2. Select ~20 interesting images per dataset (using the QC report).
+3. Correct the inference on the selected subjects if needed (you can use [`manual-correction`](https://github.com/spinalcordtoolbox/manual-correction) script).
+4. Add the inferred segmentations to the `derivatives/labels_contrast_agnostic` folder of each dataset.
+5. Add inferred segmentations to the training set (keep the same testing spine generic subjects) & retrain a model.
+6. Compute CSA on spine generic testing set and see STD vs before
+
+
