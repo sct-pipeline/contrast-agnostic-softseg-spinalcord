@@ -20,7 +20,7 @@ This repo contains all the code for data preprocessing, training and running inf
 * [6. Analyse CSA and QC reports](#6-analyse-csa-and-qc-reports)
 * [7. Get QC reports for other datasets](#7-get-qc-reports-for-other-datasets)  
     * [7.1. Example running QC on prediction masks from nnUNet](#71-example-running-qc-on-prediction-masks-from-nnunet)
-* [8. Active learning procedure](#8-active-learning-procedure) (TODO)
+* [8. Active learning procedure](#8-active-learning-procedure-todo)
 
 ## 1. Main Dependencies
 
@@ -117,6 +117,7 @@ Re-run the analysis: [Launch processing](#launch-processing)
 * Upload the soft segmentations under `data-multi-subject/derivatives/labels_softseg`.
 * Re-run the analysis: [Launch processing](#launch-processing)
 
+
 ## 4. Training
 
 ### 4.1. Setting up the environment
@@ -165,34 +166,42 @@ These commands assume that the datalist created in [Section 4.2](#42datalist-cre
 > WandB is used experiment tracking and is implemented via Lightning's Wandblogger. Make sure that the `project` and `entity` are changed to the appropriate values.
 
 ### 4.4. Running inference
-Inference can be run on single images using the `monai/run_inference_single_image.py` script. Run `monai/run_inference_single_image.py -h` for usage instructions. Currently, only CPU inference is supported
+Inference can be run on single images using the `monai/run_inference_single_image.py` script. Run `monai/run_inference_single_image.py -h` for usage instructions. Both CPU and GPU-based inference are supported.
+
 
 ## 5. Computing morphometric measures (CSA)
 
-To compute CSA at C2-C3 vertebral levels on the prediction masks obtained from the trained models, the script `compute_csa_nnunet.sh` is used. The input is the folder `data_processed_clean` (result from preprocessing) and the path of the prediction masks is added as an extra script argument `-script-args`.
+To compute the CSA at C2-C3 vertebral levels on the prediction masks and get the QC report of the predictions, the script `compute_csa_qc_<nnunet/monai>.sh` are used. The input is the folder `data_processed_clean` (result from preprocessing) and the path of the prediction masks is added as an extra script argument `-script-args`.
   
 For every trained model, you can run:
 
 ```
-sct_run_batch -jobs -1 -path-data /data_processed_clean/ -path-output <PATH_OUTPUT> -script compute_csa_nnunet.sh -script-args <PATH_PRED_MASKS>
+sct_run_batch -jobs -1 -path-data /data_processed_clean/ -path-output <PATH_OUTPUT> -script compute_csa_qc_<nnunet/monai>.sh -script-args <PATH_PRED_MASKS>
 ```
 * `-path-data`: Path to data from spine generic used for training.
 * `-path-output`: Path to save results
-* `-script`: Script to compute CSA : `compute_csa_nnunet.sh`
+* `-script`: Script to compute the CSA and QC report
 * `-script-args`: Path to the prediction masks
 
-The CSA results will be under `<PATH_OUTPUT>/results`.
+The CSA results will be under `<PATH_OUTPUT>/results` and the QC report under `<PATH_OUTPUT>/qc`.
 
 ### 5.1. Using contrast-agnostic model (best)
+Here is an example on how to compute CSA and QC on contrast-agnostic model
+
+```
+sct_run_batch -jobs -1 -path-data ~/duke/projects/ivadomed/contrast-agnostic-seg/data_processed_sg_2023-03-10_NO_CROP\data_processed_clean -path-output ~/results -script compute_csa_qc_monai.sh -script-args ~/duke/projects/ivadomed/contrast-agnostic-seg/models/monai/spine-generic-results
+```
 
 ### 5.2. Using nnUNet model
- **Note:** For nnUnet, change `prefix` in the script `compute_csa_nnunet.sh` according to the preffix in the prediction name.
-Here is an example on how to compute CSA on nnUnet models.
+ **Note:** For nnUnet, change the variable `prefix` in the script `compute_csa_nnunet.sh` according to the prefix in the prediction name.
+Here is an example on how to compute CSA and QC on nnUNet models.
+
 ```
-sct_run_batch -jobs -1 -path-data ~/duke/projects/ivadomed/contrast-agnostic-seg/data_processed_sg_2023-03-10_NO_CROP\data_processed_clean -path-output ~/results -script compute_csa_nnunet.sh -script-args ~/duke/temp/muena/contrast-agnostic/Dataset713_spineGNoCropSoftAvgBin_test
+sct_run_batch -jobs -1 -path-data ~/duke/projects/ivadomed/contrast-agnostic-seg/data_processed_sg_2023-03-10_NO_CROP\data_processed_clean -path-output ~/results -script compute_csa_qc_nnunet.sh -script-args ~/duke/projects/ivadomed/contrast-agnostic-seg/models/nnunet/spine-generic-results/test_predictions_2023-08-24
 ``` 
+
 ## 6. Analyse CSA and QC reports
-To generate violin plots and analyse results, put all CSA results file in the same folder (here `csa_nnunet_vs_ivadomed`) and run:
+To generate violin plots and analyse results, put all CSA results file in the same folder (here `csa_ivadomed_vs_nnunet_vs_monai`) and run:
 
 ```
 python analyse_csa_all_models.py -i-folder ~/duke/projects/ivadomed/contrast-agnostic-seg/csa_measures_pred/csa_ivadomed_vs_nnunet_vs_monai/ \
@@ -200,14 +209,15 @@ python analyse_csa_all_models.py -i-folder ~/duke/projects/ivadomed/contrast-agn
                                           csa_nnunet_2023-08-24 csa_other_methods_2023-09-21-all csa_monai_nnunet_2023-09-18_hard csa_monai_nnunet_diceL
 ```
 * `-i-folder`: Path to folder containing CSA results from models to analyse
-* `-include`: names of the folder names to include in the analysis (one model = one foler)
+* `-include`: names of the folder names to include in the analysis (one model = one folder)
+
+The plots will be saved to the parent directory with the name `charts_<datetime.now())>`
+
 
 ## 7. Get QC reports for other datasets
 
-1. Got inside the `scripts` folder:
-~~~
-cd scripts
-~~~
+The QC reports from three other datasets `sci-t2w`, `ms-mp2rage`, and `radiculopathy-epi` are shown in the paper. The scripts for reproducing the results are in the `qc_other_datasets` folder.
+
 2. Run bash script to generate QC report from prediction masks.
 **Note:** For nnUnet, ensure `prefix` in the script `compute_csa_nnunet.sh` according to the preffix in the prediction name and `contrast` with the image contrast.
 ~~~
@@ -226,7 +236,7 @@ sct_run_batch -jobs 20 -path-data ~/data_nvme_sebeda/datasets/dcm-zurich/ \
                        -script-args ~/duke/temp/muena/contrast-agnostic/pure-inference/Dataset725_dcmZurichSagittalRPI/test713_softAvg/
 ~~~
 
-## 8. Active learning procedure
+## 8. Active learning procedure (TODO)
 To extend the training set to other contrasts and to pathologies, we applided the segmentation model to other datasets, manually corrected the segmentations and added them to the training set.
 
 Here is the detailed procedure:
