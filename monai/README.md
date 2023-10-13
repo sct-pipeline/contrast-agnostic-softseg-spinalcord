@@ -18,13 +18,21 @@ conda create -n venv_monai python=3.9
 conda activate venv_monai
 ```
 
-3. The list of necessary packages can be found in `requirements_inference.txt`. Use the following command for installation:
+3. The list of necessary packages can be found in `requirements_inference_<cpu/gpu>.txt`. Use the following commands for installation:
 
+For CPU-based inference:
+```bash
 ```bash
 pip install -r requirements_inference.txt
 ```
 
-### Method 1: Running inference on a single image
+For GPU-based inference:
+```bash
+pip install -r requirements_inference_gpu.txt
+```
+
+
+### Method 1: Running inference on a single image 
 
 The script for running inference is `run_inference_single_image.py`. Please run 
 ```
@@ -35,7 +43,7 @@ to get the list of arguments and their descriptions.
 
 ### Method 2: Running inference on a dataset (Advanced)
 
-NOTE: This section is experimental and for advanced users only. Please use Method 1 for running inference.
+NOTE: This section is experimental and for advanced users only. It is currently not up-to-date. Please use Method 1 for running inference.
 
 #### Creating a datalist
 
