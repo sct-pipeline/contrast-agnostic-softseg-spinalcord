@@ -19,7 +19,9 @@ This repo contains all the code for data preprocessing, training and running inf
     * [5.2. Using nnUNet model](#52-using-nnunet-model)
 * [6. Analyse CSA and QC reports](#6-analyse-csa-and-qc-reports)
 * [7. Get QC reports for other datasets](#7-get-qc-reports-for-other-datasets)  
-    * [7.1. Example running QC on prediction masks from nnUNet](#71-example-running-qc-on-prediction-masks-from-nnunet)
+    * [7.1. Running QC on predictions from SCI-T2w dataset](#71-running-qc-on-predictions-from-sci-t2w-dataset)
+    * [7.2. Running QC on predictions from MS-MP2RAGE dataset](#72-running-qc-on-predictions-from-ms-mp2rage-dataset)
+    * [7.3. Running QC on predictions from Radiculopathy-EPI dataset](#73-running-qc-on-predictions-from-radiculopathy-epi-dataset)
 * [8. Active learning procedure](#8-active-learning-procedure-todo)
 
 ## 1. Main Dependencies
@@ -218,26 +220,76 @@ The plots will be saved to the parent directory with the name `charts_<datetime.
 
 The QC reports from three other datasets `sci-t2w`, `ms-mp2rage`, and `radiculopathy-epi` are shown in the paper. The scripts for reproducing the results are in the `qc_other_datasets` folder.
 
-2. Run bash script to generate QC report from prediction masks.
-**Note:** For nnUnet, ensure `prefix` in the script `compute_csa_nnunet.sh` according to the preffix in the prediction name and `contrast` with the image contrast.
+General command to run QC on prediction masks from other datasets:
 ~~~
-sct_run_batch -path-data <PATH_DATA> -path-out <PATH-OUT> -script-args <PATH_PRED_MASK> -jobs 20 -script run_qc_prediction_XXX.sh
+sct_run_batch -path-data <PATH_DATA> -path-out <PATH-OUT> -script-args <PATH_PRED_MASK> -jobs 20 -script run_qc_prediction_<dataset>.sh
 ~~~
 * `-path-data`: Path to the original dataset used to run inferences.
 * `-path-output`: Path to the results folder to save QC report
-* `-script`: Script `run_qc_prediction_XXX` corresponding to the dataset.
+* `-script`: Script `run_qc_prediction_<dataset>` corresponding to the dataset.
 * `-script-args`: Path to prediction masks for the specific dataset
   
-### 7.1.Example running QC on prediction masks from nnUnet from other datasets
+### 7.1. Running QC on predictions from SCI-T2w dataset
+
+Using the contrast-agnostic model:
 ~~~
-sct_run_batch -jobs 20 -path-data ~/data_nvme_sebeda/datasets/dcm-zurich/ \
-                       -path-output ~/data_nvme_sebeda/qc_dcm_zurich_sag_nnUnet_2023-05-30 \
-                       -script run_qc_prediction_dcm_zurich_sag.sh \
-                       -script-args ~/duke/temp/muena/contrast-agnostic/pure-inference/Dataset725_dcmZurichSagittalRPI/test713_softAvg/
+sct_run_batch -jobs 32 -path-data ~/path-to-dataset/sci-colorado/ \
+                       -path-output ~/path-to-output/qc_contrast-agnostic_sci-colorado \
+                       -script run_qc_prediction_sci_colorado.sh \
+                       -script-args ~/duke/projects/ivadomed/contrast-agnostic-seg/models/monai/sci-colorado-results/test_preds_colorado_soft_all
 ~~~
 
+Using the nnUNet model:
+~~~
+sct_run_batch -jobs 32 -path-data ~/path-to-dataset/sci-colorado/ \
+                       -path-output ~/path-to-output/qc_nnunet_sci-colorado \
+                       -script run_qc_prediction_sci_colorado.sh \
+                       -script-args "/home/GRAMES.POLYMTL.CA/u114716/duke/projects/ivadomed/contrast-agnostic-seg/models/nnunet/sci-colorado-results/test_predictions nnUNet"
+~~~
+
+### 7.2. Running QC on predictions from MS-MP2RAGE dataset
+
+Using the contrast-agnostic model:
+~~~
+sct_run_batch -jobs 32 -path-data ~/path-to-dataset/basel-mp2rage/ \
+                       -path-output ~/path-to-output/qc_contrast-agnostic_basel-mp2rage \
+                       -script run_qc_prediction_basel_mp2rage.sh \
+                       -script-args ~/duke/projects/ivadomed/contrast-agnostic-seg/models/monai/basel-mp2rage-rpi-results/test_preds_mp2rage_soft_all
+~~~
+
+Using the nnUNet model:
+~~~
+sct_run_batch -jobs 32 -path-data ~/path-to-dataset/basel-mp2rage/ \
+                       -path-output ~/path-to-output/qc_nnunet_basel-mp2rage \
+                       -script run_qc_prediction_basel_mp2rage.sh \
+                       -script-args "/home/GRAMES.POLYMTL.CA/u114716/duke/projects/ivadomed/contrast-agnostic-seg/models/nnunet/basel-mp2rage-rpi-results/test_predictions nnUNet"
+~~~
+
+### 7.3. Running QC on predictions from Radiculopathy-EPI dataset
+
+Using the contrast-agnostic model:
+~~~
+sct_run_batch -jobs 32 -path-data ~/path-to-dataset/epi-stanford/ \
+                       -path-output ~/path-to-output/qc_contrast-agnostic_epi-stanford \
+                       -script run_qc_prediction_epi_stanford.sh \
+                       -script-args ~/duke/projects/ivadomed/contrast-agnostic-seg/models/monai/epi-stanford-results/test_preds_soft_all
+~~~
+
+Using the nnUNet model:
+~~~
+sct_run_batch -jobs 32 -path-data ~/path-to-dataset/epi-stanford/ \
+                       -path-output ~/path-to-output/qc_nnunet_radiculopathy-epi \
+                       -script run_qc_prediction_epi_stanford.sh \
+                       -script-args "/home/GRAMES.POLYMTL.CA/u114716/duke/projects/ivadomed/contrast-agnostic-seg/models/nnunet/epi-stanford-results/test_preds_stanford_rest_weber nnUNet"
+~~~
+
+
 ## 8. Active learning procedure (TODO)
-To extend the training set to other contrasts and to pathologies, we applided the segmentation model to other datasets, manually corrected the segmentations and added them to the training set.
+
+> **Note**
+> This section is still a work in progress.
+
+To extend the training set to other contrasts and to pathologies, we applied the segmentation model to other datasets, manually corrected the segmentations and added them to the training set.
 
 Here is the detailed procedure:
 
