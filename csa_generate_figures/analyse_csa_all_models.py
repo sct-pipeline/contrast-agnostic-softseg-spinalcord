@@ -94,8 +94,13 @@ def get_pairwise_csa(df, df_deepseg, path_out, filename):
         ax = ax or plt.gca()
         ax.plot([50, 100], [50, 100], ls="--", c=".3")
 
-    g = sns.pairplot(df, kind='reg', corner=True, plot_kws={'line_kws': {'color': 'red'}})
+    sns.set_context("paper", rc={"axes.labelsize":16,"xtick.labelsize":16, "ytick.labelsize":16})
+    g = sns.pairplot(df, kind="reg", diag_kind="kde", diag_kws={"linewidth": 0, "shade": False}, corner=True, plot_kws={'line_kws': {'color': 'red'}})
     g.map_lower(r2)
+    for i, y_var in enumerate(g.y_vars):
+        for j, x_var in enumerate(g.x_vars):
+            if x_var == y_var:
+                g.axes[i, j].set_visible(False)
     # ensure axes match on each pairplot
     g.set(xlim=(55,95), ylim = (55,95))
     g.map_offdiag(plot_diag)
@@ -173,6 +178,7 @@ def violin_plot(df, y_label, title, path_out, filename, set_ylim=False, annonate
                     verticalalignment='top', horizontalalignment='center')
 
     else:
+        df = df[['DWI', 'MT-on', 'GRE-T1w', 'T1w', 'T2*w', 'T2w']]
         sns.violinplot(data=df, ax=ax, inner="box", linewidth=2, palette="Set2", width=0.9,
                        showmeans=True, meanprops={"marker": "^", "markerfacecolor": "white", "markerscale": "3"})
         x_bot, x_top = plt.xlim()
@@ -358,7 +364,8 @@ def main():
         logger.info(f'{method} STD CSA: \n{dfs[method].std()}')
         logger.info(std.sort_values(ascending=False))
         stds[method] = std
-        violin_plot(dfs[method].rename(columns={"mt-off": "GRE-T1w", "T2star": "T2*w"}),
+        print(dfs[method].columns)
+        violin_plot(dfs[method].rename(columns={"mt-off": "GRE-T1w", "T2star": "T2*w", "mt-on": "MT-on", "dwi":"DWI"}),
                     y_label=r'CSA ($\bf{mm^2}$)',
                     title="CSA across MRI contrasts " + method,
                     path_out=exp_folder,
@@ -379,7 +386,7 @@ def main():
                 oneCol.append(error[column])
             error_csa_prediction[method] = pd.concat(oneCol, ignore_index=True)
             # Plot error per contrast
-            violin_plot(error.rename(columns={"mt-off": "GRE-T1w", "T2star": "T2*w"}),
+            violin_plot(error.rename(columns={"mt-off": "GRE-T1w", "T2star": "T2*w", "mt-on": "MT-on", "dwi":"DWI"}),
                         y_label=r'Absolute CSA Error ($\bf{mm^2}$)',
                         title="Absolute CSA Error across MRI contrasts " + method,
                         path_out=exp_folder,
@@ -455,7 +462,7 @@ def main():
 
 
     # Do T1w CSA vs T2w CSA plots
-    get_pairwise_csa(dfs['soft_all'], dfs['deepseg2d'], path_out=exp_folder, filename='pairwise_soft_all.png')
+    get_pairwise_csa(dfs['soft_all'].rename(columns={"mt-off": "GRE-T1w", "T2star": "T2*w", "mt-on": "MT-on", "dwi":"DWI"}), dfs['deepseg2d'], path_out=exp_folder, filename='pairwise_soft_all.png')
     # one with all 6 contrasts for the final model
 
 
