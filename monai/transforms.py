@@ -4,10 +4,8 @@ from monai.transforms import (Compose, CropForegroundd, LoadImaged, RandFlipd,
             Spacingd, RandScaleIntensityd, NormalizeIntensityd, RandAffined,
             DivisiblePadd, RandAdjustContrastd, EnsureChannelFirstd, RandGaussianNoised, 
             RandGaussianSmoothd, Orientationd, Rand3DElasticd, RandBiasFieldd, 
-            ResizeWithPadOrCropd)
+            RandSimulateLowResolutiond, ResizeWithPadOrCropd)
 
-# TODO: Add RandSimulateLowResolutiond transform when monai 1.3.0 is released. 
-# Right now, in v1.2.0, it is not implemented yet (I had to manually add in the source code)
 
 def train_transforms(crop_size, lbl_key="label"):
 
@@ -26,7 +24,7 @@ def train_transforms(crop_size, lbl_key="label"):
         Rand3DElasticd(keys=["image", lbl_key], prob=0.5,
                        sigma_range=(3.5, 5.5), 
                        magnitude_range=(25., 35.)),
-        # RandSimulateLowResolutiond(keys=["image"], zoom_range=(0.5, 1.0), prob=0.25),
+        RandSimulateLowResolutiond(keys=["image"], zoom_range=(0.5, 1.0), prob=0.25),
         RandAdjustContrastd(keys=["image"], gamma=(0.5, 3.), prob=0.5),    # this is monai's RandomGamma
         RandBiasFieldd(keys=["image"], coeff_range=(0.0, 0.5), degree=3, prob=0.3),
         RandGaussianNoised(keys=["image"], mean=0.0, std=0.1, prob=0.1),
