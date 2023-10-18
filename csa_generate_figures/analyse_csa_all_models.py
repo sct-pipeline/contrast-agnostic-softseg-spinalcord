@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
+# Computes statistical analysis for the contrast-agnostic segmentation project
+#
+# For usage, type: python analyse_csa_all_models.py -h
 
+# Authors: Sandrine Bédard
 
 import os
 import logging
@@ -32,7 +36,6 @@ color_palette = {
         'soft_all\ndice_loss': '#a6d854'
     }
 
-#MY_PAL = {"PMJ": "cornflowerblue", "Disc": "lightyellow", "Spinal Roots":"gold"}
 
 # Initialize logging
 logger = logging.getLogger(__name__)
@@ -54,6 +57,7 @@ def get_parser():
                         help="Folder names to include" +
                         "predictions are (for the specified contrasts).")
     parser.add_argument('-annotate-graph',
+                        help='Add mean ± std annotations on the per contrasts violin plots.',
                         action='store_true')
     return parser
 
@@ -78,9 +82,19 @@ def get_csa(csa_filename):
 
 
 def get_pairwise_csa(df, df_deepseg, path_out, filename):
+    """
+    Creates pairwise CSA agreement and between T1w and T2w.
+    Args:
+        df: (pandas.DataFrame): df with CSA values of the best model.
+        df_deepseg (pandas.DataFrame): df with CSA values for deepseg 2D model.
+        path_out (str): Path where to save the figures.
+        filename (str): Filename of pairwise plots.
+    Returns:
+
+    """
+    
     fig, axs = plt.subplots(figsize=(7, 7))
-
-
+    # Function to add linear equation and r^2
     def r2(x, y, ax=None, xy=(.95, .05), edgecolor='#66c2a5', **kws):
         ax = ax or plt.gca()
         slope, intercept, r_value, p_value, std_err = stats.linregress(x=x, y=y)
@@ -89,13 +103,19 @@ def get_pairwise_csa(df, df_deepseg, path_out, filename):
                     color='black', backgroundcolor='#FFFFFF99', ha='right', va='bottom',
                     bbox=dict(facecolor='#FFFFFF99', alpha=0.8, edgecolor=edgecolor, boxstyle="round"))
 
-
+    # Function to add identity line
     def plot_diag(x, y, ax=None, **kws):
         ax = ax or plt.gca()
         ax.plot([50, 100], [50, 100], ls="--", c=".3")
-
-    g = sns.pairplot(df, kind='reg', corner=True, plot_kws={'line_kws': {'color': 'red'}})
+    # Create pairwise plot
+    sns.set_context("paper", rc={"axes.labelsize":16,"xtick.labelsize":16, "ytick.labelsize":16})
+    g = sns.pairplot(df, kind="reg", diag_kind="kde", diag_kws={"linewidth": 0, "shade": False}, corner=True, plot_kws={'line_kws': {'color': 'red'}})
     g.map_lower(r2)
+    # Remove diagonal
+    for i, y_var in enumerate(g.y_vars):
+        for j, x_var in enumerate(g.x_vars):
+            if x_var == y_var:
+                g.axes[i, j].set_visible(False)
     # ensure axes match on each pairplot
     g.set(xlim=(55,95), ylim = (55,95))
     g.map_offdiag(plot_diag)
@@ -105,7 +125,7 @@ def get_pairwise_csa(df, df_deepseg, path_out, filename):
     logger.info(f'Saving {outfile}')
     plt.close()
 
-    # Plot only T1w and T2w
+    # Plot only T1w and T2w for soft_all and deepseg 2D
     fig, ax = plt.subplots(figsize=(5, 5))
     plt.title('T1w CSA vs T2w CSA', fontsize=14, fontweight="bold")
     sns.regplot(x=df['T1w'], y=df['T2w'], label='soft_all', scatter_kws={"color": "#66c2a5"}, line_kws={"color": "#66c2a5"})
@@ -135,6 +155,19 @@ def get_pairwise_csa(df, df_deepseg, path_out, filename):
 
 
 def violin_plot(df, y_label, title, path_out, filename, set_ylim=False, annonate=False):
+    """
+    Creates violin plots overlaid with scatterplot.
+    Args:
+        df: (pandas.DataFrame): df.
+        y_label (str): Name of y label to write on plot.
+        title (str): Title of plot.
+        path_out (str): Path where to save the figures.
+        filename (str): Filename of pairwise plots.
+        set_ylim (bool): Set y lim. Set true for per contrast plots.
+        annonate (bool): Add mean ± std over violin plots for per contrast plots.
+    Returns:
+
+    """
     sns.set_style('whitegrid', rc={'xtick.bottom': True,
                                    'ytick.left': True})
     fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(10.5, 7))
@@ -152,6 +185,7 @@ def violin_plot(df, y_label, title, path_out, filename, set_ylim=False, annonate
         Means = df.mean()
         maximum = df_filt.max()
         STD = df.std()
+        # add white triangle marker for mean
         plt.scatter(x=df.columns, y=Means, c="w", marker="^", s=25, zorder=15)
         y_bot, _ = plt.ylim()
         # insert a dashed vertical line at x=1
@@ -173,6 +207,8 @@ def violin_plot(df, y_label, title, path_out, filename, set_ylim=False, annonate
                     verticalalignment='top', horizontalalignment='center')
 
     else:
+        # Ensure order of contrasts
+        df = df[['DWI', 'MT-on', 'GRE-T1w', 'T1w', 'T2*w', 'T2w']]
         sns.violinplot(data=df, ax=ax, inner="box", linewidth=2, palette="Set2", width=0.9,
                        showmeans=True, meanprops={"marker": "^", "markerfacecolor": "white", "markerscale": "3"})
         x_bot, x_top = plt.xlim()
@@ -226,6 +262,13 @@ def violin_plot(df, y_label, title, path_out, filename, set_ylim=False, annonate
 
 
 def compute_paired_t_test(data):
+    """
+    Compute pairwise statistical test (wilcoxon) between all pairs of methods and corrects for multiple comparison.
+    Args:
+        data: (pandas.DataFrame): Each column represent one method.
+    Returns:
+
+    """
     columns = list(data.columns)
     combinations = list(itertools.combinations(columns, 2))
     logger.info(combinations)
@@ -265,6 +308,7 @@ def main():
         folders_included.append(os.path.join(other, 'results','deepseg3d'))
         folders_included.append(os.path.join(other, 'results','propseg'))
     print(folders_included)
+    # Read CSV files
     for folder in folders_included:
         print('\n', folder)
         if 'csa_gt' in folder:
@@ -347,6 +391,7 @@ def main():
     dfs = dict((rename[key], value) for (key, value) in dfs.items())
     stds = pd.DataFrame()
     error_csa_prediction = pd.DataFrame()
+    # Compute CSA STD and CSA error for all methods
     for method in dfs.keys():
         std = dfs[method].std(axis=1)
         mean_std = std.mean()
@@ -358,7 +403,8 @@ def main():
         logger.info(f'{method} STD CSA: \n{dfs[method].std()}')
         logger.info(std.sort_values(ascending=False))
         stds[method] = std
-        violin_plot(dfs[method].rename(columns={"mt-off": "GRE-T1w", "T2star": "T2*w"}),
+        print(dfs[method].columns)
+        violin_plot(dfs[method].rename(columns={"mt-off": "GRE-T1w", "T2star": "T2*w", "mt-on": "MT-on", "dwi":"DWI"}),
                     y_label=r'CSA ($\bf{mm^2}$)',
                     title="CSA across MRI contrasts " + method,
                     path_out=exp_folder,
@@ -379,7 +425,7 @@ def main():
                 oneCol.append(error[column])
             error_csa_prediction[method] = pd.concat(oneCol, ignore_index=True)
             # Plot error per contrast
-            violin_plot(error.rename(columns={"mt-off": "GRE-T1w", "T2star": "T2*w"}),
+            violin_plot(error.rename(columns={"mt-off": "GRE-T1w", "T2star": "T2*w", "mt-on": "MT-on", "dwi":"DWI"}),
                         y_label=r'Absolute CSA Error ($\bf{mm^2}$)',
                         title="Absolute CSA Error across MRI contrasts " + method,
                         path_out=exp_folder,
@@ -390,6 +436,7 @@ def main():
     logger.info(f'Number of subject in test set: {len(stds.index)}')
 
     # Compare one model per contrast vs one for all
+    ################################################
     include_one_vs_all = ['hard_all', 'soft_all\ndice_loss', 'soft_per\ncontrast', 'soft_all']
     gt = ['GT_hard', 'GT_soft']
     logger.info('\nComparing one model vs one for all')
@@ -413,6 +460,7 @@ def main():
     compute_paired_t_test(error_csa_prediction[include_one_vs_all])
 
     # Compare MONAI_nnunet vs nnUnet vs deepseg_sc
+    ##############################################
     logger.info('\nComparing with other methods.')
     include_other_methods = ['deepseg3d', 'propseg','deepseg2d','nnUNet','soft_all']
     gt = ['GT_soft']
@@ -455,8 +503,8 @@ def main():
 
 
     # Do T1w CSA vs T2w CSA plots
-    get_pairwise_csa(dfs['soft_all'], dfs['deepseg2d'], path_out=exp_folder, filename='pairwise_soft_all.png')
-    # one with all 6 contrasts for the final model
+    #################################
+    get_pairwise_csa(dfs['soft_all'].rename(columns={"mt-off": "GRE-T1w", "T2star": "T2*w", "mt-on": "MT-on", "dwi":"DWI"}), dfs['deepseg2d'], path_out=exp_folder, filename='pairwise_soft_all.png')
 
 
 
