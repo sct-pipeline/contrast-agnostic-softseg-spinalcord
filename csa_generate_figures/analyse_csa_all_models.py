@@ -18,6 +18,7 @@ from scipy import stats
 from charts_utils import create_experiment_folder
 import itertools
 from statsmodels.sandbox.stats.multicomp import multipletests
+from statsmodels.stats.anova import AnovaRM
 
 FNAME_LOG = 'log_stats.txt'
 
@@ -281,6 +282,13 @@ def compute_paired_t_test(data):
     logger.info(p_adjusted)
 
 
+def compute_anova(df, depvar='std', subject='Subject', within=None, aggregate_func=None):
+    results = AnovaRM(data=df, depvar=depvar, subject=subject, within=within, aggregate_func=aggregate_func).fit()
+    p_value = results.anova_table["Pr > F"][0]
+    logger.info('ANOVA: {}'.format(results))
+    logger.info('ANOVA p-value: {}'.format(p_value))
+
+
 def main():
     exp_folder = create_experiment_folder()
     print(exp_folder)
@@ -434,6 +442,60 @@ def main():
                         annonate=annonate)
 
     logger.info(f'Number of subject in test set: {len(stds.index)}')
+    # Compute statistical test for soft_all CSA
+    ###########################################
+    logger.info('\nPaired ANOVA test between CSA across contrasts for soft_all')
+    csa_soft_all = dfs['soft_all'].copy().reset_index()
+    print(csa_soft_all.columns)
+    length = len(csa_soft_all.index.to_list())
+    print('Lenght:', length)
+    #print(csa_soft_all)
+    #csa_soft_all['csa'] = csa_soft_all['DWI']
+    #csa_soft_all['contrast'] = 'DWI'
+    oneCol = []
+    subjects = []
+    cols = ['dwi', 'mt-on', 'mt-off', 'T1w', 'T2star', 'T2w']
+    for col in cols:
+        oneCol.append(csa_soft_all[col])
+        subjects.append(csa_soft_all['Subject'])
+    csa_row = pd.concat(oneCol, ignore_index=True)
+    csa = pd.DataFrame()
+    csa['csa'] = csa_row
+    csa['Subject'] = np.ravel(subjects)
+    csa['contrast'] = 'test'
+    csa.loc[0:length, 'contrast'] = 'DWI'
+    csa.loc[length:2*length, 'contrast'] = 'MT-on'
+    csa.loc[2*length:3*length, 'contrast'] = 'GRE-T1w'
+    csa.loc[3*length:4*length, 'contrast'] = 'T1w'
+    csa.loc[4*length:5*length, 'contrast'] = 'T2*w'
+    csa.loc[5*length:6*length, 'contrast'] = 'T2w'
+    print(csa)
+    compute_anova(df=csa, depvar='csa', subject='Subject', within=['contrast'])
+
+    logger.info('\nPaired ANOVA test between CSA across contrasts for hard_all')
+    csa_soft_all = dfs['hard_all'].copy().reset_index()
+    length = len(csa_soft_all.index.to_list())
+    #print(csa_soft_all)
+    #csa_soft_all['csa'] = csa_soft_all['DWI']
+    #csa_soft_all['contrast'] = 'DWI'
+    oneCol = []
+    subjects = []
+    cols = ['dwi', 'mt-on', 'mt-off', 'T1w', 'T2star', 'T2w']
+    for col in cols:
+        oneCol.append(csa_soft_all[col])
+        subjects.append(csa_soft_all['Subject'])
+    csa_row = pd.concat(oneCol, ignore_index=True)
+    csa = pd.DataFrame()
+    csa['csa'] = csa_row
+    csa['Subject'] = np.ravel(subjects)
+    csa.loc[0:length, 'contrast'] = 'DWI'
+    csa.loc[length:2*length, 'contrast'] = 'MT-on'
+    csa.loc[2*length:3*length, 'contrast'] = 'GRE-T1w'
+    csa.loc[3*length:4*length, 'contrast'] = 'T1w'
+    csa.loc[4*length:5*length, 'contrast'] = 'T2*w'
+    csa.loc[5*length:6*length, 'contrast'] = 'T2w'
+    print(csa)
+    compute_anova(df=csa, depvar='csa', subject='Subject', within=['contrast'])
 
     # Compare one model per contrast vs one for all
     ################################################
@@ -505,7 +567,6 @@ def main():
     # Do T1w CSA vs T2w CSA plots
     #################################
     get_pairwise_csa(dfs['soft_all'].rename(columns={"mt-off": "GRE-T1w", "T2star": "T2*w", "mt-on": "MT-on", "dwi":"DWI"}), dfs['deepseg2d'], path_out=exp_folder, filename='pairwise_soft_all.png')
-
 
 
 
