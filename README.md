@@ -14,6 +14,7 @@ This repo contains all the code for data preprocessing, training and running inf
     * [4.2. Datalist creation](#42-datalist-creation)
     * [4.3. Training](#43-training)
     * [4.4. Running inference](#44-running-inference)
+    * [4.5. Compute ANIMA metrics](#45-compute-anima-metrics)
 * [5. Computing morphometric measures (CSA)](#5-computing-morphometric-measures-csa)
     * [5.1. Using contrast-agnostic model (best)](#51-using-contrast-agnostic-model-best)
     * [5.2. Using nnUNet model](#52-using-nnunet-model)
@@ -169,6 +170,21 @@ These commands assume that the datalist created in [Section 4.2](#42datalist-cre
 
 ### 4.4. Running inference
 Inference can be run on single images using the `monai/run_inference_single_image.py` script. Run `monai/run_inference_single_image.py -h` for usage instructions. Both CPU and GPU-based inference are supported.
+
+### 4.5. Compute ANIMA metrics
+To compute the ANIMA metrics shown in the paper, the scripts `compute_anima_metrics_*.py` are used. For generating the metrics on the spine-generic dataset and also for deepseg and propseg methods, use the following command:
+
+```
+python anima_metrics/compute_anima_metrics_spine_generic.py --pred-folder <PATH_PREDS> --method <monai/deepseg2d/deepseg3d/propseg> -dname spine-generic
+```
+
+For reproducing the results on the other datasets, use the following command:
+```
+python anima_metrics/compute_anima_metrics_unseen_datasets.py --pred-folder <PATH_PREDS> -dname <sci-t2w/ms-mp2rage/radiculopathy-epi>
+```
+
+> **Note**
+> The `--pred-folder` argument expects the path to the folder containing the prediction and GT segmentation masks. 
 
 
 ## 5. Computing morphometric measures (CSA)
