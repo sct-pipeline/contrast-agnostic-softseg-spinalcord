@@ -91,7 +91,7 @@ import xml.etree.ElementTree as ET
 import numpy as np
 import nibabel as nib
 
-DATASETS = ["sci-colorado", "sc-epi-stanford", "basel-mp2rage"]
+DATASETS = ["sci-t2w", "radioculopathy-epi", "ms-mp2rage"]
 
 def get_parser():
     # parse command line arguments
