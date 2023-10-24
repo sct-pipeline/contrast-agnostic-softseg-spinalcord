@@ -139,7 +139,7 @@ for file_path in "${contrasts[@]}";do
 
   # Get manual hard GT to get labeled segmentation
   FILESEG="${file_path}_seg"
-  FILESEGMANUAL="${PATH_DATA}/derivatives/labels/${SUBJECT}/${FILESEG}-manual.nii.gz"
+  FILESEGMANUAL="${PATH_DATA}/../data_processed/${SUBJECT}/${FILESEG}.nii.gz"
   echo
   echo "Looking for manual segmentation: $FILESEGMANUAL"
   if [[ -e $FILESEGMANUAL ]]; then
