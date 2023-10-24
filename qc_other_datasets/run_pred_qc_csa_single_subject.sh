@@ -69,6 +69,15 @@ label_if_does_not_exist(){
   fi
 }
 
+find_contrast(){
+  local file="$1"
+  local dwi="dwi"
+  if echo "$file" | grep -q "$dwi"; then
+    echo  "./${dwi}/"
+  else
+    echo "./anat/"
+  fi
+}
 
 # Initialize filenames
 file_t1="${SUBJECT}_T1w"
