@@ -48,8 +48,7 @@ mkdir -p $PATH_DATA_PROCESSED/$SUBJECT
 # Go to subject folder for source images
 cd ${SUBJECT}
 
-# Go to folder where data will be copied and processed
-cd ${PATH_DATA_PROCESSED}
+
 # Copy list of participants in processed data folder
 if [[ ! -f "participants.tsv" ]]; then
   rsync -avzh $PATH_DATA/participants.tsv .
@@ -91,8 +90,6 @@ find_contrast(){
     echo "./anat/"
   fi
 }
-
-
 
 
 # Initialize filenames
@@ -152,9 +149,8 @@ for file_path in "${contrasts[@]}";do
   file_seg_labeled="${FILESEG}_labeled"
 
   # Segment SC using different methods and compute ANIMA segmentation performance metrics
-  python $PATH_SCRIPT/monai/run_inference_single_image.py --path-img ${file_path}.nii.gz --path-out $SUBJECT --chkp-path ~/duke/temp/muena/contrast-agnostic/final_monai_model/nnunet_nf=32_DS=1_opt=adam_lr=0.001_AdapW_CCrop_bs=2_64x192x320_20230918-2253
-  echo $PWD
-  mv ${file}_pred.nii.gz ${file_path}_pred.nii.gz
+  python $PATH_SCRIPT/monai/run_inference_single_image.py --path-img ${file_path}.nii.gz --path-out ${type} --chkp-path ~/duke/temp/muena/contrast-agnostic/final_monai_model/nnunet_nf=32_DS=1_opt=adam_lr=0.001_AdapW_CCrop_bs=2_64x192x320_20230918-2253
+  #mv ${file}_pred.nii.gz ${file_path}_pred.nii.gz
   sct_maths -i ${file_path}_pred.nii.gz -bin 0.5 -o ${file_path}_pred_bin.nii.gz
 
   # Compute CSA
