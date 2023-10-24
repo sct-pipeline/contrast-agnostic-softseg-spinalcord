@@ -153,6 +153,7 @@ for file_path in "${contrasts[@]}";do
 
   # Segment SC using different methods and compute ANIMA segmentation performance metrics
   python $PATH_SCRIPT/monai/run_inference_single_image.py --path-img ${file_path}.nii.gz --path-out $SUBJECT --chkp-path ~/duke/temp/muena/contrast-agnostic/final_monai_model/nnunet_nf=32_DS=1_opt=adam_lr=0.001_AdapW_CCrop_bs=2_64x192x320_20230918-2253
+  mv ${file}_pred.nii.gz ${file_path}_pred.nii.gz
   sct_maths -i ${file_path}_pred.nii.gz -bin 0.5 -o ${file_path}_pred_bin.nii.gz
 
   # Compute CSA
