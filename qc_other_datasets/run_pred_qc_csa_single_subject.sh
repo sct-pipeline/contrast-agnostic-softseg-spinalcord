@@ -34,6 +34,19 @@ sct_check_dependencies -short
 # Get path derivatives
 path_source=$(dirname $PWD)
 PATH_SCRIPT=$path_source
+SUBJECT=$1
+
+
+echo "SUBJECT: ${SUBJECT}"
+
+# Go to folder where data will be copied and processed
+cd $PATH_DATA_PROCESSED
+
+# Create directory
+mkdir -p $PATH_DATA_PROCESSED/$SUBJECT
+
+# Go to subject folder for source images
+cd ${SUBJECT}
 
 # Go to folder where data will be copied and processed
 cd ${PATH_DATA_PROCESSED}
@@ -78,6 +91,9 @@ find_contrast(){
     echo "./anat/"
   fi
 }
+
+
+
 
 # Initialize filenames
 file_t1="${SUBJECT}_T1w"
