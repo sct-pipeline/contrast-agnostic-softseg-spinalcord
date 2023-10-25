@@ -149,7 +149,7 @@ for file_path in "${contrasts[@]}";do
   sct_maths -i ${file_path}_pred.nii.gz -bin 0.5 -o ${file_path}_pred_bin.nii.gz
 
   # Compute CSA
-  sct_process_segmentation -i ${file_path}_pred_bin.nii.gz-vert 2:3 -vertfile ${file_seg_labeled}.nii.gz -o ${PATH_RESULTS}/csa_pred_${contrast_seg}.csv -append 1
+  sct_process_segmentation -i ${file_path}_pred_bin.nii.gz -vert 2:3 -vertfile ${file_seg_labeled}.nii.gz -o ${PATH_RESULTS}/csa_pred_${contrast_seg}.csv -append 1
 
 done
 # ------------------------------------------------------------------------------
