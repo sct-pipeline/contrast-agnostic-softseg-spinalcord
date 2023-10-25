@@ -45,10 +45,6 @@ cd $PATH_DATA_PROCESSED
 # Create directory
 mkdir -p $PATH_DATA_PROCESSED/$SUBJECT
 
-# Go to subject folder for source images
-cd ${SUBJECT}
-
-
 # Copy list of participants in processed data folder
 if [[ ! -f "participants.tsv" ]]; then
   rsync -avzh $PATH_DATA/participants.tsv .
@@ -59,6 +55,9 @@ if [[ ! -f $PATH_RESULTS/"participants.tsv" ]]; then
 fi
 # Copy source images
 rsync -avzh $PATH_DATA/$SUBJECT .
+
+# Go to subject folder for source images
+cd ${SUBJECT}
 
 # Check if manual label already exists. If it does, copy it locally.
 # NOTE: manual disc labels should go from C1-C2 to C7-T1.
@@ -128,11 +127,6 @@ for file_path in "${contrasts[@]}";do
   file=${file_path/#"$type"}  # add sub folder in file name
   file_path=${type}$file
   mkdir -p $PATH_DATA_PROCESSED/$SUBJECT/${type}
-  # Copy source images
-  # Note: we use '/./' in order to include the sub-folder 'ses-0X'
-  rsync -Ravzh ${PATH_DATA}/${SUBJECT}/${file_path}.* .
-
-
 
   # Get manual hard GT to get labeled segmentation
   FILESEG="${file_path}_seg"
