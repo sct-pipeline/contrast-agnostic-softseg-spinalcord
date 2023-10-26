@@ -147,9 +147,14 @@ for file_path in "${contrasts[@]}";do
   python $PATH_SCRIPT/monai/run_inference_single_image.py --path-img ${file_path}.nii.gz --path-out . --chkp-path ~/duke/temp/muena/contrast-agnostic/final_monai_model/nnunet_nf=32_DS=1_opt=adam_lr=0.001_AdapW_CCrop_bs=2_64x192x320_20230918-2253
   mv ${file}_pred.nii.gz ${file_path}_pred.nii.gz
   sct_maths -i ${file_path}_pred.nii.gz -bin 0.5 -o ${file_path}_pred_bin.nii.gz
-
+  sct_qc -i ${file_path}.nii.gz -s ${file_path}_pred_bin.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
   # Compute CSA
   sct_process_segmentation -i ${file_path}_pred_bin.nii.gz -vert 2:3 -vertfile ${file_seg_labeled}.nii.gz -o ${PATH_RESULTS}/csa_pred_${contrast_seg}.csv -append 1
+
+  # Run deepsegsc
+  sct_deepseg_sc -i ${file_path}.nii.gz -c ${contrast} -qc ${PATH_QC_SEG} -qc-subject ${SUBJECT}
+  sct_process_segmentation -i ${file_path}_seg.nii.gz -vert 2:3 -vertfile ${file_seg_labeled}.nii.gz -o ${PATH_RESULTS}/csa_deepseg_${contrast_seg}.csv -append 1
+
 
 done
 # ------------------------------------------------------------------------------
