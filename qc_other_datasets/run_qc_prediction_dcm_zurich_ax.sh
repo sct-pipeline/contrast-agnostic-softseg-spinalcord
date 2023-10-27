@@ -24,6 +24,8 @@ trap "echo Caught Keyboard Interrupt within script. Exiting now.; exit" INT
 # Retrieve input params
 SUBJECT=$1
 PATH_PRED_SEG=$2
+path_source=$(dirname $PWD)
+PATH_SCRIPT=$path_source
 
 
 # get starting time:
@@ -52,51 +54,26 @@ else
 fi
 
 
-# FUNCTIONS
-# ==============================================================================
-
-find_contrast(){
-  local file="$1"
-  local dwi="dwi"
-  if echo "$file" | grep -q "$dwi"; then
-    echo  "./${dwi}/"
-  else
-    echo "./anat/"
-  fi
-}
-
-
 # SCRIPT STARTS HERE
 # ==============================================================================
 # Go to anat folder where all structural data are located
-cd ${SUBJECT}
+cd ${SUBJECT}/anat
 # We do a substitution '/' --> '_' in case there is a subfolder 'ses-0X/'
 file_sub="${SUBJECT//[\/]/_}"
+file_ax="${file_sub}_acq-axial_T2w"
+file_sag="${file_sub}_acq-sagittal_T2w"
 
-for file_pred in ${PATH_PRED_SEG}/*; do
-    if [[ $file_pred == *$file_sub* ]];then
-        echo " File found, running QC report $file_pred"
-        # Find if anat or dwi
-        file_seg_basename=${file_pred##*/}
-        echo $file_seg_basename
-        type=$(find_contrast $file_pred)
-        prefix="dcmZurichAxial_" # TODO change accroding to prediction names
-        file_image=${file_seg_basename#"$prefix"}
-        file_image="${file_image::-11}"  # Remove X.nii.gz since the number X varies
-        # split with "-"
-        arrIN=(${file_image//-/ })
-        contrast="_acq-axial_T2w"
-        file_image=${arrIN[0]}"-"${arrIN[1]}"${contrast}.nii.gz"
-        echo $file_image
-        # rsync prediction mask
-        file_pred_new_name=${type}/${arrIN[0]}"-"${arrIN[1]}"${contrast}_pred.nii.gz"
-        rsync -avzh $file_pred $file_pred_new_name
-        # Create QC for pred mask
-        sct_qc -i ${type}/${file_image} -s $file_pred_new_name -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
+# Run axial
+python $PATH_SCRIPT/monai/run_inference_single_image.py --path-img ${file_ax}.nii.gz --path-out . --chkp-path ~/duke/temp/muena/contrast-agnostic/final_monai_model/nnunet_nf=32_DS=1_opt=adam_lr=0.001_AdapW_CCrop_bs=2_64x192x320_20230918-2253
+sct_maths -i ${file_ax}_pred.nii.gz -bin 0.5 -o ${file_ax}_pred_bin.nii.gz
+sct_qc -i ${file_ax}.nii.gz -s ${file_ax}_pred_bin.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
+sct_deepseg_sc -i ${file_ax}.nii.gz -c t2 -qc ${PATH_QC} -qc-subject ${SUBJECT}
+# Run saggital
+python $PATH_SCRIPT/monai/run_inference_single_image.py --path-img ${file_sag}.nii.gz --path-out . --chkp-path ~/duke/temp/muena/contrast-agnostic/final_monai_model/nnunet_nf=32_DS=1_opt=adam_lr=0.001_AdapW_CCrop_bs=2_64x192x320_20230918-2253
+sct_maths -i ${file_sag}_pred.nii.gz -bin 0.5 -o ${file_sag}_pred_bin.nii.gz
+sct_qc -i ${file_sag}.nii.gz -s ${file_sag}_pred_bin.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
+sct_deepseg_sc -i ${file_sag}.nii.gz -c t2 -qc ${PATH_QC} -qc-subject ${SUBJECT}
 
-
-    fi
-done
 
 # Display useful info for the log
 end=`date +%s`
