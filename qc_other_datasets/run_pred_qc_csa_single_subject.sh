@@ -152,7 +152,7 @@ for file_path in "${contrasts[@]}";do
   sct_process_segmentation -i ${file_path}_pred_bin.nii.gz -vert 2:3 -vertfile ${file_seg_labeled}.nii.gz -o ${PATH_RESULTS}/csa_pred_${contrast_seg}.csv -append 1
 
   # Run deepsegsc
-  sct_deepseg_sc -i ${file_path}.nii.gz -c ${contrast} -qc ${PATH_QC_SEG} -qc-subject ${SUBJECT}
+  sct_deepseg_sc -i ${file_path}.nii.gz -c ${contrast} -qc ${PATH_QC} -qc-subject ${SUBJECT}
   sct_process_segmentation -i ${file_path}_seg.nii.gz -vert 2:3 -vertfile ${file_seg_labeled}.nii.gz -o ${PATH_RESULTS}/csa_deepseg_${contrast_seg}.csv -append 1
 
 
