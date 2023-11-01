@@ -618,8 +618,18 @@ def main(args):
             # profiler="simple",)     # to profile the training time taken for each step
 
         # Train!
-        trainer.fit(pl_model)        
-        logger.info(f" Training Done!")
+        if args.resume_from_checkpoint is None:
+            print("Training from scratch")
+            trainer.fit(pl_model) 
+            logger.info(f" Training Done!")
+
+        else:
+            print("Resuming from checkpoint")
+            print(f"Checkpoint path: {args.resume_from_checkpoint}")
+            checkpoint = torch.load(args.resume_from_checkpoint)
+            pl_model.load_state_dict(checkpoint['state_dict'])
+            trainer.fit(pl_model) 
+            logger.info(f" Training Done!")
 
     else:
         logger.info(f" Resuming training from the latest checkpoint! ")
@@ -760,6 +770,8 @@ if __name__ == "__main__":
     parser.add_argument('-rd', '--results_dir', 
                     default=f"/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/results", 
                     type=str, help='Path to the model prediction results directory')
+    parser.add_argument('-rfc', '--resume_from_checkpoint', default=None, type=str, 
+                        help='Path to the checkpoint file to resume training from')
 
 
     args = parser.parse_args()
