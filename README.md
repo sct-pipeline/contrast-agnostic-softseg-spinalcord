@@ -3,6 +3,18 @@ Official repository for contrast-agnostic spinal cord segmentation project using
 
 This repo contains all the code for data preprocessing, training and running inference on other datasets. The code is mainly based on [Spinal Cord Toolbox](https://spinalcordtoolbox.com) and [MONAI](https://github.com/Project-MONAI/MONAI) (PyTorch).
 
+If you find this work and code useful for your research, please cite our paper:
+
+```
+@article{bedard2023towards,
+  title={Towards contrast-agnostic soft segmentation of the spinal cord},
+  author={B{\'e}dard, Sandrine and Enamundram, Naga Karthik and Tsagkas, Charidimos and Pravat{\`a}, Emanuele and Granziera, Cristina and Smith, Andrew and Weber II, Kenneth Arnold and Cohen-Adad, Julien},
+  journal={arXiv preprint arXiv:2310.15402},
+  year={2023}
+  url={https://arxiv.org/abs/2310.15402}
+}
+```
+
 ## Table of contents
 * [1. Main Dependencies](#1-main-dependencies)
 * [2. Dataset](#2-dataset)
