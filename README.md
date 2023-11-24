@@ -1,4 +1,7 @@
 # Towards Contrast-agnostic Soft Segmentation of the Spinal Cord
+
+[![arXiv](https://img.shields.io/badge/arXiv-2310.15402-b31b1b.svg)](https://arxiv.org/abs/2310.15402)
+
 Official repository for contrast-agnostic spinal cord segmentation project using SoftSeg. 
 
 This repo contains all the code for data preprocessing, training and running inference on other datasets. The code is mainly based on [Spinal Cord Toolbox](https://spinalcordtoolbox.com) and [MONAI](https://github.com/Project-MONAI/MONAI) (PyTorch).
