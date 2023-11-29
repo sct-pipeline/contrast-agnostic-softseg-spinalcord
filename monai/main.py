@@ -23,6 +23,24 @@ from monai.data import (DataLoader, CacheDataset, load_decathlon_datalist, decol
 from monai.transforms import (Compose, EnsureType, EnsureTyped, Invertd, SaveImage)
 
 
+def get_args():
+    parser = argparse.ArgumentParser(description='Script for training contrast-agnositc SC segmentation model.')
+    
+    # arguments for model
+    parser.add_argument('-m', '--model', choices=['unetr', 'nnunet'], default='nnunet', type=str, 
+                        help='Model type to be used. Currently only supports nnUNet.')
+    # path to the config file
+    parser.add_argument("--config", type=str, default="./config.json",
+                        help="Path to the config file containing all training details.")
+    # saving
+    parser.add_argument('--debug', default=False, action='store_true', help='if true, results are not logged to wandb')
+    parser.add_argument('-c', '--continue_from_checkpoint', default=False, action='store_true', 
+                            help='Load model from checkpoint and continue training')
+    args = parser.parse_args()
+
+    return args
+
+
 # create a "model"-agnostic class with PL to use different models
 class Model(pl.LightningModule):
     def __init__(self, config, data_root, net, loss_function, optimizer_class, exp_id=None, results_path=None):
