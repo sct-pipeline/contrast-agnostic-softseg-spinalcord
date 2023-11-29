@@ -69,8 +69,7 @@ class Model(pl.LightningModule):
         self.voxel_cropping_size = self.inference_roi_size = config["preprocessing"]["crop_pad_size"]
 
         # define post-processing transforms for validation, nothing fancy just making sure that it's a tensor (default)
-        self.val_post_pred = Compose([EnsureType()]) 
-        self.val_post_label = Compose([EnsureType()])
+        self.val_post_pred = self.val_post_label = Compose([EnsureType()])
 
         # define evaluation metric
         self.soft_dice_metric = dice_score
@@ -350,7 +349,6 @@ class Model(pl.LightningModule):
             f"\nAverage Soft Dice (VAL): {mean_val_soft_dice:.4f}"
             f"\nAverage Hard Dice (VAL): {mean_val_hard_dice:.4f}"
             f"\nAverage AdapWing Loss (VAL): {mean_val_loss:.4f}"
-            # f"\nBest Average Soft Dice: {self.best_val_dice:.4f} at Epoch: {self.best_val_epoch}"
             f"\nBest Average AdapWing Loss: {self.best_val_loss:.4f} at Epoch: {self.best_val_epoch}"
             f"\n----------------------------------------------------")
         
@@ -378,12 +376,10 @@ class Model(pl.LightningModule):
         
         test_input = batch["image"]
         # print(batch["label_meta_dict"]["filename_or_obj"][0])
-        # print(f"test_input.shape: {test_input.shape} \t test_label.shape: {test_label.shape}")
         batch["pred"] = sliding_window_inference(test_input, self.inference_roi_size, 
                                                  sw_batch_size=4, predictor=self.forward, overlap=0.5)
-        # print(f"batch['pred'].shape: {batch['pred'].shape}")
         
-        if self.args.model == "nnunet" and self.args.enable_DS:
+        if args.model == "nnunet" and self.cfg['model'][args.model]["enable_deep_supervision"]:
             # we only need the output with the highest resolution
             batch["pred"] = batch["pred"][0]
 
@@ -420,7 +416,8 @@ class Model(pl.LightningModule):
             
 
         # NOTE: Important point from the SoftSeg paper - binarize predictions before computing metrics
-        # calculate all metrics here
+        # calculate soft and hard dice here (for quick overview), other metrics can be computed from 
+        # the saved predictions using ANIMA
         # 1. Dice Score
         test_soft_dice = self.soft_dice_metric(pred, label)
 
@@ -430,16 +427,10 @@ class Model(pl.LightningModule):
 
         # 1.1 Hard Dice Score
         test_hard_dice = self.soft_dice_metric(pred.numpy(), label.numpy())
-        # 2. Precision Score
-        test_precision = precision_score(pred.numpy(), label.numpy())
-        # 3. Recall Score
-        test_recall = recall_score(pred.numpy(), label.numpy())
 
         metrics_dict = {
             "test_hard_dice": test_hard_dice,
             "test_soft_dice": test_soft_dice,
-            "test_precision": test_precision,
-            "test_recall": test_recall,
         }
         self.test_step_outputs.append(metrics_dict)
 
@@ -451,19 +442,13 @@ class Model(pl.LightningModule):
                                                     np.stack([x["test_hard_dice"] for x in self.test_step_outputs]).std()
         avg_soft_dice_test, std_soft_dice_test = np.stack([x["test_soft_dice"] for x in self.test_step_outputs]).mean(), \
                                                     np.stack([x["test_soft_dice"] for x in self.test_step_outputs]).std()
-        avg_precision_test = np.stack([x["test_precision"] for x in self.test_step_outputs]).mean()
-        avg_recall_test = np.stack([x["test_recall"] for x in self.test_step_outputs]).mean()
         
         logger.info(f"Test (Soft) Dice: {avg_soft_dice_test}")
         logger.info(f"Test (Hard) Dice: {avg_hard_dice_test}")
-        logger.info(f"Test Precision Score: {avg_precision_test}")
-        logger.info(f"Test Recall Score: {avg_recall_test}")
         
         self.avg_test_dice, self.std_test_dice = avg_soft_dice_test, std_soft_dice_test
         self.avg_test_dice_hard, self.std_test_dice_hard = avg_hard_dice_test, std_hard_dice_test
-        self.avg_test_precision = avg_precision_test
-        self.avg_test_recall = avg_recall_test
-
+        
         # free up memory
         self.test_step_outputs.clear()
 
@@ -491,6 +476,7 @@ def main(args):
 
     # define models
     if args.model in ["unetr"]:
+        # TODO: update if ever using UNETR
         # define image size to be fed to the model
         img_size = (160, 224, 96)
         
@@ -557,22 +543,21 @@ def main(args):
         if args.debug:
             save_exp_id = f"DEBUG_{save_exp_id}"
 
-
-    # TODO: move this inside the for loop when using more folds
     timestamp = datetime.now().strftime(f"%Y%m%d-%H%M")   # prints in YYYYMMDD-HHMMSS format
     save_exp_id = f"{save_exp_id}_{timestamp}"
 
     # save output to a log file
     logger.add(os.path.join(config["directories"]["models_dir"], f"{save_exp_id}", "logs.txt"), rotation="10 MB", level="INFO")
 
+    # save config file to the output folder
+    with open(os.path.join(config["directories"]["models_dir"], f"{save_exp_id}", "config.yaml"), "w") as f:
+        yaml.dump(config, f)
 
     # define loss function
-    # loss_func = SoftDiceLoss(p=1, smooth=1.0)
-    # logger.info(f"Using SoftDiceLoss with p={loss_func.p}, smooth={loss_func.smooth}!")
     loss_func = AdapWingLoss(theta=0.5, omega=8, alpha=2.1, epsilon=1, reduction="sum")
     # NOTE: tried increasing omega and decreasing epsilon but results marginally worse than the above
     # loss_func = AdapWingLoss(theta=0.5, omega=12, alpha=2.1, epsilon=0.5, reduction="sum")
-    logger.info(f"Using AdapWingLoss with theta={loss_func.theta}, omega={loss_func.omega}, alpha={loss_func.alpha}, epsilon={loss_func.epsilon}!")
+    logger.info(f"Using AdapWingLoss with theta={loss_func.theta}, omega={loss_func.omega}, alpha={loss_func.alpha}, epsilon={loss_func.epsilon} ...")
 
     # define callbacks
     early_stopping = pl.callbacks.EarlyStopping(
@@ -602,15 +587,15 @@ def main(args):
         # saving the best model based on validation loss
         logger.info(f"Saving best model to {save_path}!")
         checkpoint_callback_loss = pl.callbacks.ModelCheckpoint(
-            dirpath=save_path, filename='best_model_loss', monitor='val_loss', 
+            dirpath=save_path, filename='best_model', monitor='val_loss', 
             save_top_k=1, mode="min", save_last=True, save_weights_only=False)
         
-        # saving the best model based on soft validation dice score
-        checkpoint_callback_dice = pl.callbacks.ModelCheckpoint(
-            dirpath=save_path, filename='best_model_dice', monitor='val_soft_dice', 
-            save_top_k=1, mode="max", save_last=False, save_weights_only=True)
+        # # saving the best model based on soft validation dice score
+        # checkpoint_callback_dice = pl.callbacks.ModelCheckpoint(
+        #     dirpath=save_path, filename='best_model_dice', monitor='val_soft_dice', 
+        #     save_top_k=1, mode="max", save_last=False, save_weights_only=True)
         
-        logger.info(f" Starting training from scratch! ")
+        logger.info(f"Starting training from scratch ...")
         # wandb logger
         exp_logger = pl.loggers.WandbLogger(
                             name=save_exp_id,
@@ -663,16 +648,15 @@ def main(args):
                 
         # saving the best model based on validation CSA loss
         checkpoint_callback_loss = pl.callbacks.ModelCheckpoint(
-            dirpath=save_exp_id, filename='best_model_loss', monitor='val_loss', 
+            dirpath=save_exp_id, filename='best_model', monitor='val_loss', 
             save_top_k=1, mode="min", save_last=True, save_weights_only=True)
         
-        # saving the best model based on soft validation dice score
-        checkpoint_callback_dice = pl.callbacks.ModelCheckpoint(
-            dirpath=save_exp_id, filename='best_model_dice', monitor='val_soft_dice', 
-            save_top_k=1, mode="max", save_last=False, save_weights_only=True)
+        # # saving the best model based on soft validation dice score
+        # checkpoint_callback_dice = pl.callbacks.ModelCheckpoint(
+        #     dirpath=save_exp_id, filename='best_model_dice', monitor='val_soft_dice', 
+        #     save_top_k=1, mode="max", save_last=False, save_weights_only=True)
 
         # wandb logger
-        grp = f"monai_ivado_{args.model}" if args.model == "unet" else f"monai_{args.model}"
         exp_logger = pl.loggers.WandbLogger(
                             save_dir=save_path,
                             group=config["dataset"]["name"],
@@ -707,7 +691,6 @@ def main(args):
     # TODO: Figure out saving test metrics to a file
     with open(os.path.join(results_path, 'test_metrics.txt'), 'a') as f:
         print('\n-------------- Test Metrics ----------------', file=f)
-        print(f"\nSeed Used: {args.seed}", file=f)
         print(f"{args.model}_seed={config['seed']}_" \
                         f"{config['dataset']['contrast']}_{config['dataset']['label_type']}_" \
                         f"nf={config['model']['nnunet']['base_num_features']}_" \
@@ -720,12 +703,6 @@ def main(args):
 
         print('\n-------------- Test Soft Dice Scores ----------------', file=f)
         print("Soft Dice --> Mean: %0.3f, Std: %0.3f" % (pl_model.avg_test_dice, pl_model.std_test_dice), file=f)
-
-        print('\n-------------- Test Precision Scores ----------------', file=f)
-        print("Precision --> Mean: %0.3f" % (pl_model.avg_test_precision), file=f)
-
-        print('\n-------------- Test Recall Scores -------------------', file=f)
-        print("Recall --> Mean: %0.3f" % (pl_model.avg_test_recall), file=f)
 
         print('-------------------------------------------------------', file=f)
 
