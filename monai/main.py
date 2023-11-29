@@ -25,14 +25,14 @@ from monai.transforms import (Compose, EnsureType, EnsureTyped, Invertd, SaveIma
 
 # create a "model"-agnostic class with PL to use different models
 class Model(pl.LightningModule):
-    def __init__(self, args, data_root, net, loss_function, optimizer_class, exp_id=None, results_path=None):
+    def __init__(self, config, data_root, net, loss_function, optimizer_class, exp_id=None, results_path=None):
         super().__init__()
-        self.args = args
+        self.cfg = config
         self.save_hyperparameters(ignore=['net', 'loss_function'])
 
         self.root = data_root
         self.net = net
-        self.lr = args.learning_rate
+        self.lr = config["opt"]["lr"]
         self.loss_function = loss_function
         self.optimizer_class = optimizer_class
         self.save_exp_id = exp_id
@@ -47,9 +47,8 @@ class Model(pl.LightningModule):
         # which could be sub-optimal. 
         # On the other hand, ivadomed used a patch-size that's heavily padded along the R-L direction so that 
         # only the SC is in context. 
-        self.spacing = (1.0, 1.0, 1.0)
-        self.voxel_cropping_size = self.inference_roi_size = tuple([int(i) for i in args.crop_size.split("x")])
-        # self.inference_roi_size = tuple([int(i) for i in args.val_crop_size.split("x")])
+        self.spacing = config["preprocessing"]["spacing"]
+        self.voxel_cropping_size = self.inference_roi_size = config["preprocessing"]["crop_pad_size"]
 
         # define post-processing transforms for validation, nothing fancy just making sure that it's a tensor (default)
         self.val_post_pred = Compose([EnsureType()]) 
@@ -85,7 +84,7 @@ class Model(pl.LightningModule):
     # --------------------------------   
     def prepare_data(self):
         # set deterministic training for reproducibility
-        set_determinism(seed=self.args.seed)
+        set_determinism(seed=self.cfg["seed"])
         
         # define training and validation transforms
         transforms_train = train_transforms(
@@ -95,7 +94,9 @@ class Model(pl.LightningModule):
         transforms_val = val_transforms(crop_size=self.inference_roi_size, lbl_key='label')
         
         # load the dataset
-        dataset = os.path.join(self.root, f"dataset_{self.args.contrast}_{self.args.label_type}_seed15.json")
+        dataset = os.path.join(self.root, 
+            f"dataset_{self.cfg['dataset']['contrast']}_{self.cfg['dataset']['label_type']}_seed{self.cfg['seed']}.json"
+        )
         logger.info(f"Loading dataset: {dataset}")
         train_files = load_decathlon_datalist(dataset, True, "train")
         val_files = load_decathlon_datalist(dataset, True, "validation")
@@ -129,7 +130,7 @@ class Model(pl.LightningModule):
     # DATA LOADERS
     # --------------------------------
     def train_dataloader(self):
-        return DataLoader(self.train_ds, batch_size=self.args.batch_size, shuffle=True, num_workers=16, 
+        return DataLoader(self.train_ds, batch_size=self.cfg["opt"]["batch_size"], shuffle=True, num_workers=16, 
                             pin_memory=True, persistent_workers=True) 
 
     def val_dataloader(self):
@@ -144,13 +145,13 @@ class Model(pl.LightningModule):
     # OPTIMIZATION
     # --------------------------------
     def configure_optimizers(self):
-        if self.args.optimizer == "sgd":
+        if self.cfg["opt"]["name"] == "sgd":
             optimizer = self.optimizer_class(self.parameters(), lr=self.lr, momentum=0.99, weight_decay=3e-5, nesterov=True)
         else:
             optimizer = self.optimizer_class(self.parameters(), lr=self.lr)
         # scheduler = PolyLRScheduler(optimizer, self.lr, max_steps=self.args.max_epochs)
         # NOTE: ivadomed using CosineAnnealingLR with T_max = 200
-        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=self.args.max_epochs)
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=self.cfg["opt"]["max_epochs"])
         return [optimizer], [scheduler]
 
 
@@ -169,7 +170,7 @@ class Model(pl.LightningModule):
         output = self.forward(inputs)   # logits
         # print(f"labels.shape: {labels.shape} \t output.shape: {output.shape}")
         
-        if self.args.model == "nnunet" and self.args.enable_DS:
+        if args.model == "nnunet" and self.cfg['model'][args.model]["enable_deep_supervision"]:
 
             # calculate dice loss for each output
             loss, train_soft_dice = 0.0, 0.0
@@ -264,8 +265,7 @@ class Model(pl.LightningModule):
         outputs = sliding_window_inference(inputs, self.inference_roi_size, mode="gaussian",
                                            sw_batch_size=4, predictor=self.forward, overlap=0.5,) 
         # outputs shape: (B, C, <original H x W x D>)
-                
-        if self.args.model == "nnunet" and self.args.enable_DS:
+        if args.model == "nnunet" and self.cfg['model'][args.model]["enable_deep_supervision"]:
             # we only need the output with the highest resolution
             outputs = outputs[0]
         
@@ -381,7 +381,7 @@ class Model(pl.LightningModule):
         pred, label = post_test_out[0]['pred'].cpu(), post_test_out[0]['label'].cpu()
 
         # save the prediction and label
-        if self.args.save_test_preds:
+        if self.cfg["save_test_preds"]:
 
             subject_name = (batch["image_meta_dict"]["filename_or_obj"][0]).split("/")[-1].replace(".nii.gz", "")
             logger.info(f"Saving subject: {subject_name}")
@@ -454,43 +454,21 @@ class Model(pl.LightningModule):
 # MAIN
 # --------------------------------
 def main(args):
-    # Setting the seed
-    pl.seed_everything(args.seed, workers=True)
 
-    # ======================================================================================================
-    #                           Define plans json taken from nnUNet_preprocessed folder
-    # ======================================================================================================
-    nnunet_plans = {
-        "UNet_class_name": "PlainConvUNet",
-        "UNet_base_num_features": args.init_filters,
-        "n_conv_per_stage_encoder": [2, 2, 2, 2, 2, 2],
-        "n_conv_per_stage_decoder": [2, 2, 2, 2, 2],
-        "pool_op_kernel_sizes": [
-            [1, 1, 1],
-            [2, 2, 2],
-            [2, 2, 2],
-            [2, 2, 2],
-            [2, 2, 2],
-            [1, 2, 2] 
-        ],
-        "conv_kernel_sizes": [
-            [3, 3, 3],
-            [3, 3, 3],
-            [3, 3, 3],
-            [3, 3, 3],
-            [3, 3, 3],
-            [3, 3, 3]
-        ],
-        "unet_max_num_features": 320,
-    }
+    # load config file
+    with open(args.config, "r") as f:
+        config = yaml.load(f, Loader=yaml.FullLoader)
+
+    # Setting the seed
+    pl.seed_everything(config["seed"], workers=True)
 
     # define root path for finding datalists
-    dataset_root = "/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/datalists/spine-generic/seed15"
+    dataset_root = config["dataset"]["root_dir"]
 
     # define optimizer
-    if args.optimizer in ["adam", "Adam"]:
+    if config["opt"]["name"] == "adam":
         optimizer_class = torch.optim.Adam
-    elif args.optimizer in ["SGD", "sgd"]:
+    elif config["opt"]["name"] == "sgd":
         optimizer_class = torch.optim.SGD
 
     # define models
@@ -516,23 +494,47 @@ def main(args):
                         f"_fs={args.feature_size}_hs={args.hidden_size}_mlpd={args.mlp_dim}_nh={args.num_heads}" \
                         f"_CSAdiceL_nspv={args.num_samples_per_volume}_bs={args.batch_size}_{img_size}" \
 
-    elif args.model in ["nnunet"]:
-        if args.enable_DS:
-            logger.info(f" Using nnUNet model WITH deep supervision! ")
+    elif args.model == "nnunet":
+
+        if config["model"]["nnunet"]["enable_deep_supervision"]:
+            logger.info(f"Using nnUNet model WITH deep supervision ...")
         else:
-            logger.info(f" Using nnUNet model WITHOUT deep supervision! ")
+            logger.info(f"Using nnUNet model WITHOUT deep supervision ...")
+
+        logger.info("Defining plans for nnUNet model ...")
+        # =========================================================================================
+        #                   Define plans json taken from nnUNet_preprocessed folder
+        # =========================================================================================
+        nnunet_plans = {
+            "UNet_class_name": "PlainConvUNet",
+            "UNet_base_num_features": config["model"]["nnunet"]["base_num_features"],
+            "n_conv_per_stage_encoder": config["model"]["nnunet"]["n_conv_per_stage_encoder"],
+            "n_conv_per_stage_decoder": config["model"]["nnunet"]["n_conv_per_stage_decoder"],
+            "pool_op_kernel_sizes": config["model"]["nnunet"]["pool_op_kernel_sizes"],
+            "conv_kernel_sizes": [
+                [3, 3, 3],
+                [3, 3, 3],
+                [3, 3, 3],
+                [3, 3, 3],
+                [3, 3, 3],
+                [3, 3, 3]
+            ],
+            "unet_max_num_features": config["model"]["nnunet"]["max_num_features"],
+        }
 
         # define model
-        net = create_nnunet_from_plans(plans=nnunet_plans, num_input_channels=1, num_classes=1, deep_supervision=args.enable_DS)
-        patch_size = "64x192x320"   
-        save_exp_id =f"{args.model}_{args.contrast}_{args.label_type}_nf={args.init_filters}" \
-                        f"_opt={args.optimizer}_lr={args.learning_rate}" \
-                        f"_AdapW" \
-                        f"_bs={args.batch_size}_{patch_size}"
-        # save_exp_id =f"{args.model}_{args.contrast}_{args.label_type}_nf={args.init_filters}" \
-        #                 f"_opt={args.optimizer}_lr={args.learning_rate}" \
-        #                 f"_DiceL" \
-        #                 f"_bs={args.batch_size}_{patch_size}"
+        net = create_nnunet_from_plans(plans=nnunet_plans, num_input_channels=1, num_classes=1, 
+                                       deep_supervision=config["model"]["nnunet"]["enable_deep_supervision"])
+        # variable for saving patch size in the experiment id (same as crop_pad_size)
+        patch_size = f"{config['preprocessing']['crop_pad_size'][0]}x" \
+                        f"{config['preprocessing']['crop_pad_size'][1]}x" \
+                        f"{config['preprocessing']['crop_pad_size'][2]}"
+        # save experiment id
+        save_exp_id = f"{args.model}_seed={config['seed']}_" \
+                        f"{config['dataset']['contrast']}_{config['dataset']['label_type']}_" \
+                        f"nf={config['model']['nnunet']['base_num_features']}_" \
+                        f"opt={config['opt']['name']}_lr={config['opt']['lr']}_AdapW_" \
+                        f"bs={config['opt']['batch_size']}_{patch_size}" \
 
         if args.debug:
             save_exp_id = f"DEBUG_{save_exp_id}"
@@ -543,7 +545,8 @@ def main(args):
     save_exp_id = f"{save_exp_id}_{timestamp}"
 
     # save output to a log file
-    logger.add(os.path.join(args.save_path, f"{save_exp_id}", "logs.txt"), rotation="10 MB", level="INFO")
+    logger.add(os.path.join(config["directories"]["models_dir"], f"{save_exp_id}", "logs.txt"), rotation="10 MB", level="INFO")
+
 
     # define loss function
     # loss_func = SoftDiceLoss(p=1, smooth=1.0)
@@ -554,27 +557,27 @@ def main(args):
     logger.info(f"Using AdapWingLoss with theta={loss_func.theta}, omega={loss_func.omega}, alpha={loss_func.alpha}, epsilon={loss_func.epsilon}!")
 
     # define callbacks
-    # early_stopping = pl.callbacks.EarlyStopping(monitor="val_soft_dice", min_delta=0.00, patience=args.patience, 
-    #                     verbose=False, mode="max")
-    early_stopping = pl.callbacks.EarlyStopping(monitor="val_loss", min_delta=0.00, patience=args.patience, 
-                        verbose=False, mode="min")
+    early_stopping = pl.callbacks.EarlyStopping(
+        monitor="val_loss", min_delta=0.00, 
+        patience=config["opt"]["early_stopping_patience"], 
+        verbose=False, mode="min")
 
     lr_monitor = pl.callbacks.LearningRateMonitor(logging_interval='epoch')
 
-
+    # training from scratch
     if not args.continue_from_checkpoint:
         # to save the best model on validation
-        save_path = os.path.join(args.save_path, f"{save_exp_id}")
+        save_path = os.path.join(config["directories"]["models_dir"], f"{save_exp_id}")
         if not os.path.exists(save_path):
             os.makedirs(save_path, exist_ok=True)
 
         # to save the results/model predictions 
-        results_path = os.path.join(args.results_dir, f"{save_exp_id}")
+        results_path = os.path.join(config["directories"]["results_dir"], f"{save_exp_id}")
         if not os.path.exists(results_path):
             os.makedirs(results_path, exist_ok=True)
 
         # i.e. train by loading weights from scratch
-        pl_model = Model(args, data_root=dataset_root,
+        pl_model = Model(config, data_root=dataset_root,
                             optimizer_class=optimizer_class, loss_function=loss_func, net=net, 
                             exp_id=save_exp_id, results_path=results_path)
                 
@@ -591,15 +594,14 @@ def main(args):
         
         logger.info(f" Starting training from scratch! ")
         # wandb logger
-        grp = f"monai_ivado_{args.model}" if args.model == "unet" else f"monai_{args.model}"
         exp_logger = pl.loggers.WandbLogger(
                             name=save_exp_id,
-                            save_dir=args.save_path,
-                            group=grp,
+                            save_dir=config["directories"]["models_dir"],
+                            group=config["dataset"]["name"],
                             log_model=True, # save best model using checkpoint callback
                             project='contrast-agnostic',
                             entity='naga-karthik',
-                            config=args)
+                            config=config)
 
         # Saving training script to wandb
         wandb.save("main.py")
@@ -607,14 +609,14 @@ def main(args):
 
         # initialise Lightning's trainer.
         trainer = pl.Trainer(
-            devices=1, accelerator="gpu", # strategy="ddp",
+            devices=1, accelerator="gpu",
             logger=exp_logger,
-            callbacks=[checkpoint_callback_loss, checkpoint_callback_dice, lr_monitor, early_stopping],
-            check_val_every_n_epoch=args.check_val_every_n_epochs,
-            max_epochs=args.max_epochs, 
-            precision=32,   # TODO: see if 16-bit precision is stable
+            callbacks=[checkpoint_callback_loss, lr_monitor, early_stopping],
+            check_val_every_n_epoch=config["opt"]["check_val_every_n_epochs"],
+            max_epochs=config["opt"]["max_epochs"], 
+            precision=32,
             # deterministic=True,
-            enable_progress_bar=args.enable_progress_bar,) 
+            enable_progress_bar=False) 
             # profiler="simple",)     # to profile the training time taken for each step
 
         # Train!
@@ -625,19 +627,19 @@ def main(args):
         logger.info(f" Resuming training from the latest checkpoint! ")
 
         # check if wandb run folder is provided to resume using the same run
-        if args.wandb_run_folder is None:
+        if config["directories"]["wandb_run_folder"] is None:
             raise ValueError("Please provide the wandb run folder to resume training using the same run on WandB!")
         else:
-            wandb_run_folder = os.path.basename(args.wandb_run_folder)
+            wandb_run_folder = os.path.basename(config["directories"]["wandb_run_folder"])
             wandb_run_id = wandb_run_folder.split("-")[-1]
 
-        save_exp_id = args.save_path
-        save_path = os.path.dirname(args.save_path)
+        save_exp_id = config["directories"]["models_dir"]
+        save_path = os.path.dirname(config["directories"]["models_dir"])
         logger.info(f"save_path: {save_path}")
-        results_path = args.results_dir
+        results_path = config["directories"]["results_dir"]
 
-        # i.e. train by loading weights from scratch
-        pl_model = Model(args, data_root=dataset_root,
+        # i.e. train by loading existing weights
+        pl_model = Model(config, data_root=dataset_root,
                             optimizer_class=optimizer_class, loss_function=loss_func, net=net, 
                             exp_id=save_exp_id, results_path=results_path)
                 
@@ -655,7 +657,7 @@ def main(args):
         grp = f"monai_ivado_{args.model}" if args.model == "unet" else f"monai_{args.model}"
         exp_logger = pl.loggers.WandbLogger(
                             save_dir=save_path,
-                            group=grp,
+                            group=config["dataset"]["name"],
                             log_model=True, # save best model using checkpoint callback
                             project='contrast-agnostic',
                             entity='naga-karthik',
@@ -664,13 +666,13 @@ def main(args):
 
         # initialise Lightning's trainer.
         trainer = pl.Trainer(
-            devices=1, accelerator="gpu", # strategy="ddp",
+            devices=1, accelerator="gpu",
             logger=exp_logger,
-            callbacks=[checkpoint_callback_loss, checkpoint_callback_dice, lr_monitor, early_stopping],
-            check_val_every_n_epoch=args.check_val_every_n_epochs,
-            max_epochs=args.max_epochs, 
+            callbacks=[checkpoint_callback_loss, lr_monitor, early_stopping],
+            check_val_every_n_epoch=config["opt"]["check_val_every_n_epochs"],
+            max_epochs=config["opt"]["max_epochs"], 
             precision=32,
-            enable_progress_bar=args.enable_progress_bar,) 
+            enable_progress_bar=False) 
             # profiler="simple",)     # to profile the training time taken for each step
 
         # Train!
@@ -688,8 +690,12 @@ def main(args):
     with open(os.path.join(results_path, 'test_metrics.txt'), 'a') as f:
         print('\n-------------- Test Metrics ----------------', file=f)
         print(f"\nSeed Used: {args.seed}", file=f)
-        print(f"\ninitf={args.init_filters}_lr={args.learning_rate}_bs={args.batch_size}_{timestamp}", file=f)
-        print(f"\npatch_size={pl_model.voxel_cropping_size}", file=f)
+        print(f"{args.model}_seed={config['seed']}_" \
+                        f"{config['dataset']['contrast']}_{config['dataset']['label_type']}_" \
+                        f"nf={config['model']['nnunet']['base_num_features']}_" \
+                        f"opt={config['opt']['name']}_lr={config['opt']['lr']}_AdapW_" \
+                        f"bs={config['opt']['batch_size']}_{patch_size}" \
+                        f"_{timestamp}", file=f)
         
         print('\n-------------- Test Hard Dice Scores ----------------', file=f)
         print("Hard Dice --> Mean: %0.3f, Std: %0.3f" % (pl_model.avg_test_dice_hard, pl_model.std_test_dice_hard), file=f)
@@ -707,61 +713,5 @@ def main(args):
 
 
 if __name__ == "__main__":
-
-    parser = argparse.ArgumentParser(description='Script for training custom models for SCI Lesion Segmentation.')
-    # Arguments for model, data, and training and saving
-    parser.add_argument('-m', '--model', choices=['unetr', 'nnunet'], 
-                        default='unet', type=str, help='Model type to be used')
-    parser.add_argument('--enable_DS', default=False, action='store_true', help='Enable Deep Supervision')
-    # dataset
-    # define args for cropping size
-    parser.add_argument('-crop', '--crop_size', type=str, default="64x192x320", 
-                        help='Center crop size for training/validation. Values correspond to R-L, A-P, I-S axes'
-                        'of the image after 1mm isotropic resampling.  Default: 64x192x320')
-    parser.add_argument("--contrast", default="t2w", type=str, help="Contrast to use for training", 
-                    choices=["t1w", "t2w", "t2star", "mton", "mtoff", "dwi", "all"])
-    parser.add_argument('--label-type', default='soft', type=str, help="Type of labels to use for training",
-                    choices=['hard', 'soft'])
-
-    # unet model 
-    parser.add_argument('-initf', '--init_filters', default=16, type=int, help="Number of Filters in Init Layer")
-
-    # unetr model 
-    parser.add_argument('-fs', '--feature_size', default=16, type=int, help="Feature Size")
-    parser.add_argument('-hs', '--hidden_size', default=768, type=int, help='Dimensionality of hidden embeddings')
-    parser.add_argument('-mlpd', '--mlp_dim', default=2048, type=int, help='Dimensionality of MLP layer')
-    parser.add_argument('-nh', '--num_heads', default=12, type=int, help='Number of heads in Multi-head Attention')
-
-    # optimizations
-    parser.add_argument('-me', '--max_epochs', default=1000, type=int, help='Number of epochs for the training process')
-    parser.add_argument('-bs', '--batch_size', default=2, type=int, help='Batch size of the training and validation processes')
-    parser.add_argument('-opt', '--optimizer', 
-                        choices=['adam', 'Adam', 'SGD', 'sgd'], 
-                        default='adam', type=str, help='Optimizer to use')
-    parser.add_argument('-lr', '--learning_rate', default=1e-4, type=float, help='Learning rate for training the model')
-    parser.add_argument('-pat', '--patience', default=25, type=int, 
-                            help='number of validation steps (val_every_n_iters) to wait before early stopping')
-    # NOTE: patience is acutally until (patience * check_val_every_n_epochs) epochs 
-    parser.add_argument('-epb', '--enable_progress_bar', default=False, action='store_true', 
-                            help='by default is disabled since it doesnt work in colab')
-    parser.add_argument('-cve', '--check_val_every_n_epochs', default=1, type=int, help='num of epochs to wait before validation')
-    # saving
-    parser.add_argument('-sp', '--save_path', 
-                        default=f"/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/saved_models", 
-                        type=str, help='Path to the saved models directory')
-    parser.add_argument('-se', '--seed', default=42, type=int, help='Set seeds for reproducibility')
-    parser.add_argument('-debug', default=False, action='store_true', help='if true, results are not logged to wandb')
-    parser.add_argument('-stp', '--save_test_preds', default=False, action='store_true',
-                            help='if true, test predictions are saved in `save_path`')
-    parser.add_argument('-c', '--continue_from_checkpoint', default=False, action='store_true', 
-                            help='Load model from checkpoint and continue training')
-    parser.add_argument('-wdb-run', '--wandb-run-folder', default=None, type=str, help='Path to the wandb run folder')
-    # testing
-    parser.add_argument('-rd', '--results_dir', 
-                    default=f"/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/results", 
-                    type=str, help='Path to the model prediction results directory')
-
-
-    args = parser.parse_args()
-
+    args = get_args()
     main(args)
