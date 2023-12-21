@@ -25,7 +25,7 @@ Activate the environment with the following command:
 conda activate venv_monai
 ```
 
-The list of necessary packages can be found in `requirements_inference_<cpu/gpu>.txt`. Use the following commands for installation:
+Install requirements. Choose your type of installation:
 
 For CPU-based inference:
 ```bash
@@ -37,9 +37,18 @@ For GPU-based inference:
 pip install -r requirements_inference_gpu.txt
 ```
 
+Install package to be callable from anywhere:
+```bash
+pip install -e .
+```
+
+
+
 ### Download the model
 
 All segmentation models can be found under the [release page](https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord/releases). Pick the release you like (we recommend the latest one) and download the file named `model_*.zip`. Then unzip it.
+
+
 
 ### Method 1: Running inference on a single image 
 
