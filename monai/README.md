@@ -22,8 +22,7 @@ conda activate venv_monai
 
 For CPU-based inference:
 ```bash
-```bash
-pip install -r requirements_inference.txt
+pip install -r requirements_inference_cpu.txt
 ```
 
 For GPU-based inference:
