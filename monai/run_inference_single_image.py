@@ -60,7 +60,8 @@ def get_parser():
 
     parser.add_argument("--path-img", type=str, required=True,
                         help="Path to the image to run inference on")
-    parser.add_argument("--chkp-path", type=str, required=True, help="Path to the checkpoint folder")
+    parser.add_argument("--chkp-path", type=str, required=True, 
+                        help="Path to the checkpoint folder. This folder should contain a file named 'best_model_loss.ckpt")
     parser.add_argument("--path-out", type=str, required=True, 
                         help="Path to the output folder where to store the predictions and associated metrics")
     parser.add_argument('-crop', '--crop-size', type=str, default="64x192x-1", 
