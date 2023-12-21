@@ -1,8 +1,5 @@
 from setuptools import setup, find_packages
 
-with open('requirements.txt') as f:
-    requirements = f.readlines()
-
 setup(
     name='contrast-agnostic-inference',
     version='0.1',
@@ -13,7 +10,7 @@ setup(
     license='MIT',
     description='Inference code for the contrast-agnostic spinal cord segmentation using SoftSeg',
     long_description=open('README.md').read(),
-    install_requires=requirements,
+    install_requires=[],
     entry_points={
         'console_scripts': [
             'run_inference_single_image = run_inference_single_image:main',
