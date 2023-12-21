@@ -37,6 +37,9 @@ For GPU-based inference:
 pip install -r requirements_inference_gpu.txt
 ```
 
+### Download the model
+
+All segmentation models can be found under the [release page](https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord/releases). Pick the release you like (we recommend the latest one) and download the file named `model_*.zip`. Then unzip it.
 
 ### Method 1: Running inference on a single image 
 
