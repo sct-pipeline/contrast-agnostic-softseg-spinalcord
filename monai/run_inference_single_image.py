@@ -225,7 +225,10 @@ def prepare_data(path_image, path_out, crop_size=(64, 160, 320)):
 # ===========================================================================
 #                           Inference method
 # ===========================================================================
-def main(args):
+def main():
+
+    # get parameters
+    args = get_parser().parse_args()
 
     # define device
     if args.device == "gpu" and not torch.cuda.is_available():
@@ -356,6 +359,4 @@ def main(args):
 
 
 if __name__ == "__main__":
-
-    args = get_parser().parse_args()
-    main(args)
+    main()
