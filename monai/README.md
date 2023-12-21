@@ -54,7 +54,7 @@ All segmentation models can be found under the [release page](https://github.com
 
 The script for running inference is `run_inference_single_image.py`. Please run 
 ```
-python run_inference_single_image.py -h
+run_inference_single_image -h
 ```
 to get the list of arguments and their descriptions.
 
