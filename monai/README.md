@@ -10,7 +10,7 @@ Clone this repos:
 
 ```bash
 git clone https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord.git
-cd contrast-agnostic-softseg-spinalcord
+cd contrast-agnostic-softseg-spinalcord/monai
 ```
 
 Create a conda environment with the following command:
