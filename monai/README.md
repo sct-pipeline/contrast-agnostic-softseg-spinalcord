@@ -6,19 +6,26 @@ The following steps are required for using the contrast-agnostic model.
 
 The following commands show how to set up the environment. Note that the documentation assumes that the user has `conda` installed on their system. Instructions on installing `conda` can be found [here](https://conda.io/projects/conda/en/latest/user-guide/install/index.html).
 
-1. Create a conda environment with the following command:
+Clone this repos:
+
+```bash
+git clone https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord.git
+cd contrast-agnostic-softseg-spinalcord/monai
+```
+
+Create a conda environment with the following command:
 
 ```bash
 conda create -n venv_monai python=3.9
 ```
 
-2. Activate the environment with the following command:
+Activate the environment with the following command:
 
 ```bash
 conda activate venv_monai
 ```
 
-3. The list of necessary packages can be found in `requirements_inference_<cpu/gpu>.txt`. Use the following commands for installation:
+The list of necessary packages can be found in `requirements_inference_<cpu/gpu>.txt`. Use the following commands for installation:
 
 For CPU-based inference:
 ```bash
@@ -30,6 +37,9 @@ For GPU-based inference:
 pip install -r requirements_inference_gpu.txt
 ```
 
+### Download the model
+
+All segmentation models can be found under the [release page](https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord/releases). Pick the release you like (we recommend the latest one) and download the file named `model_*.zip`. Then unzip it.
 
 ### Method 1: Running inference on a single image 
 
