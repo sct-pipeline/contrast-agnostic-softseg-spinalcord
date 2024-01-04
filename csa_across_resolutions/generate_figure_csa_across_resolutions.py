@@ -1,5 +1,8 @@
 """
 Generate violin plot from CSV data across resolutions and methods.
+
+Usage:
+    python generate_figure_csa_across_resolutions.py -i /path/to/data.csv
 """
 
 import argparse
