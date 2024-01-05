@@ -48,7 +48,7 @@ def main(file_path):
     plt.xlabel('Resolution')
     plt.ylabel('CSA [mm^2]')
     plt.title('CSA across Resolutions and Methods')
-    plt.legend(title='Method', bbox_to_anchor=(1.05, 1), loc='upper left')
+    plt.legend(title='Method', loc='lower left')
     plt.tight_layout()
 
     # Add horizontal dashed grid
