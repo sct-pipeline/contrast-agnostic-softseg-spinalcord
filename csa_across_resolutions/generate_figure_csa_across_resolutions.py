@@ -27,13 +27,12 @@ def extract_method_resolution(filename):
         return 'Unknown', 'Unknown'
 
 
-def main(file_path):
-    # Load the CSV file
-    data = pd.read_csv(file_path)
-
-    # Apply the function to extract method and resolution
-    data['Method'], data['Resolution'] = zip(*data['Filename'].apply(extract_method_resolution))
-
+def generate_figure(data, file_path):
+    """
+    Generate violinplot across resolutions and methods
+    :param data: Pandas DataFrame with the data
+    :param file_path: Path to the CSV file (will be used to save the figure)
+    """
     # Correct labels for the x-axis based on the actual data
     resolution_labels = ['1mm', '125mm', '15mm', '175mm', '2mm']
 
@@ -63,6 +62,17 @@ def main(file_path):
 
     # Display the plot
     plt.show()
+
+
+def main(file_path):
+    # Load the CSV file
+    data = pd.read_csv(file_path)
+
+    # Apply the function to extract method and resolution
+    data['Method'], data['Resolution'] = zip(*data['Filename'].apply(extract_method_resolution))
+
+    # Generate violinplot across resolutions and methods
+    generate_figure(data, file_path)
 
 
 if __name__ == "__main__":
