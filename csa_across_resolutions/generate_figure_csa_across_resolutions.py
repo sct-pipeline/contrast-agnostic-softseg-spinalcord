@@ -83,6 +83,10 @@ def main(file_path):
     # Compute mean +- std across resolutions for each method
     df.loc['mean COV'] = df.mean()
     df.loc['std COV'] = df.std()
+    # Keep only two decimals and save as csv
+    df = df.round(2)
+    df.to_csv(file_path.replace('.csv', '_COV.csv'))
+    print(f'COV saved to {file_path.replace(".csv", "_COV.csv")}')
     # Print
     print(df)
 
