@@ -74,6 +74,18 @@ def main(file_path):
     # Generate violinplot across resolutions and methods
     generate_figure(data, file_path)
 
+    # Compute COV for CSA ('MEAN(area)' column) for each method across resolutions
+    df = data.groupby(['Method', 'Resolution'])['MEAN(area)'].agg(['mean', 'std']).reset_index()
+    for method in df['Method'].unique():
+        df.loc[df['Method'] == method, 'COV'] = df.loc[df['Method'] == method, 'std'] / df.loc[
+            df['Method'] == method, 'mean'] * 100
+    df = df[['Method', 'Resolution', 'COV']].pivot(index='Resolution', columns='Method', values='COV')
+    # Compute mean +- std across resolutions for each method
+    df.loc['mean COV'] = df.mean()
+    df.loc['std COV'] = df.std()
+    # Print
+    print(df)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Generate violin plot from CSV data.')
