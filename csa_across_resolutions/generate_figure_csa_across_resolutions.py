@@ -33,6 +33,10 @@ def generate_figure(data, file_path):
     :param data: Pandas DataFrame with the data
     :param file_path: Path to the CSV file (will be used to save the figure)
     """
+
+    # Fetch contrast (e.g. T1w, T2w, T2star) from the first filename using regex
+    contrast = re.search(r'.*_(T1w|T2w|T2star).*', data['Filename'][0]).group(1)
+
     # Correct labels for the x-axis based on the actual data
     resolution_labels = ['1mm', '125mm', '15mm', '175mm', '2mm']
 
@@ -46,7 +50,7 @@ def generate_figure(data, file_path):
     plt.xticks(rotation=45)
     plt.xlabel('Resolution')
     plt.ylabel('CSA [mm^2]')
-    plt.title('CSA across Resolutions and Methods')
+    plt.title(f'{contrast}: C2-C3 CSA across Resolutions and Methods')
     plt.legend(title='Method', loc='lower left')
     plt.tight_layout()
 
