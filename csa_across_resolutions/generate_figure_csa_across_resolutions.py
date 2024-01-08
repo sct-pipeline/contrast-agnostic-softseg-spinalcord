@@ -68,16 +68,12 @@ def generate_figure(data, file_path):
     plt.show()
 
 
-def main(file_path):
-    # Load the CSV file
-    data = pd.read_csv(file_path)
-
-    # Apply the function to extract method and resolution
-    data['Method'], data['Resolution'] = zip(*data['Filename'].apply(extract_method_resolution))
-
-    # Generate violinplot across resolutions and methods
-    generate_figure(data, file_path)
-
+def compute_cov(data, file_path):
+    """
+    Compute COV for CSA for each method across resolutions
+    :param data: Pandas DataFrame with the data
+    :param file_path: Path to the CSV file (will be used to save the figure)
+    """
     # Compute COV for CSA ('MEAN(area)' column) for each method across resolutions
     df = data.groupby(['Method', 'Resolution'])['MEAN(area)'].agg(['mean', 'std']).reset_index()
     for method in df['Method'].unique():
@@ -93,6 +89,20 @@ def main(file_path):
     print(f'COV saved to {file_path.replace(".csv", "_COV.csv")}')
     # Print
     print(df)
+
+
+def main(file_path):
+    # Load the CSV file
+    data = pd.read_csv(file_path)
+
+    # Apply the function to extract method and resolution
+    data['Method'], data['Resolution'] = zip(*data['Filename'].apply(extract_method_resolution))
+
+    # Generate violinplot across resolutions and methods
+    generate_figure(data, file_path)
+
+    # Compute COV for CSA for each method across resolutions
+    compute_cov(data, file_path)
 
 
 if __name__ == "__main__":
