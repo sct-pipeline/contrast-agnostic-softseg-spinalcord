@@ -90,6 +90,29 @@ def inference_transforms_single_image(crop_size):
             NormalizeIntensityd(keys=["image"], nonzero=False, channel_wise=False),
         ])
 
+# # ===========================================================================
+# #                      Test-time Augmentation Transforms
+# # (_could_ use same transforms as in train_transforms but not using for now)
+# # ===========================================================================
+# def inference_transforms_tta(crop_size):
+#     return transforms.Compose([
+#             transforms.LoadImaged(keys=["image"], image_only=False),
+#             transforms.EnsureChannelFirstd(keys=["image"]),
+#             transforms.Orientationd(keys=["image"], axcodes="RPI"),
+#             transforms.Spacingd(keys=["image"], pixdim=(1.0, 1.0, 1.0), mode=(2)),
+#             transforms.ResizeWithPadOrCropd(keys=["image"], spatial_size=crop_size,),
+#             transforms.DivisiblePadd(keys=["image"], k=2**5),   # pad inputs to ensure divisibility by no. of layers nnUNet has (5)
+#             # use the same transforms as in train_transforms
+#             # transforms.RandAffined(keys=["image"], mode=(2), prob=0.9,
+#             #             rotate_range=(-20. / 360 * 2. * np.pi, 20. / 360 * 2. * np.pi),    # monai expects in radians
+#             #             scale_range=(-0.2, 0.2),
+#             #             translate_range=(-0.1, 0.1)),
+#             # transforms.RandHistogramShiftd(keys=["image"], prob=1.0, num_control_points=10),
+#             # transforms.RandFlipd(keys=["image"], prob=1, spatial_axis=0),  
+#             # transforms.RandAdjustContrastd(keys=["image"], gamma=(0.5, 3.), prob=1.0),    # this is monai's RandomGamma
+#             transforms.NormalizeIntensityd(keys=["image"], nonzero=False, channel_wise=False),
+#         ])
+
 
 # ===========================================================================
 #                              Model utils
