@@ -70,6 +70,8 @@ def get_parser():
                         ' Default: 64x192x-1')
     parser.add_argument('--device', default="gpu", type=str, choices=["gpu", "cpu"],
                         help='Device to run inference on. Default: cpu')
+    parser.add_argument('--use-tta', action='store_true', 
+                        help='Use test-time augmentation (TTA) i.e mirroring on all axes. Default: False')
 
     return parser
 
@@ -199,7 +201,7 @@ def create_nnunet_from_plans(plans, num_input_channels: int, num_classes: int, d
 # ===========================================================================
 #                   Prepare temporary dataset for inference
 # ===========================================================================
-def prepare_data(path_image, path_out, crop_size=(64, 160, 320)):
+def prepare_data(path_image, path_out, crop_size=(64, 160, 320), tta=False):
 
     # create a temporary datalist containing the image
     # boiler plate keys to be defined in the MSD-style datalist
@@ -228,6 +230,8 @@ def prepare_data(path_image, path_out, crop_size=(64, 160, 320)):
     test_files = load_decathlon_datalist(dataset, True, "test")
     
     # define test transforms
+    if tta:
+        logger.info("Using test-time augmentation (mirroring across all 3 axes) ...") 
     transforms_test = inference_transforms_single_image(crop_size=crop_size)
     
     # define post-processing transforms for testing; taken (with explanations) from 
@@ -276,7 +280,7 @@ def main():
     inference_roi_size = (64, 192, 320)
 
     # define the dataset and dataloader
-    test_ds, test_post_pred = prepare_data(path_image, results_path, crop_size=crop_size)
+    test_ds, test_post_pred = prepare_data(path_image, results_path, crop_size=crop_size, tta=args.use_tta)
     test_loader = DataLoader(test_ds, batch_size=1, shuffle=False, num_workers=8, pin_memory=True)
 
     # define model
@@ -310,12 +314,22 @@ def main():
             net.to(DEVICE)
             net.eval()
 
-            # run inference            
-            batch["pred"] = sliding_window_inference(test_input, inference_roi_size, mode="gaussian",
-                                                    sw_batch_size=4, predictor=net, overlap=0.5, progress=False)
-
-            # take only the highest resolution prediction
-            batch["pred"] = batch["pred"][0]
+            # test-time augmentation
+            if args.use_tta:
+                # iterate over the x, y, z axes
+                batch["pred"] = torch.zeros_like(test_input)
+                for axis in range(3):
+                    # flip the input, run inference and flip it back
+                    batch["pred"] += torch.flip(sliding_window_inference(
+                            torch.flip(test_input, dims=[axis]), inference_roi_size, mode="gaussian", 
+                                        sw_batch_size=4, predictor=net, overlap=0.5, progress=False)[0], dims=[axis]
+                                    )
+                # average the prediction
+                batch["pred"] /= 3
+            else:
+                # run inference and take highest resolution prediction
+                batch["pred"] = sliding_window_inference(test_input, inference_roi_size, mode="gaussian",  
+                                                            sw_batch_size=4, predictor=net, overlap=0.5, progress=False)[0]
 
             # NOTE: monai's models do not normalize the output, so we need to do it manually
             if bool(F.relu(batch["pred"]).max()):
