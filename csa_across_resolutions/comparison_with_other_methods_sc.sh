@@ -1,35 +1,9 @@
 #!/bin/bash
 #
-# Compare the contrast-agnostic model with other methods (sct_propseg, sct_deepseg_sc 2d, sct_deepseg_sc 3d, nnUNet)
+# Compare the contrast-agnostic model (MONAI and nnUNet versions) with other methods (sct_propseg, sct_deepseg_sc)
 # across different resolutions on spine-generic test dataset.
 # 
 # Adapted from: https://github.com/ivadomed/model_seg_sci/blob/main/baselines/comparison_with_other_methods_sc.sh
-# 
-# Note: subjects from both datasets have to be located in the same BIDS-like folder, example:
-# ├── derivatives
-# │	 └── labels
-# │	     ├── sub-5416   # sci-colorado subject
-# │	     │	 └── anat
-# │	     │	     ├── sub-5416_T2w_lesion-manual.json
-# │	     │	     ├── sub-5416_T2w_lesion-manual.nii.gz
-# │	     │	     ├── sub-5416_T2w_seg-manual.json
-# │	     │	     └── sub-5416_T2w_seg-manual.nii.gz
-# │	     └── sub-zh01   # sci-zurich subject
-# │	         └── ses-01
-# │	             └── anat
-# │	                 ├── sub-zh01_ses-01_acq-sag_T2w_lesion-manual.json
-# │	                 ├── sub-zh01_ses-01_acq-sag_T2w_lesion-manual.nii.gz
-# │	                 ├── sub-zh01_ses-01_acq-sag_T2w_seg-manual.json
-# │	                 └── sub-zh01_ses-01_acq-sag_T2w_seg-manual.nii.gz
-# ├── sub-5416    # sci-colorado subject
-# │	 └── anat
-# │	     ├── sub-5416_T2w.json
-# │	     └── sub-5416_T2w.nii.gz
-# └── sub-zh01    # sci-zurich subject
-#    └── ses-01
-#        └── anat
-#            ├── sub-zh01_ses-01_acq-sag_T2w.json
-#            └── sub-zh01_ses-01_acq-sag_T2w.nii.gz
 #
 # Usage:
 #     sct_run_batch -config config.json
