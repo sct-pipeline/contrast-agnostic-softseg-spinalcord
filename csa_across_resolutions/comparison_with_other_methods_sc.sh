@@ -45,8 +45,8 @@ echo "PATH_LOG: ${PATH_LOG}"
 echo "PATH_QC: ${PATH_QC}"
 
 SUBJECT=$1
-PATH_NNUNET_SCRIPT=$2   # path to the nnUNet SCIseg run_inference_single_subject.py
-PATH_NNUNET_MODEL=$3    # path to the nnUNet SCIseg model
+PATH_NNUNET_SCRIPT=$2   # path to the nnUNet contrast-agnostic run_inference_single_subject.py
+PATH_NNUNET_MODEL=$3    # path to the nnUNet contrast-agnostic model
 PATH_MONAI_SCRIPT=$4    # path to the MONAI contrast-agnostic run_inference_single_subject.py
 PATH_MONAI_MODEL=$5     # path to the MONAI contrast-agnostic model
 
@@ -136,7 +136,7 @@ segment_sc() {
 }
 
 
-# Segment spinal cord using our SCIseg nnUNet model
+# Segment spinal cord using the contrast-agnostic nnUNet model
 segment_sc_nnUNet(){
   local file="$1"
   local kernel="$2"     # 2d or 3d
