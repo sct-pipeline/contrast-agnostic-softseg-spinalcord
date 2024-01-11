@@ -27,6 +27,7 @@ from dynamic_network_architectures.initialization.weight_init import init_last_b
 INIT_FILTERS=32
 ENABLE_DS = True
 
+# WARNING: Do NOT modify this
 nnunet_plans = {
     "UNet_class_name": "PlainConvUNet",
     "UNet_base_num_features": INIT_FILTERS,
