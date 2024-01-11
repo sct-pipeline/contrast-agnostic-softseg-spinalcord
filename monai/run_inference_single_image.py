@@ -71,7 +71,7 @@ def get_parser():
     parser.add_argument('--device', default="gpu", type=str, choices=["gpu", "cpu"],
                         help='Device to run inference on. Default: cpu')
     parser.add_argument('--use-tta', action='store_true', 
-                        help='Use test-time augmentation (TTA) i.e mirroring on all axes. Default: False')
+                        help='Use test-time augmentation (TTA), i.e. mirroring across all 3 axes. Default: False')
 
     return parser
 
