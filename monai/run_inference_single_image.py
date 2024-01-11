@@ -74,7 +74,7 @@ def get_parser():
                         help='Device to run inference on. Default: cpu')
     parser.add_argument('--use-tta', action='store_true', 
                         help='Use test-time augmentation (TTA), i.e. mirroring across all 3 axes. Default: False')
-    parser.add_argument('--remove-small-objects', int, default=10,
+    parser.add_argument('--remove-small-objects', type=int, default=10,
                         help='Remove all unconnected objects smaller than the minimum specified size.'
                         'Defined as a percent of the total no. of voxels in the prediction. Default: 10(%)')
 
