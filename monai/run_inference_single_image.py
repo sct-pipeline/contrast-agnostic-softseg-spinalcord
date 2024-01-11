@@ -14,6 +14,7 @@ import torch
 import torch.nn as nn
 import json
 from time import time
+import scipy.ndimage as ndimage
 
 from monai.inferers import sliding_window_inference
 from monai.data import (DataLoader, CacheDataset, load_decathlon_datalist, decollate_batch)
@@ -73,6 +74,9 @@ def get_parser():
                         help='Device to run inference on. Default: cpu')
     parser.add_argument('--use-tta', action='store_true', 
                         help='Use test-time augmentation (TTA), i.e. mirroring across all 3 axes. Default: False')
+    parser.add_argument('--remove-small-objects', int, default=10,
+                        help='Remove all unconnected objects smaller than the minimum specified size.'
+                        'Defined as a percent of the total no. of voxels in the prediction. Default: 10(%)')
 
     return parser
 
@@ -128,6 +132,46 @@ class InitWeights_He(object):
             module.weight = nn.init.kaiming_normal_(module.weight, a=self.neg_slope)
             if module.bias is not None:
                 module.bias = nn.init.constant_(module.bias, 0)
+
+
+# ============================================================================
+#                           Helper function(s)
+# ============================================================================
+
+def remove_small_objects(data, size_min_percent=10):
+    """Removes all unconnected objects smaller than the minimum specified size.
+    (hence keeping only the largest objects)
+    Adapted from: https://github.com/ivadomed/ivadomed/blob/master/ivadomed/postprocessing.py#L224
+
+    Args:
+        data (ndarray): Input data.
+        size_min_percentage (int): Minimal size of objects to remove as a percent of the 
+        total number of voxels. 
+        e.g. size_min_percent=10 means that objects smaller than 10% of the total voxels will be removed.
+
+    Returns:
+        ndarray: Array with small objects.
+    """
+
+    bin_structure = ndimage.generate_binary_structure(3, 2)
+
+    # get the total number of voxels annotated
+    n_voxels_total = np.count_nonzero(data)
+
+    # squeeze the first dimension (to be compatible with generate_binary_structure rank 3)
+    data = data.squeeze(axis=0)
+
+    data_label, n = ndimage.label(data, structure=bin_structure)
+
+    for idx in range(1, n + 1):
+        data_idx = (data_label == idx).astype(int)
+        n_nonzero = np.count_nonzero(data_idx)
+
+        #we only keep continuous objects that are larger than 10% of the total number of voxels
+        if n_nonzero < (size_min_percent / 100) * n_voxels_total:
+            data[data_label == idx] = 0
+
+    return data
 
 
 # ============================================================================
@@ -348,7 +392,10 @@ def main():
             pred = torch.clamp(pred, 0.5, 1)
             # set background values to 0
             pred[pred <= 0.5] = 0
-                
+
+            # remove small objects
+            pred = remove_small_objects(pred, size_min_percent=args.remove_small_objects)
+
             # get subject name
             subject_name = (batch["image_meta_dict"]["filename_or_obj"][0]).split("/")[-1].replace(".nii.gz", "")
             logger.info(f"Saving subject: {subject_name}")
