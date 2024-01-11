@@ -365,10 +365,13 @@ def main():
                 batch["pred"] = torch.zeros_like(test_input)
                 for axis in range(3):
                     # flip the input, run inference and flip it back
-                    batch["pred"] += torch.flip(sliding_window_inference(
-                            torch.flip(test_input, dims=[axis]), inference_roi_size, mode="gaussian", 
-                                        sw_batch_size=4, predictor=net, overlap=0.5, progress=False)[0], dims=[axis]
-                                    )
+                    pred_temp = torch.flip(
+                        sliding_window_inference(
+                            torch.flip(test_input, dims=[axis]), 
+                            inference_roi_size, mode="gaussian", 
+                            sw_batch_size=4, predictor=net, overlap=0.5, progress=False)[0], dims=[axis]
+                        )
+                    batch["pred"] += torch.clamp(pred_temp, 0.5, 1)
                 # average the prediction
                 batch["pred"] /= 3
             else:
