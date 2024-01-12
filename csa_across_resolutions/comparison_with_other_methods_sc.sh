@@ -64,25 +64,24 @@ anima_binaries_path=$(grep "^anima = " ~/.anima/config.txt | sed "s/.* = //" | s
 
 # Check if manual label already exists. If it does, copy it locally.
 # NOTE: manual disc labels should go from C1-C2 to C7-T1.
-label_and_compute_csa(){
+label_vertebrae(){
   local file="$1"
-  local file_seg="$2"
+  local contrast="$2"
+  # local file_seg="$2"
   # local ofolder="$3"
   
   # Update global variable with segmentation file name
+  FILESEG="${file}_seg-manual"
   FILELABEL="${file}_discs"
 
   # Label vertebral levels
   # NOTE: the straightening step in sct_label_vertebrae is resulting in EmptyArray Error for sct_propseg
   # Hence, we're only using sct_label_utils to label vertebral levels instead
-  # sct_label_vertebrae -i ${file}.nii.gz -s ${file_seg}.nii.gz -discfile ${FILELABEL}.nii.gz -c t2 -qc ${PATH_QC} -qc-subject ${SUBJECT}
-  sct_label_utils -i ${file}.nii.gz -disc ${FILELABEL}.nii.gz -o ${file_seg}_labeled.nii.gz
+  sct_label_vertebrae -i ${file}.nii.gz -s ${FILESEG}.nii.gz -discfile ${FILELABEL}.nii.gz -c ${contrast} -qc ${PATH_QC} -qc-subject ${SUBJECT}
+  # sct_label_utils -i ${file}.nii.gz -disc ${FILELABEL}.nii.gz -o ${file_seg}_labeled.nii.gz
 
-  # Run QC
-  sct_qc -i ${file}.nii.gz -s ${file_seg}_labeled.nii.gz -p sct_label_vertebrae -qc ${PATH_QC} -qc-subject ${SUBJECT}
-
-  # Compute CSA
-  sct_process_segmentation -i ${file_seg}.nii.gz -vert 2:3 -vertfile ${file_seg}_labeled.nii.gz -o $PATH_RESULTS/csa_preds_c23.csv -append 1
+  # # Run QC
+  # sct_qc -i ${file}.nii.gz -s ${file_seg}_labeled.nii.gz -p sct_label_vertebrae -qc ${PATH_QC} -qc-subject ${SUBJECT}
 }
 
 
