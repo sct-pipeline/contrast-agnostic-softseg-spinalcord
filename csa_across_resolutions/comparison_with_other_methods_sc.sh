@@ -284,6 +284,14 @@ fi
 # Get the native resolution of the image
 native_res=$(sct_image -i ${file}.nii.gz -header | grep pixdim | awk -F'[][]' '{split($2, a, ", "); print a[2]"x"a[3]"x"a[4]}')
 
+# Copy GT spinal cord segmentation
+copy_gt_disc_labels "${file}"
+
+# Copy GT spinal cord segmentation
+copy_gt_seg "${file}"
+
+# Label vertebral levels
+label_vertebrae ${file} 't2'
 
 # resolutions to be used for isotropic resampling
 resolutions="1 1.25 1.5 1.75 2"
