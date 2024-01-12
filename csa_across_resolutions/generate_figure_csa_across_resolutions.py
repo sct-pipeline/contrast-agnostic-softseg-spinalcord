@@ -101,6 +101,15 @@ def generate_figure_std(data, contrast, file_path):
     # Add horizontal dashed grid
     plt.grid(axis='y', alpha=0.5, linestyle='dashed')
 
+    # Get y-axis limits
+    ymin, ymax = plt.gca().get_ylim()
+
+    # Compute the mean +- std across resolutions for each method and place it above the corresponding violin
+    for method in df['Method'].unique():
+        mean = df[df['Method'] == method]['std'].mean()
+        std = df[df['Method'] == method]['std'].std()
+        plt.text(HUE_ORDER.index(method), ymax-1, f'{mean:.2f} +- {std:.2f}', ha='center', va='bottom', color='k')
+
     # Save the figure in 300 DPI as a PNG file
     plt.tight_layout()
     plt.savefig(file_path.replace('.csv', '_STD.png'), dpi=300)
