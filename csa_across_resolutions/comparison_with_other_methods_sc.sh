@@ -91,6 +91,8 @@ segment_sc() {
   local contrast="$2"
   local method="$3"     # deepseg or propseg
   local kernel="$4"     # 2d or 3d; only relevant for deepseg
+  local file_gt_vert_label="$5"
+  local native_res="$6"
 
   # Segment spinal cord
   if [[ $method == 'deepseg' ]];then
@@ -105,9 +107,6 @@ segment_sc() {
       # Calculate the time difference
       execution_time=$(python3 -c "print($end_time - $start_time)")
       echo "${FILESEG},${execution_time}" >> ${PATH_RESULTS}/execution_time.csv
-
-      # # Compute ANIMA segmentation performance metrics
-      # compute_anima_metrics ${FILESEG} ${file}_seg-manual.nii.gz
   
   elif [[ $method == 'propseg' ]]; then
       FILESEG="${file}_seg_${method}"
@@ -125,13 +124,16 @@ segment_sc() {
       # Remove centerline (we don't need it)
       rm ${file}_centerline.nii.gz
 
-      # # Compute ANIMA segmentation performance metrics
-      # compute_anima_metrics ${FILESEG} ${file}_seg-manual.nii.gz
-
   fi
 
-  # Create labeled segmentation of vertebral levels and compute CSA
-  label_and_compute_csa $file $FILESEG
+  # Resample the prediction back to native resolution
+  sct_resample -i ${FILESEG}.nii.gz -mm ${native_res} -x linear -o ${FILESEG}_native.nii.gz
+
+  # Compute CSA
+  sct_process_segmentation -i ${FILESEG}_native.nii.gz -vert 2:3 -vertfile ${file_gt_vert_label}_labeled.nii.gz -o $PATH_RESULTS/csa_preds_c23.csv -append 1
+
+  # # Create labeled segmentation of vertebral levels and compute CSA
+  # label_and_compute_csa $file $FILESEG
 }
 
 
@@ -139,6 +141,8 @@ segment_sc() {
 segment_sc_nnUNet(){
   local file="$1"
   local kernel="$2"     # 2d or 3d
+  local file_gt_vert_label="$3"
+  local native_res="$4"
 
   FILESEG="${file}_seg_nnunet_${kernel}"
 
@@ -155,17 +159,22 @@ segment_sc_nnUNet(){
   # Generate QC report
   sct_qc -i ${file}.nii.gz -s ${FILESEG}.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
 
-  # # Compute ANIMA segmentation performance metrics
-  # compute_anima_metrics ${FILESEG} ${file}_seg-manual.nii.gz
+  # Resample the prediction back to native resolution
+  sct_resample -i ${FILESEG}.nii.gz -mm ${native_res} -x linear -o ${FILESEG}_native.nii.gz
 
-  # Create labeled segmentation of vertebral levels and compute CSA
-  label_and_compute_csa $file $FILESEG
+  # Compute CSA (of the prediction resampled back to native resolution using the GT vertebral labels)
+  sct_process_segmentation -i ${FILESEG}_native.nii.gz -vert 2:3 -vertfile ${file_gt_vert_label}_labeled.nii.gz -o $PATH_RESULTS/csa_preds_c23.csv -append 1
+
+  # # Create labeled segmentation of vertebral levels and compute CSA
+  # label_and_compute_csa $file $FILESEG
 
 }
 
 # Segment spinal cord using the MONAI contrast-agnostic model
 segment_sc_MONAI(){
   local file="$1"
+  local file_gt_vert_label="$2"
+  local native_res="$3"
 
   FILESEG="${file}_seg_monai"
 
@@ -186,31 +195,16 @@ segment_sc_MONAI(){
 
   # Generate QC report
   sct_qc -i ${file}.nii.gz -s ${FILESEG}.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
-  # # Compute ANIMA segmentation performance metrics
-  # compute_anima_metrics ${FILESEG} ${file}_seg-manual.nii.gz
 
-  # Create labeled segmentation of vertebral levels and compute CSA
-  label_and_compute_csa $file $FILESEG
+  # Resample the prediction back to native resolution
+  sct_resample -i ${FILESEG}.nii.gz -mm ${native_res} -x linear -o ${FILESEG}_native.nii.gz
+
+  # Compute CSA
+  sct_process_segmentation -i ${FILESEG}_native.nii.gz -vert 2:3 -vertfile ${file_gt_vert_label}_labeled.nii.gz -o $PATH_RESULTS/csa_preds_c23.csv -append 1
+
+  # # Create labeled segmentation of vertebral levels and compute CSA
+  # label_and_compute_csa $file $FILESEG
 }
-
-# # Compute ANIMA segmentation performance metrics
-# compute_anima_metrics(){
-#   # We have to copy qform matrix from seg-manual to the automatically generated segmentation to avoid ITK error:
-#   # "Description: ITK ERROR: SegmentationMeasuresImageFilter(): Inputs do not occupy the same physical space!"
-#   # Related to the following issue : https://github.com/spinalcordtoolbox/spinalcordtoolbox/pull/4135
-#   sct_image -i ${file}_seg-manual.nii.gz -copy-header ${FILESEG}.nii.gz -o ${FILESEG}_updated_header.nii.gz
-
-#   # Compute ANIMA segmentation performance metrics
-#   # -i : input segmentation
-#   # -r : GT segmentation
-#   # -o : output file
-#   # -d : surface distances evaluation
-#   # -s : compute metrics to evaluate a segmentation
-#   # -X : stores results into a xml file.
-#   ${anima_binaries_path}/animaSegPerfAnalyzer -i ${FILESEG}_updated_header.nii.gz -r ${file}_seg-manual.nii.gz -o ${PATH_RESULTS}/${FILESEG} -d -s -X
-
-#   rm ${FILESEG}_updated_header.nii.gz
-# }
 
 # Copy GT spinal cord disc labels (located under derivatives/labels)
 copy_gt_disc_labels(){
@@ -271,9 +265,6 @@ cd ${SUBJECT}/anat
 # ------------------------------------------------------------------------------
 file="${SUBJECT}_T2w"
 
-# Copy GT spinal cord segmentation
-copy_gt_disc_labels "${file}"
-
 # Check if file exists
 if [[ ! -e ${file}.nii.gz ]]; then
     echo "File ${file}.nii.gz does not exist" >> ${PATH_LOG}/missing_files.log
@@ -297,8 +288,7 @@ label_vertebrae ${file} 't2'
 resolutions="1 1.25 1.5 1.75 2"
 
 # Loop across resolutions
-for res in ${resolutions}
-do
+for res in ${resolutions}; do
 
   echo "Resampling image to ${res}mm isotropic resolution ..."
   # NOTE: the . in resolution is replaced by nothing to avoid issues with bash
@@ -306,23 +296,22 @@ do
   # Resample image
   sct_resample -i ${file}.nii.gz -mm ${res}x${res}x${res} -x linear -o ${file_res}.nii.gz
 
-  # NOTE that the resampled images do not have the disc labels. So, we (1) register the original image to the resampled image 
-  # using -identity 1 to get the warping field, and (2) apply the warping field to the original disc labels to bring them to the 
-  # space of the resampled image. The resampled disc labels are then used for vertebral labelling and CSA computation.
+  # # NOTE that the resampled images do not have the disc labels. So, we (1) register the original image to the resampled image 
+  # # using -identity 1 to get the warping field, and (2) apply the warping field to the original disc labels to bring them to the 
+  # # space of the resampled image. The resampled disc labels are then used for vertebral labelling and CSA computation.
 
-  # Register the original disc labels to the resampled image
-  sct_register_multimodal -i ${file}.nii.gz -d ${file_res}.nii.gz -identity 1 -x linear
+  # # Register the original disc labels to the resampled image
+  # sct_register_multimodal -i ${file}.nii.gz -d ${file_res}.nii.gz -identity 1 -x linear
 
-  # Apply the resulting warping field to the original disc labels
-  sct_apply_transfo -i ${file}_discs.nii.gz -d ${file_res}.nii.gz -w warp_${file}2${file_res}.nii.gz -x label -o ${file_res}_discs.nii.gz
+  # # Apply the resulting warping field to the original disc labels
+  # sct_apply_transfo -i ${file}_discs.nii.gz -d ${file_res}.nii.gz -w warp_${file}2${file_res}.nii.gz -x label -o ${file_res}_discs.nii.gz
 
   # Segment SC using different methods and compute ANIMA segmentation performance metrics
-  segment_sc_nnUNet ${file_res} '3d_fullres'
-  segment_sc_MONAI ${file_res}
-  segment_sc ${file_res} 't2' 'deepseg' '2d'
-  # segment_sc "${file}_res-${res}mm" 't2' 'deepseg' '3d'
-  segment_sc ${file_res} 't2' 'propseg'
-  # segment_sc_nnUNet "${file}_res-${res}mm" '2d'
+  segment_sc_nnUNet ${file_res} '3d_fullres' "${file}_seg-manual" ${native_res}
+  segment_sc_MONAI ${file_res} "${file}_seg-manual" ${native_res}
+  segment_sc ${file_res} 't2' 'deepseg' '2d' "${file}_seg-manual" ${native_res}
+  segment_sc ${file_res} 't2' 'propseg' '' "${file}_seg-manual" ${native_res}
+
 done
 
 # ------------------------------------------------------------------------------
