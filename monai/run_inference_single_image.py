@@ -397,7 +397,11 @@ def main():
             pred[pred <= 0.5] = 0
 
             # remove small objects
-            pred = remove_small_objects(pred, size_min_percent=args.remove_small_objects)
+            if args.remove_small_objects == 0:
+                logger.info("No postprocessing: Keeping the prediction as is ...")
+            else:
+                logger.info(f"Postprocessing: Removing objects smaller than {args.remove_small_objects}% of the total voxels ...")
+                pred = remove_small_objects(pred, size_min_percent=args.remove_small_objects)
 
             # get subject name
             subject_name = (batch["image_meta_dict"]["filename_or_obj"][0]).split("/")[-1].replace(".nii.gz", "")
