@@ -229,6 +229,23 @@ copy_gt_disc_labels(){
   fi
 }
 
+# Copy GT segmentation (located under derivatives/labels)
+copy_gt_seg(){
+  local file="$1"
+  # Construct file name to GT segmentation located under derivatives/labels
+  FILESEG="${PATH_DATA}/derivatives/labels/${SUBJECT}/anat/${file}_seg-manual.nii.gz"
+  echo ""
+  echo "Looking for manual segmentation: $FILESEG"
+  if [[ -e $FILESEG ]]; then
+      echo "Found! Copying ..."
+      rsync -avzh $FILESEG ${file}_seg-manual.nii.gz
+  else
+      echo "File ${FILESEG}.nii.gz does not exist" >> ${PATH_LOG}/missing_files.log
+      echo "ERROR: Manual Segmentation ${FILESEG}.nii.gz does not exist. Exiting."
+      exit 1
+  fi
+}
+
 # ------------------------------------------------------------------------------
 # SCRIPT STARTS HERE
 # ------------------------------------------------------------------------------
