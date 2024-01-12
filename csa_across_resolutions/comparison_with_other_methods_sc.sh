@@ -281,6 +281,10 @@ if [[ ! -e ${file}.nii.gz ]]; then
     exit 1
 fi
 
+# Get the native resolution of the image
+native_res=$(sct_image -i ${file}.nii.gz -header | grep pixdim | awk -F'[][]' '{split($2, a, ", "); print a[2]"x"a[3]"x"a[4]}')
+
+
 # resolutions to be used for isotropic resampling
 resolutions="1 1.25 1.5 1.75 2"
 
