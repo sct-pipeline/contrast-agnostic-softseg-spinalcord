@@ -164,6 +164,8 @@ The training script expects a datalist file in the Medical Decathlon format cont
 python monai/create_msd_data.py -pd ~/duke/projects/ivadomed/contrast-agnostic-seg/data_processed_sg_2023-08-08_NO_CROP\data_processed_clean> -po ~/datasets/contrast-agnostic/ --contrast all --label-type soft --seed 42
 ```
 
+The dataset split containing the training, validation, and test subjects can be found in the `monai/data_split_all_soft_seed15.yaml` file. 
+
 > **Note** 
 > The output of the above command is just `.json` file pointing to the image-label pairs in the original BIDS dataset. It _does not_ copy the existing data to the output folder. 
 
