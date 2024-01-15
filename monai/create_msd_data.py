@@ -1,7 +1,7 @@
 import os
 import json
 from tqdm import tqdm
-import numpy as np
+import yaml
 import argparse
 import joblib
 from utils import FoldGenerator
@@ -10,7 +10,7 @@ from sklearn.model_selection import train_test_split
 
 # root = "/home/GRAMES.POLYMTL.CA/u114716/datasets/spine-generic_uncropped"
 
-parser = argparse.ArgumentParser(description='Code for creating k-fold splits of the spine-generic dataset.')
+parser = argparse.ArgumentParser(description='Code for MSD-style JSON datalist for spine-generic dataset.')
 
 parser.add_argument('-pd', '--path-data', required=True, type=str, help='Path to the data set directory')
 parser.add_argument('-pj', '--path-joblib', help='Path to joblib file from ivadomed containing the dataset splits.',
@@ -67,6 +67,10 @@ else:
 logger.info(f"Number of training subjects: {len(train_subjects)}")
 logger.info(f"Number of validation subjects: {len(val_subjects)}")
 logger.info(f"Number of testing subjects: {len(test_subjects)}")
+
+# dump train/val/test splits into a yaml file
+with open(f"data_split_{contrast}_{args.label_type}_seed{seed}.yaml", 'w') as file:
+    yaml.dump({'train': train_subjects, 'val': val_subjects, 'test': test_subjects}, file, indent=2, sort_keys=True)
 
 # keys to be defined in the dataset_0.json
 params = {}
