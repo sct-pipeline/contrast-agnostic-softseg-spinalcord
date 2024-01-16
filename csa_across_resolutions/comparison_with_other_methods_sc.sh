@@ -65,6 +65,7 @@ anima_binaries_path=$(grep "^anima = " ~/.anima/config.txt | sed "s/.* = //" | s
 # Check if manual label already exists. If it does, copy it locally.
 # NOTE: manual disc labels should go from C1-C2 to C7-T1.
 label_vertebrae(){
+  # TODO: Move to sct_label_utils as it much faster (and doesn't require straightening)
   local file="$1"
   local contrast="$2"
   # local file_seg="$2"
@@ -78,7 +79,7 @@ label_vertebrae(){
   # NOTE: the straightening step in sct_label_vertebrae is resulting in EmptyArray Error for sct_propseg
   # Hence, we're only using sct_label_utils to label vertebral levels instead
   sct_label_vertebrae -i ${file}.nii.gz -s ${FILESEG}.nii.gz -discfile ${FILELABEL}.nii.gz -c ${contrast} -qc ${PATH_QC} -qc-subject ${SUBJECT}
-  # sct_label_utils -i ${file}.nii.gz -disc ${FILELABEL}.nii.gz -o ${file_seg}_labeled.nii.gz
+  # sct_label_utils -i ${file}.nii.gz -disc ${FILELABEL}.nii.gz -o ${FILESEG}_labeled.nii.gz
 
   # # Run QC
   # sct_qc -i ${file}.nii.gz -s ${file_seg}_labeled.nii.gz -p sct_label_vertebrae -qc ${PATH_QC} -qc-subject ${SUBJECT}
@@ -127,11 +128,11 @@ segment_sc() {
 
   fi
 
-  # Resample the prediction back to native resolution
-  sct_resample -i ${FILESEG}.nii.gz -mm ${native_res} -x linear -o ${FILESEG}_native.nii.gz
+  # Resample the prediction back to native resolution; output is overwritten
+  sct_resample -i ${FILESEG}.nii.gz -mm ${native_res} -x linear -o ${FILESEG}.nii.gz
 
   # Compute CSA from the the SC segmentation resampled back to native resolution using the GT vertebral labels
-  sct_process_segmentation -i ${FILESEG}_native.nii.gz -vert 2:3 -vertfile ${file_gt_vert_label}_labeled.nii.gz -o $PATH_RESULTS/csa_preds_c23.csv -append 1
+  sct_process_segmentation -i ${FILESEG}.nii.gz -vert 2:3 -vertfile ${file_gt_vert_label}_labeled.nii.gz -o $PATH_RESULTS/csa_preds_c23.csv -append 1
 
   # # Create labeled segmentation of vertebral levels and compute CSA
   # label_and_compute_csa $file $FILESEG
@@ -161,11 +162,11 @@ segment_sc_nnUNet(){
   # Generate QC report
   sct_qc -i ${file}.nii.gz -s ${FILESEG}.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
 
-  # Resample the prediction back to native resolution
-  sct_resample -i ${FILESEG}.nii.gz -mm ${native_res} -x linear -o ${FILESEG}_native.nii.gz
+  # Resample the prediction back to native resolution; output is overwritten
+  sct_resample -i ${FILESEG}.nii.gz -mm ${native_res} -x linear -o ${FILESEG}.nii.gz
 
   # Compute CSA from the prediction resampled back to native resolution using the GT vertebral labels
-  sct_process_segmentation -i ${FILESEG}_native.nii.gz -vert 2:3 -vertfile ${file_gt_vert_label}_labeled.nii.gz -o $PATH_RESULTS/csa_preds_c23.csv -append 1
+  sct_process_segmentation -i ${FILESEG}.nii.gz -vert 2:3 -vertfile ${file_gt_vert_label}_labeled.nii.gz -o $PATH_RESULTS/csa_preds_c23.csv -append 1
 
   # # Create labeled segmentation of vertebral levels and compute CSA
   # label_and_compute_csa $file $FILESEG
@@ -174,6 +175,7 @@ segment_sc_nnUNet(){
 
 # Segment spinal cord using the MONAI contrast-agnostic model, resample the prediction back to native resolution and
 # compute CSA in native space
+# TODO: Compute CSA for soft predictions once the threshold is determined
 segment_sc_MONAI(){
   local file="$1"
   local file_gt_vert_label="$2"
@@ -193,17 +195,23 @@ segment_sc_MONAI(){
   execution_time=$(python3 -c "print($end_time - $start_time)")
   echo "${FILESEG},${execution_time}" >> ${PATH_RESULTS}/execution_time.csv
 
-  # Binarize MONAI output (which is soft by default); output is overwritten
-  sct_maths -i ${FILESEG}.nii.gz -bin 0.5 -o ${FILESEG}.nii.gz
-
-  # Generate QC report
+  # Generate QC report with soft prediction
   sct_qc -i ${file}.nii.gz -s ${FILESEG}.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
 
-  # Resample the prediction back to native resolution
-  sct_resample -i ${FILESEG}.nii.gz -mm ${native_res} -x linear -o ${FILESEG}_native.nii.gz
+  # Resample the soft prediction back to native resolution; output is overwritten
+  sct_resample -i ${FILESEG}.nii.gz -mm ${native_res} -x linear -o ${FILESEG}.nii.gz
 
-  # Compute CSA from the prediction resampled back to native resolution using the GT vertebral labels
-  sct_process_segmentation -i ${FILESEG}_native.nii.gz -vert 2:3 -vertfile ${file_gt_vert_label}_labeled.nii.gz -o $PATH_RESULTS/csa_preds_c23.csv -append 1
+  # # Compute CSA from the soft prediction resampled back to native resolution using the GT vertebral labels
+  # sct_process_segmentation -i ${FILESEG}.nii.gz -vert 2:3 -vertfile ${file_gt_vert_label}_labeled.nii.gz -o $PATH_RESULTS/csa_preds_c23.csv -append 1
+
+  # # Resample the binarized prediction back to native resolution
+  # sct_resample -i ${FILESEG}_bin.nii.gz -mm ${native_res} -x linear -o ${FILESEG}_bin_native.nii.gz
+  
+  # Binarize MONAI output (now at native resolution, which could also be soft)
+  sct_maths -i ${FILESEG}.nii.gz -bin 0.5 -o ${FILESEG}_bin.nii.gz
+
+  # Compute CSA from the binarized prediction resampled back to native resolution using the GT vertebral labels
+  sct_process_segmentation -i ${FILESEG}_bin.nii.gz -vert 2:3 -vertfile ${file_gt_vert_label}_labeled.nii.gz -o $PATH_RESULTS/csa_preds_c23.csv -append 1
 
   # # Create labeled segmentation of vertebral levels and compute CSA
   # label_and_compute_csa $file $FILESEG
@@ -288,16 +296,17 @@ copy_gt_seg "${file}"
 label_vertebrae ${file} 't2'
 
 # resolutions to be used for isotropic resampling
-resolutions="1 1.25 1.5 1.75 2"
+# resolutions="1 1.25 1.5 1.75 2"
+resolutions="1x1x1 0.5x0.5x4 1.5x1.5x1.5 4x0.5x0.5 2x2x2"
 
 # Loop across resolutions
 for res in ${resolutions}; do
 
   echo "Resampling image to ${res}mm isotropic resolution ..."
-  # NOTE: the . in resolution is replaced by nothing to avoid issues with bash
-  file_res="${file}_iso-${res/./}mm"
+  # file_res="${file}_iso-${res/./}mm"
+  file_res="${file}_iso-$(echo "${res}" | awk -Fx '{print $1}' | sed 's/\.//')mm"
   # Resample image
-  sct_resample -i ${file}.nii.gz -mm ${res}x${res}x${res} -x linear -o ${file_res}.nii.gz
+  sct_resample -i ${file}.nii.gz -mm ${res} -x linear -o ${file_res}.nii.gz
 
   # # NOTE that the resampled images do not have the disc labels. So, we (1) register the original image to the resampled image 
   # # using -identity 1 to get the warping field, and (2) apply the warping field to the original disc labels to bring them to the 
