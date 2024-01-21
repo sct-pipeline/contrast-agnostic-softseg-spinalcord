@@ -297,7 +297,7 @@ label_vertebrae ${file} 't2'
 
 # resolutions to be used for isotropic resampling
 # resolutions="1 1.25 1.5 1.75 2"
-resolutions="1x1x1 0.5x0.5x4 1.5x1.5x1.5 4x0.5x0.5 2x2x2"
+resolutions="1x1x1 0.5x0.5x4 1.5x1.5x1.5 3x0.5x0.5 2x2x2"
 
 # Loop across resolutions
 for res in ${resolutions}; do
