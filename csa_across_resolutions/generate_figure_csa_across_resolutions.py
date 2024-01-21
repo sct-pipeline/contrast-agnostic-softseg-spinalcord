@@ -57,7 +57,8 @@ def generate_figure(data, contrast, file_path):
     """
 
     # Correct labels for the x-axis based on the actual data
-    resolution_labels = ['1mm', '125mm', '15mm', '175mm', '2mm']
+    # resolution_labels = ['1mm', '125mm', '15mm', '175mm', '2mm']
+    resolution_labels = ['1mm', '05mm', '15mm', '3mm', '2mm']
 
     # Creating the violin plot
     plt.figure(figsize=(12, 6))
@@ -74,7 +75,8 @@ def generate_figure(data, contrast, file_path):
     plt.grid(axis='y', alpha=0.5, linestyle='dashed')
 
     # Update x-axis labels
-    plt.gca().set_xticklabels(['1mm', '1.25mm', '1.5mm', '1.75mm', '2mm'])
+    # plt.gca().set_xticklabels(['1mm', '1.25mm', '1.5mm', '1.75mm', '2mm'])
+    plt.gca().set_xticklabels(['1x1x1mm', '0.5x0.5x0.5mm', '1.5mm', '3x0.5x0.5mm', '2mm'])
 
     # Save the figure in 300 DPI as a PNG file
     plt.savefig(file_path.replace('.csv', '.png'), dpi=300)
@@ -94,7 +96,7 @@ def generate_figure_std(data, contrast, file_path):
 
     plt.figure(figsize=(12, 6))
     sns.violinplot(x='Method', y='std', data=df, order=HUE_ORDER)
-    plt.xticks(rotation=45)
+    # plt.xticks(rotation=45)
     plt.xlabel('Method')
     plt.ylabel('STD [mm^2]')
     plt.title(f'{contrast}: STD of C2-C3 CSA across resolutions for each method')
