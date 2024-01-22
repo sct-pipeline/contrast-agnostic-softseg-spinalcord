@@ -230,7 +230,7 @@ def main():
     inference_roi_size = (64, 192, 320)
 
     # define the dataset and dataloader
-    test_ds, test_post_pred = prepare_data(path_image, results_path, crop_size=crop_size)
+    test_ds, test_post_pred = prepare_data(path_image, crop_size=crop_size)
     test_loader = DataLoader(test_ds, batch_size=1, shuffle=False, num_workers=8, pin_memory=True)
 
     # define model
