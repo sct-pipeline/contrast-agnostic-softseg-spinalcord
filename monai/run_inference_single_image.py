@@ -16,7 +16,7 @@ import json
 from time import time
 
 from monai.inferers import sliding_window_inference
-from monai.data import (DataLoader, Dataset, load_decathlon_datalist, decollate_batch)
+from monai.data import (DataLoader, Dataset, decollate_batch)
 from monai.transforms import (Compose, EnsureTyped, Invertd, SaveImage, Spacingd,
                               LoadImaged, NormalizeIntensityd, EnsureChannelFirstd, 
                               DivisiblePadd, Orientationd, ResizeWithPadOrCropd)
@@ -284,7 +284,7 @@ def main():
             # binarize the prediction with a threshold of 0.5
             pred[pred >= 0.5] = 1
             pred[pred < 0.5] = 0
-                            
+
             # get subject name
             subject_name = (batch["image_meta_dict"]["filename_or_obj"][0]).split("/")[-1].replace(".nii.gz", "")
             logger.info(f"Saving subject: {subject_name}")
