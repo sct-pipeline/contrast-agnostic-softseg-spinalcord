@@ -216,7 +216,7 @@ def main():
     # define root path for finding datalists
     path_image = args.path_img
     results_path = args.path_out
-    chkp_path = os.path.join(args.chkp_path, "best_model_loss.ckpt")
+    chkp_path = os.path.join(args.chkp_path, "best_model.ckpt")
 
     # save terminal outputs to a file
     logger.add(os.path.join(results_path, "logs.txt"), rotation="10 MB", level="INFO")
