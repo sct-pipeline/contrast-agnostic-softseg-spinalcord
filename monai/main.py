@@ -111,9 +111,15 @@ class Model(pl.LightningModule):
         transforms_val = val_transforms(crop_size=self.inference_roi_size, lbl_key='label')
         
         # load the dataset
-        dataset = os.path.join(self.root, 
-            f"dataset_{self.cfg['dataset']['contrast']}_{self.cfg['dataset']['label_type']}_seed{self.cfg['seed']}.json"
-        )
+        if self.cfg["dataset"]["label_type"] == "softBin":
+            logger.info(f"Training with binarized soft labels (threshold 0.5) ...")
+            dataset = os.path.join(self.root, 
+                f"dataset_{self.cfg['dataset']['contrast']}_soft_seed{self.cfg['seed']}.json"
+            )
+        else:
+            dataset = os.path.join(self.root, 
+                f"dataset_{self.cfg['dataset']['contrast']}_{self.cfg['dataset']['label_type']}_seed{self.cfg['seed']}.json"
+            )
         logger.info(f"Loading dataset: {dataset}")
         train_files = load_decathlon_datalist(dataset, True, "train")
         val_files = load_decathlon_datalist(dataset, True, "validation")
@@ -178,6 +184,10 @@ class Model(pl.LightningModule):
     def training_step(self, batch, batch_idx):
 
         inputs, labels = batch["image"], batch["label"]
+
+        if self.cfg["dataset"]["label_type"] == "softBin":
+            # binarize soft labels with threshold 0.5
+            labels = (labels > 0.5).float()
 
         # check if any label image patch is empty in the batch
         if check_empty_patch(labels) is None:
@@ -277,6 +287,10 @@ class Model(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         
         inputs, labels = batch["image"], batch["label"]
+
+        if self.cfg["dataset"]["label_type"] == "softBin":
+            # binarize soft labels with threshold 0.5
+            labels = (labels > 0.5).float()
 
         # NOTE: this calculates the loss on the entire image after sliding window
         outputs = sliding_window_inference(inputs, self.inference_roi_size, mode="gaussian",
@@ -599,7 +613,7 @@ def main(args):
         # wandb logger
         exp_logger = pl.loggers.WandbLogger(
                             name=save_exp_id,
-                            save_dir=config["directories"]["models_dir"],
+                            save_dir="/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/saved_models",
                             group=config["dataset"]["name"],
                             log_model=True, # save best model using checkpoint callback
                             project='contrast-agnostic',
