@@ -48,30 +48,6 @@ SUBJECT=$1
 echo "SUBJECT: ${SUBJECT}"
 
 # ------------------------------------------------------------------------------
-# CONVENIENCE FUNCTIONS
-# ------------------------------------------------------------------------------
-
-# Copy GT soft segmentation (located under derivatives/labels_softseg)
-copy_gt_softseg(){
-  local file="$1"
-  local type="$2"
-  # Construct file name to GT segmentation located under derivatives/labels
-  FILESEG="${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/${type}/${file}_softseg.nii.gz"
-  echo ""
-  echo "Looking for manual segmentation: $FILESEG"
-  if [[ -e $FILESEG ]]; then
-      echo "Found! Copying ..."
-      rsync -avzh $FILESEG ${file}_softseg.nii.gz $PATH_DATA_PROCESSED/derivatives/labels_softseg_bin/${SUBJECT}/${type}/
-      rsync -avzh ${FILESEG%.nii.gz}.json $PATH_DATA_PROCESSED/derivatives/labels_softseg_bin/${SUBJECT}/${type}/${file}_softseg_bin.json 
-  else
-      echo "File ${FILESEG} does not exist" >> ${PATH_LOG}/missing_files.log
-      echo "ERROR: Manual Segmentation ${FILESEG} does not exist. Exiting."
-      exit 1
-  fi
-}
-
-
-# ------------------------------------------------------------------------------
 # SCRIPT STARTS HERE
 # ------------------------------------------------------------------------------
 # get starting time:
@@ -120,9 +96,6 @@ for contrast in ${contrasts}; do
       echo "ERROR: File ${file}_softseg.nii.gz does not exist. Exiting."
       exit 1
   fi
-
-#   # Copy GT spinal cord segmentation
-#   copy_gt_softseg "${file}" "${type}"
 
   # Binarize the soft GT
   FILETHRESH="${file}_softseg_bin"
