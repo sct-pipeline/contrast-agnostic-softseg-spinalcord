@@ -491,6 +491,7 @@ for file_path in "${inc_contrasts[@]}";do
   
   mkdir -p $PATH_DATA_PROCESSED_CLEAN $PATH_DATA_PROCESSED_CLEAN/${SUBJECT}/$type $PATH_DATA_PROCESSED_CLEAN/derivatives/labels/${SUBJECT}/$type
   mkdir -p $PATH_DATA_PROCESSED_CLEAN/derivatives/labels_softseg/${SUBJECT}/$type
+  mkdir -p $PATH_DATA_PROCESSED_CLEAN/derivatives/labels_softseg_bin/${SUBJECT}/$type  # Create labels_softseg_bin folder
 
   # Put image in cleaned dataset
   rsync -avzh $PATH_DATA_PROCESSED/${SUBJECT}/${file_path}.nii.gz $PATH_DATA_PROCESSED_CLEAN/${SUBJECT}/${file_path}.nii.gz
@@ -505,9 +506,12 @@ for file_path in "${inc_contrasts[@]}";do
   # Move segmentation and soft segmentation to the cleanded derivatives
   rsync -avzh ${PATH_DATA}/derivatives/labels/${SUBJECT}/${fileseg}.nii.gz $PATH_DATA_PROCESSED_CLEAN/derivatives/labels/${SUBJECT}/${fileseg}.nii.gz
   rsync -avzh ${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/${filesoftseg}.nii.gz $PATH_DATA_PROCESSED_CLEAN/derivatives/labels_softseg/${SUBJECT}/${filesoftseg}.nii.gz
+  rsync -avzh ${filesoftseg}_bin.nii.gz $PATH_DATA_PROCESSED_CLEAN/derivatives/labels_softseg_bin/${SUBJECT}/${filesoftseg}_bin.nii.gz
   # Move json files of derivatives
   rsync -avzh "${PATH_DATA}/derivatives/labels/${SUBJECT}/${fileseg}.json" $PATH_DATA_PROCESSED_CLEAN/derivatives/labels/${SUBJECT}/${fileseg}.json
   rsync -avzh "${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/${filesoftseg}.json" $PATH_DATA_PROCESSED_CLEAN/derivatives/labels_softseg/${SUBJECT}/${filesoftseg}.json
+  rsync -avzh "${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/${filesoftseg}.json" $PATH_DATA_PROCESSED_CLEAN/derivatives/labels_softseg_bin/${SUBJECT}/${filesoftseg}_bin.json
+ 
   # Move disc labels into cleaned derivatives
   rsync -avzh $PATH_DATA_PROCESSED/${SUBJECT}/${file_path}_seg_labeled_discs.nii.gz $PATH_DATA_PROCESSED_CLEAN/derivatives/labels/${SUBJECT}/${file_path}_discs.nii.gz
 
