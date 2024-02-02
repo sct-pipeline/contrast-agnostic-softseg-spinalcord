@@ -19,7 +19,7 @@ parser.add_argument('-po', '--path-out', type=str, help='Path to the output dire
 parser.add_argument("--contrast", default="t2w", type=str, help="Contrast to use for training", 
                     choices=["t1w", "t2w", "t2star", "mton", "mtoff", "dwi", "all"])
 parser.add_argument('--label-type', default='soft', type=str, help="Type of labels to use for training",
-                    choices=['hard', 'soft'])
+                    choices=['hard', 'soft', 'soft_bin'])
 parser.add_argument('--seed', default=42, type=int, help="Seed for reproducibility")
 args = parser.parse_args()
 
@@ -31,6 +31,10 @@ if args.label_type == 'soft':
     logger.info("Using SOFT LABELS ...")
     PATH_DERIVATIVES = os.path.join(root, "derivatives", "labels_softseg")
     SUFFIX = "softseg"
+elif args.label_type == 'soft_bin':
+    logger.info("Using BINARIZED SOFT LABELS ...")
+    PATH_DERIVATIVES = os.path.join(root, "derivatives", "labels_softseg_bin")
+    SUFFIX = "softseg_bin"
 else:
     logger.info("Using HARD LABELS ...")
     PATH_DERIVATIVES = os.path.join(root, "derivatives", "labels")
