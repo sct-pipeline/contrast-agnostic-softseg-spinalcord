@@ -320,7 +320,7 @@ for contrast in ${contrasts}; do
 
   # 1. Compute (soft) CSA of the original soft GT
   # renaming file so that it can be fetched from the CSA csa file later 
-  FILEINPUT="${file%%_*}_${contrast}_softseg"
+  FILEINPUT="${file%%_*}_${contrast}_softseg_soft"
   cp ${file}_softseg.nii.gz ${FILEINPUT}.nii.gz
   sct_process_segmentation -i ${FILEINPUT}.nii.gz -vert 2:4 -vertfile ${file}_seg-manual_labeled.nii.gz -o $PATH_RESULTS/csa_label_types_c24.csv -append 1
 
