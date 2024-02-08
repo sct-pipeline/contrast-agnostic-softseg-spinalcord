@@ -5,7 +5,6 @@
 #     For T2s : Compute root-mean square across 4th dimension (if it exists)
 #     For dwi : Generate mean image after motion correction.
 #     
-#     Crop all images.
 #     Generates soft segmentations.
 # Usage:
 #   ./process_data.sh <SUBJECT>
@@ -24,7 +23,7 @@
 set -x
 
 # Immediately exit if error
-set -e -o pipefail
+#set -e -o pipefail  comment if qform/sform error
 
 # Exit if user presses CTRL+C (Linux) or CMD+C (OSX)
 trap "echo Caught Keyboard Interrupt within script. Exiting now.; exit" INT
