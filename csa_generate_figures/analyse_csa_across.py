@@ -1,8 +1,8 @@
 """
-Generate violin plot from CSV data across resolutions and methods.
+Generate violin plots from CSV data across different models (methods), thresholds, and resolutions.
 
 Usage:
-    python generate_figure_csa_across_resolutions.py -i /path/to/data.csv
+    python generate_figure_csa_across_resolutions.py -i /path/to/data.csv -a [methods, resolutions, thresholds]
 """
 
 import os
