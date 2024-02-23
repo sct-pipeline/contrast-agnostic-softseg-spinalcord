@@ -52,8 +52,8 @@ def extract_contrast_and_details(filename, analysis_type):
     are embedded in the filename.
     """
     # pattern = r'.*iso-(\d+mm).*_(propseg|deepseg_2d|nnunet_3d_fullres|monai).*'
-    # pattern = r'.*_(DWI|MTon|MToff|T1w|T2star|T2w).*_(softseg_soft|softseg_bin|nnunet|monai_soft|monai_bin).*'
     if analysis_type == "methods":
+        # pattern = r'.*_(DWI|MTon|MToff|T1w|T2star|T2w).*_(softseg_soft|softseg_bin|nnunet|monai_soft|monai_bin).*'
         pattern = r'.*_(DWI|MTon|MToff|T1w|T2star|T2w).*_(softseg_bin|deepseg_2d|nnunet|monai|swinunetr|mednext).*'
         match = re.search(pattern, filename)
         if match:
@@ -160,20 +160,39 @@ def generate_figure_abs_csa_error(file_path, data, hue_order=None):
     if 'softseg_soft' in data['Method'].unique():
         data = data[data['Method'] != 'softseg_soft']
 
-    # Compute mean and std across contrasts for each method
-    df = data.groupby(['Method', 'Participant'])['MEAN(area)'].agg(['mean', 'std']).reset_index()
-    
-    # Compute the abs error between "sofseg_bin" and all other methods
-    df['abs_error'] = df.apply(lambda row: abs(row['mean'] - df[(df['Method'] == 'softseg_bin') & (df['Participant'] == row['Participant'])]['mean'].values[0]), axis=1)
+    df = pd.DataFrame()
+    for method in hue_order[1:]:
+        df_error_contrast = pd.DataFrame()
+        for contrast in CONTRAST_ORDER:
+            df1 = data[(data['Method'] == "softseg_bin") & (data['Contrast'] == contrast)]
+            df2 = data[(data['Method'] == method) & (data['Contrast'] == contrast)]
 
-    # Remove "softseg_bin" from the list of methods and shift rows by one to match the violinplot
-    df = df[df['Method'] != 'softseg_bin']
+            # group by participant and get the mean area for each participant
+            df1 = df1.groupby('Participant')['MEAN(area)'].mean().reset_index()
+            df2 = df2.groupby('Participant')['MEAN(area)'].mean().reset_index()
+
+            # compute the absolute error between the two dataframes
+            df_temp = pd.merge(df1, df2, on='Participant', suffixes=('_gt', '_contrast'))
+            df_error_contrast[contrast] = abs(df_temp['MEAN(area)_gt'] - df_temp['MEAN(area)_contrast'])
+        
+        df_error_contrast['abs_error_mean'] = df_error_contrast.mean(axis=1)
+        df_error_contrast['abs_error_std'] = df_error_contrast.std(axis=1)
+        df_error_contrast['Method'] = method
+        df_error_contrast['Participant'] = df_temp['Participant']
+
+        df = pd.concat([df, df_error_contrast])
+    
+    # remove the contrasts from the dataframe
+    df = df.drop(columns=CONTRAST_ORDER)
+    # # compute the mean and std across contrasts for each method
+    # df_agg = df.groupby('Method')[['mean_error', 'std_error']].mean().reset_index()
+    # print(df_agg)
 
     plt.figure(figsize=(12, 6))
     # skip the first method (i.e., softseg_bin)
-    sns.violinplot(x='Method', y='abs_error', data=df, order=hue_order)
+    sns.violinplot(x='Method', y='abs_error_mean', data=df, order=hue_order)
     # overlay swarm plot on the violin plot to show individual data points
-    sns.swarmplot(x='Method', y='abs_error', data=df, color='k', order=hue_order, size=3)
+    sns.swarmplot(x='Method', y='abs_error_mean', data=df, color='k', order=hue_order, size=3)
 
     # plt.xticks(rotation=45)
     plt.xlabel('Method')
@@ -190,8 +209,8 @@ def generate_figure_abs_csa_error(file_path, data, hue_order=None):
 
     # Compute the mean +- std across resolutions for each method and place it above the corresponding violin
     for method in df['Method'].unique():
-        mean = df[df['Method'] == method]['abs_error'].mean()
-        std = df[df['Method'] == method]['abs_error'].std()
+        mean = df[df['Method'] == method]['abs_error_mean'].mean()
+        std = df[df['Method'] == method]['abs_error_std'].mean()
         plt.text(hue_order.index(method), ymax-0.25, f'{mean:.2f} +- {std:.2f}', ha='center', va='bottom', color='k')
     
     # Save the figure in 300 DPI as a PNG file
@@ -206,6 +225,7 @@ def generate_figure_abs_csa_error_threshold(file_path, data, hue_order=None):
     # Compute mean and std across thresholds for each method
     df = data.groupby(['Method', 'Threshold', 'Participant'])['MEAN(area)'].agg(['mean', 'std']).reset_index()
 
+    # TODO: this is wrong; see update to generate_figure_abs_csa_error function to fix the with incorrect application of `lambda`
     # compute abs_error between softseg and monai for each threshold across all contrasts
     df['abs_error'] = df.apply(lambda row: abs(row['mean'] - df[(df['Method'] == 'softseg') & (df['Threshold'] == row['Threshold']) & (df['Participant'] == row['Participant'])]['mean'].values[0]), axis=1)
 
