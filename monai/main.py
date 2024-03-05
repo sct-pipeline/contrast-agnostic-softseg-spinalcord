@@ -18,17 +18,20 @@ from models import create_nnunet_from_plans
 
 from monai.utils import set_determinism
 from monai.inferers import sliding_window_inference
-from monai.networks.nets import UNETR
+from monai.networks.nets import UNETR, SwinUNETR
 from monai.data import (DataLoader, CacheDataset, load_decathlon_datalist, decollate_batch)
 from monai.transforms import (Compose, EnsureType, EnsureTyped, Invertd, SaveImage)
 
+# mednext
+from nnunet_mednext import MedNeXt
 
 def get_args():
     parser = argparse.ArgumentParser(description='Script for training contrast-agnositc SC segmentation model.')
     
     # arguments for model
-    parser.add_argument('-m', '--model', choices=['unetr', 'nnunet'], default='nnunet', type=str, 
-                        help='Model type to be used. Currently only supports nnUNet.')
+    parser.add_argument('-m', '--model', choices=['nnunet', 'mednext', 'swinunetr'], 
+                        default='nnunet', type=str, 
+                        help='Model type to be used. Options: nnunet, mednext, swinunetr.')
     # path to the config file
     parser.add_argument("--config", type=str, default="./config.json",
                         help="Path to the config file containing all training details.")
@@ -188,7 +191,7 @@ class Model(pl.LightningModule):
         output = self.forward(inputs)   # logits
         # print(f"labels.shape: {labels.shape} \t output.shape: {output.shape}")
         
-        if args.model == "nnunet" and self.cfg['model'][args.model]["enable_deep_supervision"]:
+        if args.model in ["nnunet", "mednext"] and self.cfg['model'][args.model]["enable_deep_supervision"]:
 
             # calculate dice loss for each output
             loss, train_soft_dice = 0.0, 0.0
@@ -283,7 +286,7 @@ class Model(pl.LightningModule):
         outputs = sliding_window_inference(inputs, self.inference_roi_size, mode="gaussian",
                                            sw_batch_size=4, predictor=self.forward, overlap=0.5,) 
         # outputs shape: (B, C, <original H x W x D>)
-        if args.model == "nnunet" and self.cfg['model'][args.model]["enable_deep_supervision"]:
+        if args.model in ["nnunet", "mednext"] and self.cfg['model'][args.model]["enable_deep_supervision"]:
             # we only need the output with the highest resolution
             outputs = outputs[0]
         
@@ -380,7 +383,7 @@ class Model(pl.LightningModule):
         batch["pred"] = sliding_window_inference(test_input, self.inference_roi_size, 
                                                  sw_batch_size=4, predictor=self.forward, overlap=0.5)
         
-        if args.model == "nnunet" and self.cfg['model'][args.model]["enable_deep_supervision"]:
+        if args.model in ["nnunet", "mednext"] and self.cfg['model'][args.model]["enable_deep_supervision"]:
             # we only need the output with the highest resolution
             batch["pred"] = batch["pred"][0]
 
@@ -476,28 +479,28 @@ def main(args):
         optimizer_class = torch.optim.SGD
 
     # define models
-    if args.model in ["unetr"]:
-        # TODO: update if ever using UNETR
-        # define image size to be fed to the model
-        img_size = (160, 224, 96)
+    if args.model in ["swinunetr"]:
+        # # define image size to be fed to the model
         
         # define model
-        net = UNETR(spatial_dims=3,
-                    in_channels=1, out_channels=1, 
-                    img_size=img_size,
-                    feature_size=args.feature_size, 
-                    hidden_size=args.hidden_size, 
-                    mlp_dim=args.mlp_dim, 
-                    num_heads=args.num_heads,
-                    pos_embed="conv", 
-                    norm_name="instance", 
-                    res_block=True, 
-                    dropout_rate=0.2,
-                )
-        img_size = f"{img_size[0]}x{img_size[1]}x{img_size[2]}"
-        save_exp_id = f"{args.model}_opt={args.optimizer}_lr={args.learning_rate}" \
-                        f"_fs={args.feature_size}_hs={args.hidden_size}_mlpd={args.mlp_dim}_nh={args.num_heads}" \
-                        f"_CSAdiceL_nspv={args.num_samples_per_volume}_bs={args.batch_size}_{img_size}" \
+        net = SwinUNETR(spatial_dims=config["model"]["swinunetr"]["spatial_dims"],
+                        in_channels=1, out_channels=1, 
+                        img_size=config["preprocessing"]["crop_pad_size"],
+                        depths=config["model"]["swinunetr"]["depths"],
+                        feature_size=config["model"]["swinunetr"]["feature_size"], 
+                        num_heads=config["model"]["swinunetr"]["num_heads"],
+                    )
+        patch_size = f"{config['preprocessing']['crop_pad_size'][0]}x" \
+                        f"{config['preprocessing']['crop_pad_size'][1]}x" \
+                        f"{config['preprocessing']['crop_pad_size'][2]}"
+
+        save_exp_id = f"{args.model}_seed={config['seed']}_" \
+                        f"{config['dataset']['contrast']}_{config['dataset']['label_type']}_" \
+                        f"d={config['model']['swinunetr']['depths'][0]}_" \
+                        f"nf={config['model']['swinunetr']['feature_size']}_" \
+                        f"opt={config['opt']['name']}_lr={config['opt']['lr']}_AdapW_" \
+                        f"bs={config['opt']['batch_size']}_{patch_size}" \
+        # save_exp_id = f"_CSAdiceL_nspv={args.num_samples_per_volume}_bs={args.batch_size}_{img_size}" \
 
     elif args.model == "nnunet":
 
@@ -538,6 +541,39 @@ def main(args):
         save_exp_id = f"{args.model}_seed={config['seed']}_" \
                         f"{config['dataset']['contrast']}_{config['dataset']['label_type']}_" \
                         f"nf={config['model']['nnunet']['base_num_features']}_" \
+                        f"opt={config['opt']['name']}_lr={config['opt']['lr']}_AdapW_" \
+                        f"bs={config['opt']['batch_size']}_{patch_size}" \
+
+        if args.debug:
+            save_exp_id = f"DEBUG_{save_exp_id}"
+    
+    elif args.model == "mednext":
+        # NOTE: the S, B models in the paper don't fit as-is for this data, gpu
+        # hence tweaking the models
+        logger.info(f"Using MedNext model tweaked ...")
+        net = MedNeXt(
+            in_channels=config["model"]["mednext"]["num_input_channels"],
+            n_channels=config["model"]["mednext"]["base_num_features"],
+            n_classes=config["model"]["mednext"]["num_classes"],
+            exp_r=2,
+            kernel_size=config["model"]["mednext"]["kernel_size"],
+            deep_supervision=config["model"]["mednext"]["enable_deep_supervision"],
+            do_res=True,
+            do_res_up_down=True,
+            checkpoint_style="outside_block",
+            block_counts=config["model"]["mednext"]["block_counts"],
+        )
+
+        # variable for saving patch size in the experiment id (same as crop_pad_size)
+        patch_size = f"{config['preprocessing']['crop_pad_size'][0]}x" \
+                        f"{config['preprocessing']['crop_pad_size'][1]}x" \
+                        f"{config['preprocessing']['crop_pad_size'][2]}"
+        # count number of 2s in the block_counts list
+        num_two_blocks = config["model"]["mednext"]["block_counts"].count(2)
+        # save experiment id
+        save_exp_id = f"{args.model}_seed={config['seed']}_" \
+                        f"{config['dataset']['contrast']}_{config['dataset']['label_type']}_" \
+                        f"nf={config['model']['mednext']['base_num_features']}_bcs={num_two_blocks}_" \
                         f"opt={config['opt']['name']}_lr={config['opt']['lr']}_AdapW_" \
                         f"bs={config['opt']['batch_size']}_{patch_size}" \
 
@@ -675,7 +711,7 @@ def main(args):
             check_val_every_n_epoch=config["opt"]["check_val_every_n_epochs"],
             max_epochs=config["opt"]["max_epochs"], 
             precision=32,
-            enable_progress_bar=False) 
+            enable_progress_bar=True) 
             # profiler="simple",)     # to profile the training time taken for each step
 
         # Train!
