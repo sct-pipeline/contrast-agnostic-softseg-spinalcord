@@ -33,7 +33,7 @@ opt:
   max_epochs: 200
   batch_size: 2
   # Interval between validation checks in epochs
-  check_val_every_n_epochs: 10
+  check_val_every_n_epochs: 5
   # Early stopping patience (this is until patience * check_val_every_n_epochs)
   early_stopping_patience: 20     
 
@@ -56,8 +56,16 @@ model:
     ]
     enable_deep_supervision: True
 
-  unetr:
-    feature_size: 16
-    hidden_size: 768    # dimensionality of hidden embeddings
-    mlp_dim: 2048       # dimensionality of the MLPs
-    num_heads: 12       # number of heads in multi-head Attention
+  mednext:
+    num_input_channels: 1
+    base_num_features: 32
+    num_classes: 1
+    kernel_size: 3            # 3x3x3 and 5x5x5 were tested in publication
+    block_counts: [2,2,2,2,1,1,1,1,1] # number of blocks in each layer
+    enable_deep_supervision: True 
+
+  swinunetr:
+    spatial_dims: 3
+    depths: [2, 2, 2, 2]
+    num_heads: [3, 6, 12, 24]   # number of heads in multi-head Attention
+    feature_size: 36
