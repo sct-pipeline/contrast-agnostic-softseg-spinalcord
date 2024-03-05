@@ -77,6 +77,9 @@ def get_parser():
                         help='Device to run inference on. Default: cpu')
     parser.add_argument('--model', default="nnunet", type=str, choices=["monai", "swinunetr", "mednext"], 
                         help='Model to use for inference. Default: nnunet')
+    parser.add_argument('--pred-type', default="soft", type=str, choices=["soft", "hard"],
+                        help='Type of prediction to output/save. `soft` outputs soft segmentation masks with a threshold of 0.1'
+                        '`hard` outputs binarized masks thresholded at 0.5  Default: hard')
 
     return parser
 
@@ -325,9 +328,11 @@ def main():
             
             pred = post_test_out[0]['pred'].cpu()
             
-            # binarize the prediction with a threshold of 0.5
-            pred[pred >= 0.5] = 1
-            pred[pred < 0.5] = 0
+            # threshold or binarize the output based on the pred_type
+            if args.pred_type == "soft":
+                pred[pred < 0.1] = 0
+            elif args.pred_type == "hard":
+                pred = torch.where(pred > 0.5, 1, 0)
 
             # get subject name
             subject_name = (batch["image_meta_dict"]["filename_or_obj"][0]).split("/")[-1].replace(".nii.gz", "")
