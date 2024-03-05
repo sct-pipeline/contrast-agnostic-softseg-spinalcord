@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 # HUE_ORDER = ["softseg_soft", "softseg_bin", "nnunet", "monai_soft", "monai_bin"]
 HUE_ORDER = ["softseg_bin", "deepseg_2d", "nnunet", "monai", "swinunetr", "mednext"]
 HUE_ORDER_THR = ["GT", "15", "1", "05", "01", "005"]
+HUE_ORDER_RES = ["1mm", "05mm", "15mm", "3mm", "2mm"]
 CONTRAST_ORDER = ["DWI", "MTon", "MToff", "T1w", "T2star", "T2w"]
 
 
@@ -45,14 +46,14 @@ def fetch_participant_id(filename_path):
 
 
 # Function to extract contrast and method from the filename
-def extract_contrast_and_details(filename, analysis_type):
+def extract_contrast_and_details(filename, across="Method"):
     """
     Extract the segmentation method and resolution from the filename.
     The method (e.g., propseg, deepseg_2d, nnunet_3d_fullres, monai) and resolution (e.g., 1mm)
     are embedded in the filename.
     """
     # pattern = r'.*iso-(\d+mm).*_(propseg|deepseg_2d|nnunet_3d_fullres|monai).*'
-    if analysis_type == "methods":
+    if across == "Method":
         # pattern = r'.*_(DWI|MTon|MToff|T1w|T2star|T2w).*_(softseg_soft|softseg_bin|nnunet|monai_soft|monai_bin).*'
         pattern = r'.*_(DWI|MTon|MToff|T1w|T2star|T2w).*_(softseg_bin|deepseg_2d|nnunet|monai|swinunetr|mednext).*'
         match = re.search(pattern, filename)
@@ -61,7 +62,7 @@ def extract_contrast_and_details(filename, analysis_type):
         else:
             return 'Unknown', 'Unknown'
 
-    elif analysis_type == "thresholds":
+    elif across == "Threshold":
         pattern = r'.*_(DWI|MTon|MToff|T1w|T2star|T2w).*_(softseg|monai)_thr_(\d+).*'
         match = re.search(pattern, filename)
         if match:
@@ -69,12 +70,16 @@ def extract_contrast_and_details(filename, analysis_type):
         else:
             return 'Unknown', 'Unknown', 'Unknown'
 
-    elif analysis_type == "resolutions":
-        pattern = r'.*iso-(\d+mm).*_(softseg_bin|deepseg_2d|nnunet|monai|swinunetr|mednext).*'
-        # TODO
+    elif across == "Resolution":
+        pattern = r'.*_(DWI|MTon|MToff|T1w|T2star|T2w)_res_(\d+mm).*_(deepseg_2d|nnunet|monai|swinunetr|mednext).*'
+        match = re.search(pattern, filename)
+        if match:
+            return match.group(1), match.group(3), match.group(2)
+        else:
+            return 'Unknown', 'Unknown', 'Unknown'
 
     else:
-        raise ValueError(f'Unknown analysis type: {analysis_type}. Choices: [methods, resolutions, thresholds].')
+        raise ValueError(f'Unknown analysis type: {across}. Choices: [Method, Resolution, Threshold].')
     
 
 
@@ -116,22 +121,29 @@ def generate_figure(data, contrast, file_path):
     plt.show()
 
 
-def generate_figure_std(data, file_path):
+def generate_figure_std(data, file_path, across="Method", hue_order=HUE_ORDER):
     """
     Generate violinplot showing STD across participants for each method
     """
+    if across == "Threshold":
+        # create a dataframe with only "monai"
+        data = data[data['Method'] == "monai"]
+    elif across == "Resolution":
+        # create a dataframe with only the specified model
+        model = "monai"
+        data = data[data['Method'] == model]
 
     # Compute mean and std across contrasts for each method
-    df = data.groupby(['Method', 'Participant'])['MEAN(area)'].agg(['mean', 'std']).reset_index()
+    df = data.groupby([across, 'Participant'])['MEAN(area)'].agg(['mean', 'std']).reset_index()
 
     plt.figure(figsize=(12, 6))
-    sns.violinplot(x='Method', y='std', data=df, order=HUE_ORDER)
+    sns.violinplot(x=across, y='std', data=df, order=hue_order)
     # overlay swarm plot on the violin plot to show individual data points
-    sns.swarmplot(x='Method', y='std', data=df, color='k', order=HUE_ORDER, size=3)
+    sns.swarmplot(x=across, y='std', data=df, color='k', order=hue_order, size=3)
     # plt.xticks(rotation=45)
-    plt.xlabel('Method')
+    plt.xlabel(across)
     plt.ylabel('STD [mm^2]')
-    plt.title(f'STD of C2-C4 CSA for each method')
+    plt.title(f'STD of C2-C3 CSA for each {across}')
     # Add horizontal dashed grid
     plt.grid(axis='y', alpha=0.5, linestyle='dashed')
 
@@ -141,14 +153,32 @@ def generate_figure_std(data, file_path):
     # Draw vertical line between 1st and 2nd violin
     plt.axvline(x=0.5, color='k', linestyle='--')
 
-    # Compute the mean +- std across resolutions for each method and place it above the corresponding violin
-    for method in df['Method'].unique():
-        mean = df[df['Method'] == method]['std'].mean()
-        std = df[df['Method'] == method]['std'].std()
-        plt.text(HUE_ORDER.index(method), ymax-1, f'{mean:.2f} +- {std:.2f}', ha='center', va='bottom', color='k')
+    if across == "Method":
+        # Compute the mean +- std across resolutions for each method and place it above the corresponding violin
+        for method in df['Method'].unique():
+            mean = df[df['Method'] == method]['std'].mean()
+            std = df[df['Method'] == method]['std'].std()
+            plt.text(hue_order.index(method), ymax-0.5, f'{mean:.2f} +- {std:.2f}', ha='center', va='bottom', color='k')
+    elif across == "Threshold":
+        # Compute the mean +- std across resolutions for each method and place it above the corresponding violin
+        for thr in df['Threshold'].unique():
+            mean = df[df['Threshold'] == thr]['std'].mean()
+            std = df[df['Threshold'] == thr]['std'].std()
+            plt.text(hue_order.index(thr), ymax-0.5, f'{mean:.2f} +- {std:.2f}', ha='center', va='bottom', color='k')
+    elif across == "Resolution":
+        # Compute the mean +- std across resolutions for each method and place it above the corresponding violin
+        for res in df['Resolution'].unique():
+            mean = df[df['Resolution'] == res]['std'].mean()
+            std = df[df['Resolution'] == res]['std'].std()
+            plt.text(hue_order.index(res), ymax-0.5, f'{mean:.2f} +- {std:.2f}', ha='center', va='bottom', color='k')
+    else:
+        raise ValueError(f'Unknown analysis type: {across}. Choices: [Method, Resolution, Threshold].')
 
     # Save the figure in 300 DPI as a PNG file
-    save_figure(file_path, "std_csa.png")
+    if across == "Resolution":
+        save_figure(file_path, f"std_csa_{across.lower()}_{model}.png")
+    else:
+        save_figure(file_path, f"std_csa_{across.lower()}.png")
 
 
 def generate_figure_abs_csa_error(file_path, data, hue_order=None):
@@ -365,7 +395,7 @@ def main(file_path, analysis_type="methods"):
     # Apply the function to extract method and the corresponding analysis details
     if analysis_type == "methods":
         data['Contrast'], data['Method'] = zip(
-            *data['Filename'].apply(extract_contrast_and_details, analysis_type=analysis_type))
+            *data['Filename'].apply(extract_contrast_and_details, across="Method"))
 
         # Generate violinplot showing STD across participants for each method
         generate_figure_std(data, file_path)
@@ -379,18 +409,26 @@ def main(file_path, analysis_type="methods"):
 
     elif analysis_type == "thresholds":
         data['Contrast'], data['Method'], data['Threshold'] = zip(
-            *data['Filename'].apply(extract_contrast_and_details, analysis_type=analysis_type))
+            *data['Filename'].apply(extract_contrast_and_details, across="Threshold"))
 
-        # Generate violinplot showing absolute CSA error across participants for each threshold value
-        generate_figure_abs_csa_error_threshold(file_path, data, hue_order=HUE_ORDER_THR)
+        # Generate violinplot showing STD across participants for each threshold
+        # generate_figure_std_threshold(data, file_path, analysis_type="Threshold")
+        generate_figure_std(data, file_path, across="Threshold", hue_order=HUE_ORDER_THR)
 
-        # Generate violinplot showing absolute CSA error for each contrast for a given threshold
-        for threshold in HUE_ORDER_THR[1:]:
-            generate_figure_abs_csa_error_per_contrast(file_path, data, method=None, threshold=threshold)
+        # # Generate violinplot showing absolute CSA error across participants for each threshold value
+        # generate_figure_abs_csa_error_threshold(file_path, data, hue_order=HUE_ORDER_THR)
+
+        # # Generate violinplot showing absolute CSA error for each contrast for a given threshold
+        # for threshold in HUE_ORDER_THR[1:]:
+        #     generate_figure_abs_csa_error_per_contrast(file_path, data, method=None, threshold=threshold)
 
     elif analysis_type == "resolutions":
-        # TODO
-        pass
+        data['Contrast'], data['Method'], data['Resolution'] = zip(
+            *data['Filename'].apply(extract_contrast_and_details, across="Resolution"))
+        
+        # Generate violinplot showing STD across participants for each resolution
+        # generate_figure_std(data, file_path, across="Resolution", hue_order=HUE_ORDER_RES)
+        generate_figure_std(data, file_path, across="Method", hue_order=HUE_ORDER[1:])
     
     else:
         raise ValueError(f'Unknown analysis type: {analysis_type}. Choices: [methods, resolutions, thresholds].')
