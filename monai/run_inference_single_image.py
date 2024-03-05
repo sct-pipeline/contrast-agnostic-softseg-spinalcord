@@ -14,9 +14,11 @@ import torch
 import torch.nn as nn
 import json
 from time import time
+import yaml
 
 from monai.inferers import sliding_window_inference
 from monai.data import (DataLoader, Dataset, decollate_batch)
+from monai.networks.nets import SwinUNETR
 from monai.transforms import (Compose, EnsureTyped, Invertd, SaveImage, Spacingd,
                               LoadImaged, NormalizeIntensityd, EnsureChannelFirstd, 
                               DivisiblePadd, Orientationd, ResizeWithPadOrCropd)
@@ -24,6 +26,7 @@ from dynamic_network_architectures.architectures.unet import PlainConvUNet, Resi
 from dynamic_network_architectures.building_blocks.helper import get_matching_instancenorm, convert_dim_to_conv_op
 from dynamic_network_architectures.initialization.weight_init import init_last_bn_before_add_to_0
 
+from nnunet_mednext import MedNeXt
 
 # NNUNET global params
 INIT_FILTERS=32
@@ -72,6 +75,8 @@ def get_parser():
                         ' Default: 64x192x-1')
     parser.add_argument('--device', default="gpu", type=str, choices=["gpu", "cpu"],
                         help='Device to run inference on. Default: cpu')
+    parser.add_argument('--model', default="nnunet", type=str, choices=["monai", "swinunetr", "mednext"], 
+                        help='Model to use for inference. Default: nnunet')
 
     return parser
 
@@ -234,7 +239,44 @@ def main():
     test_loader = DataLoader(test_ds, batch_size=1, shuffle=False, num_workers=8, pin_memory=True)
 
     # define model
-    net = create_nnunet_from_plans(plans=nnunet_plans, num_input_channels=1, num_classes=1, deep_supervision=ENABLE_DS)
+    if args.model == "monai":
+        net = create_nnunet_from_plans(plans=nnunet_plans, 
+            num_input_channels=1, num_classes=1, deep_supervision=ENABLE_DS)
+    
+    elif args.model == "swinunetr":
+        # load config file
+        config_path = os.path.join(args.chkp_path, "config.yaml")
+        with open(config_path, "r") as f:
+            config = yaml.safe_load(f)
+        
+        net = SwinUNETR(
+            spatial_dims=config["model"]["swinunetr"]["spatial_dims"],
+            in_channels=1, out_channels=1, 
+            img_size=config["preprocessing"]["crop_pad_size"],
+            depths=config["model"]["swinunetr"]["depths"],
+            feature_size=config["model"]["swinunetr"]["feature_size"], 
+            num_heads=config["model"]["swinunetr"]["num_heads"])
+    
+    elif args.model == "mednext":
+        config_path = os.path.join(args.chkp_path, "config.yaml")
+        with open(config_path, "r") as f:
+            config = yaml.safe_load(f)
+
+        net = MedNeXt(
+            in_channels=config["model"]["mednext"]["num_input_channels"],
+            n_channels=config["model"]["mednext"]["base_num_features"],
+            n_classes=config["model"]["mednext"]["num_classes"],
+            exp_r=2,
+            kernel_size=config["model"]["mednext"]["kernel_size"],
+            deep_supervision=config["model"]["mednext"]["enable_deep_supervision"],
+            do_res=True,
+            do_res_up_down=True,
+            checkpoint_style="outside_block",
+            block_counts=config["model"]["mednext"]["block_counts"],)
+    
+    else:
+        raise ValueError("Model not recognized. Please choose from: nnunet, swinunetr, mednext")
+
 
     # define list to collect the test metrics
     test_step_outputs = []
@@ -268,8 +310,10 @@ def main():
             batch["pred"] = sliding_window_inference(test_input, inference_roi_size, mode="gaussian",
                                                     sw_batch_size=4, predictor=net, overlap=0.5, progress=False)
 
-            # take only the highest resolution prediction
-            batch["pred"] = batch["pred"][0]
+            if args.model in ["monai", "mednext"]:
+                # take only the highest resolution prediction
+                # NOTE: both these models use Deep Supervision, so only the highest resolution prediction is taken
+                batch["pred"] = batch["pred"][0]
 
             # NOTE: monai's models do not normalize the output, so we need to do it manually
             if bool(F.relu(batch["pred"]).max()):
