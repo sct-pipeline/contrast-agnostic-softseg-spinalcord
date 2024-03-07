@@ -14,12 +14,10 @@ import torch
 import torch.nn as nn
 import json
 from time import time
-import yaml
 from scipy import ndimage
 
 from monai.inferers import sliding_window_inference
-from monai.data import (DataLoader, Dataset, decollate_batch)
-from monai.networks.nets import SwinUNETR
+from monai.data import (DataLoader, Dataset, load_decathlon_datalist, decollate_batch)
 from monai.transforms import (Compose, EnsureTyped, Invertd, SaveImage, Spacingd,
                               LoadImaged, NormalizeIntensityd, EnsureChannelFirstd, 
                               DivisiblePadd, Orientationd, ResizeWithPadOrCropd)
@@ -27,7 +25,6 @@ from dynamic_network_architectures.architectures.unet import PlainConvUNet, Resi
 from dynamic_network_architectures.building_blocks.helper import get_matching_instancenorm, convert_dim_to_conv_op
 from dynamic_network_architectures.initialization.weight_init import init_last_bn_before_add_to_0
 
-from nnunet_mednext import MedNeXt
 
 # NNUNET global params
 INIT_FILTERS=32
@@ -76,16 +73,13 @@ def get_parser():
                         ' Default: 64x192x-1')
     parser.add_argument('--device', default="gpu", type=str, choices=["gpu", "cpu"],
                         help='Device to run inference on. Default: cpu')
-    parser.add_argument('--model', default="monai", type=str, choices=["monai", "swinunetr", "mednext"], 
-                        help='Model to use for inference. Default: monai')
-    parser.add_argument('--pred-type', default="soft", type=str, choices=["soft", "hard"],
-                        help='Type of prediction to output/save. `soft` outputs soft segmentation masks with a threshold of 0.1'
-                        '`hard` outputs binarized masks thresholded at 0.5  Default: hard')
+    parser.add_argument('--pred-thr', default=0.5, type=float, help='Threshold to binarize the prediction. Default: 0.5')
+    parser.add_argument('--keep-largest', action='store_true', help='Keep only the largest connected component in the prediction')
 
     return parser
 
 
-# ===========================================================================
+# ==========================å=================================================
 #                          Test-time Transforms
 # ===========================================================================
 def inference_transforms_single_image(crop_size):
@@ -112,6 +106,25 @@ class InitWeights_He(object):
             module.weight = nn.init.kaiming_normal_(module.weight, a=self.neg_slope)
             if module.bias is not None:
                 module.bias = nn.init.constant_(module.bias, 0)
+
+# Copied from ivadomed:
+# https://github.com/ivadomed/ivadomed/blob/e101ebea632683d67deab3c50dd6b372207de2a9/ivadomed/postprocessing.py#L101-L116
+def keep_largest_object(predictions):
+    """Keep the largest connected object from the input array (2D or 3D).
+
+    Args:
+        predictions (ndarray or nibabel object): Input segmentation. Image could be 2D or 3D.
+
+    Returns:
+        ndarray or nibabel (same object as the input).
+    """
+    # Find number of closed objects using skimage "label"
+    labeled_obj, num_obj = ndimage.label(np.copy(predictions))
+    # If more than one object is found, keep the largest one
+    if num_obj > 1:
+        # Keep the largest object
+        predictions[np.where(labeled_obj != (np.bincount(labeled_obj.flat)[1:].argmax() + 1))] = 0
+    return predictions
 
 
 # ============================================================================
@@ -204,31 +217,8 @@ def prepare_data(path_image, crop_size=(64, 160, 320)):
         ])
     test_ds = Dataset(data=test_file, transform=transforms_test)
 
+
     return test_ds, test_post_pred
-
-
-# ===========================================================================
-#                           Post-processing 
-# ===========================================================================
-def keep_largest_object(predictions):
-    """Keep the largest connected object from the input array (2D or 3D).
-    
-    Taken from:
-    https://github.com/ivadomed/ivadomed/blob/e101ebea632683d67deab3c50dd6b372207de2a9/ivadomed/postprocessing.py#L101-L116
-    
-    Args:
-        predictions (ndarray or nibabel object): Input segmentation. Image could be 2D or 3D.
-
-    Returns:
-        ndarray or nibabel (same object as the input).
-    """
-    # Find number of closed objects using skimage "label"
-    labeled_obj, num_obj = ndimage.label(np.copy(predictions))
-    # If more than one object is found, keep the largest one
-    if num_obj > 1:
-        # Keep the largest object
-        predictions[np.where(labeled_obj != (np.bincount(labeled_obj.flat)[1:].argmax() + 1))] = 0
-    return predictions
 
 
 # ===========================================================================
@@ -267,44 +257,7 @@ def main():
     test_loader = DataLoader(test_ds, batch_size=1, shuffle=False, num_workers=8, pin_memory=True)
 
     # define model
-    if args.model == "monai":
-        net = create_nnunet_from_plans(plans=nnunet_plans, 
-            num_input_channels=1, num_classes=1, deep_supervision=ENABLE_DS)
-    
-    elif args.model == "swinunetr":
-        # load config file
-        config_path = os.path.join(args.chkp_path, "config.yaml")
-        with open(config_path, "r") as f:
-            config = yaml.safe_load(f)
-        
-        net = SwinUNETR(
-            spatial_dims=config["model"]["swinunetr"]["spatial_dims"],
-            in_channels=1, out_channels=1, 
-            img_size=config["preprocessing"]["crop_pad_size"],
-            depths=config["model"]["swinunetr"]["depths"],
-            feature_size=config["model"]["swinunetr"]["feature_size"], 
-            num_heads=config["model"]["swinunetr"]["num_heads"])
-    
-    elif args.model == "mednext":
-        config_path = os.path.join(args.chkp_path, "config.yaml")
-        with open(config_path, "r") as f:
-            config = yaml.safe_load(f)
-
-        net = MedNeXt(
-            in_channels=config["model"]["mednext"]["num_input_channels"],
-            n_channels=config["model"]["mednext"]["base_num_features"],
-            n_classes=config["model"]["mednext"]["num_classes"],
-            exp_r=2,
-            kernel_size=config["model"]["mednext"]["kernel_size"],
-            deep_supervision=config["model"]["mednext"]["enable_deep_supervision"],
-            do_res=True,
-            do_res_up_down=True,
-            checkpoint_style="outside_block",
-            block_counts=config["model"]["mednext"]["block_counts"],)
-    
-    else:
-        raise ValueError("Model not recognized. Please choose from: nnunet, swinunetr, mednext")
-
+    net = create_nnunet_from_plans(plans=nnunet_plans, num_input_channels=1, num_classes=1, deep_supervision=ENABLE_DS)
 
     # define list to collect the test metrics
     test_step_outputs = []
@@ -338,10 +291,8 @@ def main():
             batch["pred"] = sliding_window_inference(test_input, inference_roi_size, mode="gaussian",
                                                     sw_batch_size=4, predictor=net, overlap=0.5, progress=False)
 
-            if args.model in ["monai", "mednext"]:
-                # take only the highest resolution prediction
-                # NOTE: both these models use Deep Supervision, so only the highest resolution prediction is taken
-                batch["pred"] = batch["pred"][0]
+            # take only the highest resolution prediction
+            batch["pred"] = batch["pred"][0]
 
             # NOTE: monai's models do not normalize the output, so we need to do it manually
             if bool(F.relu(batch["pred"]).max()):
@@ -353,14 +304,13 @@ def main():
             
             pred = post_test_out[0]['pred'].cpu()
             
-            # threshold or binarize the output based on the pred_type
-            if args.pred_type == "soft":
-                pred[pred < 0.1] = 0
-            elif args.pred_type == "hard":
-                pred = torch.where(pred > 0.5, 1, 0)
+            # threshold the prediction to set all values below pred_thr to 0
+            pred[pred < args.pred_thr] = 0
 
-            # keep the largest connected object
-            pred = keep_largest_object(pred)
+            if args.keep_largest:
+                # keep only the largest connected component (to remove tiny blobs after thresholding)
+                logger.info("Postprocessing: Keeping the largest connected component in the prediction")
+                pred = keep_largest_object(pred)
 
             # get subject name
             subject_name = (batch["image_meta_dict"]["filename_or_obj"][0]).split("/")[-1].replace(".nii.gz", "")
@@ -387,12 +337,6 @@ def main():
         # compute the average inference time
         avg_inference_time = np.stack([x["inference_time_in_sec"] for x in test_step_outputs]).mean()
 
-        # store the average metrics in a dict
-        avg_metrics = {
-            "avg_inference_time_in_sec": round(avg_inference_time, 2),
-        }
-        test_summary["metrics_avg_across_cohort"] = avg_metrics
-
         logger.info("========================================================")
         logger.info(f"      Inference Time per Subject: {avg_inference_time:.2f}s")
         logger.info("========================================================")
@@ -405,6 +349,7 @@ def main():
         # free up memory
         test_step_outputs.clear()
         test_summary.clear()
+        # os.remove(os.path.join(results_path, "temp_msd_datalist.json"))
 
 
 if __name__ == "__main__":
