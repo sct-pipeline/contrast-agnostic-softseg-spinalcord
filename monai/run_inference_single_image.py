@@ -15,6 +15,7 @@ import torch.nn as nn
 import json
 from time import time
 import yaml
+from scipy import ndimage
 
 from monai.inferers import sliding_window_inference
 from monai.data import (DataLoader, Dataset, decollate_batch)
@@ -207,6 +208,30 @@ def prepare_data(path_image, crop_size=(64, 160, 320)):
 
 
 # ===========================================================================
+#                           Post-processing 
+# ===========================================================================
+def keep_largest_object(predictions):
+    """Keep the largest connected object from the input array (2D or 3D).
+    
+    Taken from:
+    https://github.com/ivadomed/ivadomed/blob/e101ebea632683d67deab3c50dd6b372207de2a9/ivadomed/postprocessing.py#L101-L116
+    
+    Args:
+        predictions (ndarray or nibabel object): Input segmentation. Image could be 2D or 3D.
+
+    Returns:
+        ndarray or nibabel (same object as the input).
+    """
+    # Find number of closed objects using skimage "label"
+    labeled_obj, num_obj = ndimage.label(np.copy(predictions))
+    # If more than one object is found, keep the largest one
+    if num_obj > 1:
+        # Keep the largest object
+        predictions[np.where(labeled_obj != (np.bincount(labeled_obj.flat)[1:].argmax() + 1))] = 0
+    return predictions
+
+
+# ===========================================================================
 #                           Inference method
 # ===========================================================================
 def main():
@@ -333,6 +358,9 @@ def main():
                 pred[pred < 0.1] = 0
             elif args.pred_type == "hard":
                 pred = torch.where(pred > 0.5, 1, 0)
+
+            # keep the largest connected object
+            pred = keep_largest_object(pred)
 
             # get subject name
             subject_name = (batch["image_meta_dict"]["filename_or_obj"][0]).split("/")[-1].replace(".nii.gz", "")
