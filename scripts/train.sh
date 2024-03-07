@@ -1,7 +1,7 @@
 #!/bin/bash
 # 
 # This script does the following:
-# 1. Creates a virtual environment and installs the required dependencies
+# 1. Creates a virtual environment `venv_monai` and installs the required dependencies
 # 2. Generates a MSD-style datalist containing image/label pairs for training
 # 3. Trains the contrast-agnostic soft segmentation model
 # 4. Evaluates the model on the test set
@@ -69,3 +69,6 @@ echo "----------------------------------------"
 
 # Train the model
 python monai/main.py --model $MODEL --config $PATH_TRAIN_YAML --debug
+
+# Deactivate the virtual environment
+conda deactivate
