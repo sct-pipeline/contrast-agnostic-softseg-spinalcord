@@ -76,8 +76,8 @@ def get_parser():
                         ' Default: 64x192x-1')
     parser.add_argument('--device', default="gpu", type=str, choices=["gpu", "cpu"],
                         help='Device to run inference on. Default: cpu')
-    parser.add_argument('--model', default="nnunet", type=str, choices=["monai", "swinunetr", "mednext"], 
-                        help='Model to use for inference. Default: nnunet')
+    parser.add_argument('--model', default="monai", type=str, choices=["monai", "swinunetr", "mednext"], 
+                        help='Model to use for inference. Default: monai')
     parser.add_argument('--pred-type', default="soft", type=str, choices=["soft", "hard"],
                         help='Type of prediction to output/save. `soft` outputs soft segmentation masks with a threshold of 0.1'
                         '`hard` outputs binarized masks thresholded at 0.5  Default: hard')
