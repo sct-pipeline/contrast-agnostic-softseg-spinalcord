@@ -10,10 +10,10 @@
 # Example of config.json:
 # {
 #  "path_data"   : "<PATH_TO_DATASET>",
-#  "path_output" : "<PATH_TO_DATASET>_2023-08-18",
-#  "script"      : "<PATH_TO_REPO>/model_seg_sci/baselines/comparison_with_other_methods.sh",
-#  "jobs"        : 8,
-#  "script_args" : "<PATH_TO_REPO>/model_seg_sci/packaging/run_inference_single_subject.py <PATH_TO_MODEL>/sci-multisite-model <PATH_TO_CONTRAST-AGNOSTIC_REPO>/monai/run_inference_single_image.py <PATH_TO_CONTRAST-AGNOSTIC_MODEL>"
+#  "path_output" : "<PATH_TO_DATASET>/results_csa/across_models/csa_c2c3_20240226",
+#  "script"      : "<PATH_TO_REPO>/csa_qc_evaluation_spine_generic/comparison_across_models.sh",
+#  "jobs"        : 5,
+#  "script_args" : "<PATH_TO_REPO>/nnUnet/run_inference_single_subject.py <PATH_TO_NNUNET_MODEL> <PATH_TO_REPO>/monai/run_inference_single_image.py <PATH_TO_MONAI_MODEL> <PATH_TO_SWINUNETR_MODEL> <PATH_TO_MEDNEXT_MODEL>"
 # }
 #
 # The following global variables are retrieved from the caller sct_run_batch
