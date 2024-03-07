@@ -10,10 +10,10 @@
 # Example of config.json:
 # {
 #  "path_data"   : "<PATH_TO_DATASET>",
-#  "path_output" : "<PATH_TO_DATASET>_2023-08-18",
-#  "script"      : "<PATH_TO_REPO>/model_seg_sci/baselines/comparison_with_other_methods.sh",
-#  "jobs"        : 8,
-#  "script_args" : "<PATH_TO_REPO>/model_seg_sci/packaging/run_inference_single_subject.py <PATH_TO_MODEL>/sci-multisite-model <PATH_TO_CONTRAST-AGNOSTIC_REPO>/monai/run_inference_single_image.py <PATH_TO_CONTRAST-AGNOSTIC_MODEL>"
+#  "path_output" : "<PATH_TO_DATASET>/results_qc_other_datasets/qc-reports",
+#  "script"      : "<PATH_TO_REPO>/qc_other_datasets/generate_qc.sh",
+#  "jobs"        : 5,
+#  "script_args" : "<DATASET_TO_QC> <PATH_TO_REPO>/nnUnet/run_inference_single_subject.py <PATH_TO_NNUNET_MODEL> <PATH_TO_REPO>/monai/run_inference_single_image.py <PATH_TO_MONAI_MODEL> <PATH_TO_SWINUNETR_MODEL> <PATH_TO_MEDNEXT_MODEL>"
 # }
 #
 # The following global variables are retrieved from the caller sct_run_batch
@@ -47,6 +47,10 @@ SUBJECT=$1
 QC_DATASET=$2           # dataset name to generate QC for
 PATH_NNUNET_SCRIPT=$3   # path to the nnUNet contrast-agnostic run_inference_single_subject.py
 PATH_NNUNET_MODEL=$4    # path to the nnUNet contrast-agnostic model
+PATH_MONAI_SCRIPT=$5    # path to the MONAI contrast-agnostic run_inference_single_subject.py
+PATH_MONAI_MODEL=$6     # path to the MONAI contrast-agnostic model trained on soft bin labels
+PATH_SWIN_MODEL=$7
+PATH_MEDNEXT_MODEL=$8
 # PATH_MONAI_SCRIPT=$3    # path to the MONAI contrast-agnostic run_inference_single_subject.py
 # PATH_MONAI_MODEL_SOFT=$4     # path to the MONAI contrast-agnostic model trained on soft labels
 # PATH_MONAI_MODEL_SOFTBIN=$5     # path to the MONAI contrast-agnostic model trained on soft_bin labels
@@ -55,6 +59,10 @@ echo "SUBJECT: ${SUBJECT}"
 echo "QC_DATASET: ${QC_DATASET}"
 echo "PATH_NNUNET_SCRIPT: ${PATH_NNUNET_SCRIPT}"
 echo "PATH_NNUNET_MODEL: ${PATH_NNUNET_MODEL}"
+echo "PATH_MONAI_SCRIPT: ${PATH_MONAI_SCRIPT}"
+echo "PATH_MONAI_MODEL: ${PATH_MONAI_MODEL}"
+echo "PATH_SWIN_MODEL: ${PATH_SWIN_MODEL}"
+echo "PATH_MEDNEXT_MODEL: ${PATH_MEDNEXT_MODEL}"
 # echo "PATH_MONAI_SCRIPT: ${PATH_MONAI_SCRIPT}"
 # echo "PATH_MONAI_MODEL_SOFT: ${PATH_MONAI_MODEL_SOFT}"
 # echo "PATH_MONAI_MODEL_SOFTBIN: ${PATH_MONAI_MODEL_SOFTBIN}"
@@ -106,16 +114,13 @@ copy_gt_seg(){
   fi
 }
 
-# TODO: Fix the contrast input for deepseg and propseg (i.e. dwi, mton, mtoff won't work)
 # Segment spinal cord using methods available in SCT (sct_deepseg_sc or sct_propseg), resample the prediction back to
 # native resolution and compute CSA in native space
 segment_sc() {
   local file="$1"
-  local contrast="$2"
-  local method="$3"     # deepseg or propseg
-  local kernel="$4"     # 2d or 3d; only relevant for deepseg
-  local file_gt_vert_label="$5"
-  local native_res="$6"
+  local method="$2"     # deepseg or propseg
+  local contrast="$3"   # used for input arg `-c`
+  local kernel="2d"     # 2d or 3d; only relevant for deepseg
 
   # Segment spinal cord
   if [[ $method == 'deepseg' ]];then
@@ -149,8 +154,8 @@ segment_sc() {
 
   fi
 
-  # Compute CSA from the the SC segmentation resampled back to native resolution using the GT vertebral labels
-  sct_process_segmentation -i ${FILESEG}.nii.gz -vert 2:4 -vertfile ${file_gt_vert_label}_labeled.nii.gz -o $PATH_RESULTS/csa_label_types_c24.csv -append 1
+  # # Compute CSA from the the SC segmentation resampled back to native resolution using the GT vertebral labels
+  # sct_process_segmentation -i ${FILESEG}.nii.gz -vert 2:4 -vertfile ${file_gt_vert_label}_labeled.nii.gz -o $PATH_RESULTS/csa_label_types_c24.csv -append 1
 
 }
 
@@ -183,22 +188,36 @@ segment_sc_nnUNet(){
 # Segment spinal cord using the MONAI contrast-agnostic model
 segment_sc_MONAI(){
   local file="$1"
-  local label_type="$2"     # soft or soft_bin
+  # local label_type="$2"     # soft or soft_bin
+  local model="$2"     # monai, swinunetr, mednext
 
-	if [[ $label_type == 'soft' ]]; then
-		FILEPRED="${file}_seg_monai_soft"
-		PATH_MONAI_MODEL=${PATH_MONAI_MODEL_SOFT}
+	# if [[ $label_type == 'soft' ]]; then
+	# 	FILEPRED="${file}_seg_monai_soft"
+	# 	PATH_MONAI_MODEL=${PATH_MONAI_MODEL_SOFT}
 	
-	elif [[ $label_type == 'soft_bin' ]]; then
-    FILEPRED="${file}_seg_monai_bin"
-		PATH_MONAI_MODEL=${PATH_MONAI_MODEL_SOFTBIN}
+	# elif [[ $label_type == 'soft_bin' ]]; then
+  #   FILEPRED="${file}_seg_monai_bin"
+	# 	PATH_MONAI_MODEL=${PATH_MONAI_MODEL_SOFTBIN}
+	
+	# fi
+	if [[ $model == 'monai' ]]; then
+		FILEPRED="${file}_seg_monai"
+		PATH_MODEL=${PATH_MONAI_MODEL}
+	
+	elif [[ $model == 'swinunetr' ]]; then
+    FILEPRED="${file}_seg_swinunetr"
+    PATH_MODEL=${PATH_SWIN_MODEL}
+  
+  elif [[ $model == 'mednext' ]]; then
+    FILEPRED="${file}_seg_mednext"
+    PATH_MODEL=${PATH_MEDNEXT_MODEL}
 	
 	fi
 
   # Get the start time
   start_time=$(date +%s)
   # Run SC segmentation
-  python ${PATH_MONAI_SCRIPT} --path-img ${file}.nii.gz --path-out . --chkp-path ${PATH_MONAI_MODEL} --device gpu
+  python ${PATH_MONAI_SCRIPT} --path-img ${file}.nii.gz --path-out . --chkp-path ${PATH_MODEL} --device gpu --model ${model}
   # Rename MONAI output
   mv ${file}_pred.nii.gz ${FILEPRED}.nii.gz
   # Get the end time
@@ -210,7 +229,7 @@ segment_sc_MONAI(){
   # Binarize MONAI output (which is soft by default); output is overwritten
   sct_maths -i ${FILEPRED}.nii.gz -bin 0.5 -o ${FILEPRED}.nii.gz
 
-  # Generate QC report with soft prediction
+  # Generate QC report 
   sct_qc -i ${file}.nii.gz -s ${FILEPRED}.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
 
   # compute ANIMA metrics
@@ -236,20 +255,19 @@ cd $PATH_DATA_PROCESSED
 if [[ $QC_DATASET == "sci-colorado" ]]; then
   contrast="T2w"
   label_suffix="seg-manual"
+  deepseg_input_c="t2"
 
-elif [[ $QC_DATASET == "basel-mp2rage-rpi" ]]; then
+elif [[ $QC_DATASET == "basel-mp2rage" ]]; then
   contrast="UNIT1"
   label_suffix="label-SC_seg"
+  deepseg_input_c="t1"
 
 elif [[ $QC_DATASET == "dcm-zurich" ]]; then
   contrast="acq-axial_T2w"
   label_suffix="label-SC_mask-manual"
+  deepseg_input_c="t2"
 
-elif [[ $QC_DATASET == "stanford-epi" ]]; then
-  contrast="task-rest_desc-mocomean_bold"
-  label_suffix="spinalcord_mask"
 fi
-# TODO: add stanford EPI data for QC
 
 echo "Contrast: ${contrast}"
 
@@ -275,11 +293,12 @@ copy_gt_seg "${file}" "${label_suffix}"
 # Segment SC using different methods, binarize at 0.5 and compute QC
 # segment_sc_MONAI ${file} 'soft'
 # segment_sc_MONAI ${file} 'soft_bin'
+segment_sc_MONAI ${file} 'monai'
+# segment_sc_MONAI ${file} 'swinunetr'
+# segment_sc_MONAI ${file} 'mednext'
 
-segment_sc_nnUNet ${file} '3d_fullres'
-# # TODO: run on deep/progseg after fixing the contrasts for those
-# segment_sc ${file_res} 't2' 'deepseg' '2d' "${file}_seg-manual" ${native_res}
-# segment_sc ${file_res} 't2' 'propseg' '' "${file}_seg-manual" ${native_res}
+# segment_sc_nnUNet ${file} '3d_fullres'
+# segment_sc ${file} 'deepseg' ${deepseg_input_c}
 
 
 # ------------------------------------------------------------------------------
