@@ -9,6 +9,7 @@ def train_transforms(crop_size, lbl_key="label"):
         # pre-processing
         transforms.LoadImaged(keys=["image", lbl_key]),
         transforms.EnsureChannelFirstd(keys=["image", lbl_key]),
+        transforms.Orientationd(keys=["image", lbl_key], axcodes="RPI"),
         # NOTE: spine interpolation with order=2 is spline, order=1 is linear
         transforms.Spacingd(keys=["image", "label"], pixdim=(1.0, 1.0, 1.0), mode=(2, 1)),
         transforms.ResizeWithPadOrCropd(keys=["image", lbl_key], spatial_size=crop_size,),
@@ -49,6 +50,7 @@ def val_transforms(crop_size, lbl_key="label"):
             transforms.LoadImaged(keys=["image", lbl_key], image_only=False),
             transforms.EnsureChannelFirstd(keys=["image", lbl_key]),
             # CropForegroundd(keys=["image", lbl_key], source_key="image"),
+            transforms.Orientationd(keys=["image", lbl_key], axcodes="RPI"),
             transforms.Spacingd(keys=["image", lbl_key], pixdim=(1.0, 1.0, 1.0), mode=(2, 1)), # mode=("bilinear", "bilinear"),),
             transforms.ResizeWithPadOrCropd(keys=["image", lbl_key], spatial_size=crop_size,),
             transforms.NormalizeIntensityd(keys=["image"], nonzero=False, channel_wise=False),
