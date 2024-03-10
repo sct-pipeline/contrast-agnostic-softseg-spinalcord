@@ -19,7 +19,7 @@ from models import create_nnunet_from_plans
 from monai.utils import set_determinism
 from monai.inferers import sliding_window_inference
 from monai.networks.nets import UNETR, SwinUNETR
-from monai.data import (DataLoader, CacheDataset, load_decathlon_datalist, decollate_batch)
+from monai.data import (ThreadDataLoader, CacheDataset, load_decathlon_datalist, decollate_batch, set_track_meta)
 from monai.transforms import (Compose, EnsureType, EnsureTyped, Invertd, SaveImage)
 
 # mednext
@@ -109,9 +109,10 @@ class Model(pl.LightningModule):
         # define training and validation transforms
         transforms_train = train_transforms(
             crop_size=self.voxel_cropping_size, 
-            lbl_key='label'
+            lbl_key='label',
+            device=self.device,
         )
-        transforms_val = val_transforms(crop_size=self.inference_roi_size, lbl_key='label')
+        transforms_val = val_transforms(crop_size=self.inference_roi_size, lbl_key='label', device=self.device)
         
         # load the dataset
         logger.info(f"Training with {self.cfg['dataset']['label_type']} labels ...")
@@ -129,11 +130,13 @@ class Model(pl.LightningModule):
             test_files = test_files[:6]
         
         train_cache_rate = 0.25 if args.debug else 0.5
-        self.train_ds = CacheDataset(data=train_files, transform=transforms_train, cache_rate=train_cache_rate, num_workers=4)
-        self.val_ds = CacheDataset(data=val_files, transform=transforms_val, cache_rate=0.25, num_workers=4)
+        self.train_ds = CacheDataset(data=train_files, transform=transforms_train, cache_rate=train_cache_rate, num_workers=4, 
+                                     copy_cache=False)
+        self.val_ds = CacheDataset(data=val_files, transform=transforms_val, cache_rate=0.25, num_workers=4,
+                                   copy_cache=False)
 
         # define test transforms
-        transforms_test = val_transforms(crop_size=self.inference_roi_size, lbl_key='label')
+        transforms_test = val_transforms(crop_size=self.inference_roi_size, lbl_key='label', device=self.device)
         
         # define post-processing transforms for testing; taken (with explanations) from 
         # https://github.com/Project-MONAI/tutorials/blob/main/3d_segmentation/torch/unet_inference_dict.py#L66
@@ -144,22 +147,25 @@ class Model(pl.LightningModule):
                     meta_keys=["pred_meta_dict", "label_meta_dict"],
                     nearest_interp=False, to_tensor=True),
             ])
-        self.test_ds = CacheDataset(data=test_files, transform=transforms_test, cache_rate=0.1, num_workers=4)
+        self.test_ds = CacheDataset(data=test_files, transform=transforms_test, cache_rate=0.1, num_workers=4,
+                                    copy_cache=False)
 
+        # # avoid the computation of meta information in random transforms
+        # set_track_meta(False)
 
     # --------------------------------
     # DATA LOADERS
     # --------------------------------
     def train_dataloader(self):
-        return DataLoader(self.train_ds, batch_size=self.cfg["opt"]["batch_size"], shuffle=True, num_workers=16, 
+        return ThreadDataLoader(self.train_ds, batch_size=self.cfg["opt"]["batch_size"], shuffle=True, num_workers=16, 
                             pin_memory=True, persistent_workers=True) 
 
     def val_dataloader(self):
-        return DataLoader(self.val_ds, batch_size=1, shuffle=False, num_workers=16, pin_memory=True, 
+        return ThreadDataLoader(self.val_ds, batch_size=1, shuffle=False, num_workers=16, pin_memory=True, 
                           persistent_workers=True)
     
     def test_dataloader(self):
-        return DataLoader(self.test_ds, batch_size=1, shuffle=False, num_workers=8, pin_memory=True)
+        return ThreadDataLoader(self.test_ds, batch_size=1, shuffle=False, num_workers=8, pin_memory=True)
 
     
     # --------------------------------
@@ -169,7 +175,7 @@ class Model(pl.LightningModule):
         if self.cfg["opt"]["name"] == "sgd":
             optimizer = self.optimizer_class(self.parameters(), lr=self.lr, momentum=0.99, weight_decay=3e-5, nesterov=True)
         else:
-            optimizer = self.optimizer_class(self.parameters(), lr=self.lr)
+            optimizer = self.optimizer_class(self.parameters(), lr=self.lr, fused=True)
         # scheduler = PolyLRScheduler(optimizer, self.lr, max_steps=self.args.max_epochs)
         # NOTE: ivadomed using CosineAnnealingLR with T_max = 200
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=self.cfg["opt"]["max_epochs"])
@@ -647,6 +653,10 @@ def main(args):
         wandb.save("main.py")
         wandb.save("transforms.py")
 
+        # Enable TF32 on matmul and on cuDNN
+        torch.backends.cuda.matmul.allow_tf32 = True    # same as setting torch.set_float32_matmul_precision("high"/"medium")
+        torch.backends.cudnn.allow_tf32 = True
+
         # initialise Lightning's trainer.
         trainer = pl.Trainer(
             devices=1, accelerator="gpu",
@@ -654,9 +664,8 @@ def main(args):
             callbacks=[checkpoint_callback_loss, lr_monitor, early_stopping],
             check_val_every_n_epoch=config["opt"]["check_val_every_n_epochs"],
             max_epochs=config["opt"]["max_epochs"], 
-            precision=32,
-            # deterministic=True,
-            enable_progress_bar=False) 
+            precision="bf16-mixed",
+            enable_progress_bar=True) 
             # profiler="simple",)     # to profile the training time taken for each step
 
         # Train!
@@ -710,7 +719,7 @@ def main(args):
             callbacks=[checkpoint_callback_loss, lr_monitor, early_stopping],
             check_val_every_n_epoch=config["opt"]["check_val_every_n_epochs"],
             max_epochs=config["opt"]["max_epochs"], 
-            precision=32,
+            precision="bf16-mixed",
             enable_progress_bar=True) 
             # profiler="simple",)     # to profile the training time taken for each step
 
