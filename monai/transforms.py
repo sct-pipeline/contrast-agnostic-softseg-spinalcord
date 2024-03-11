@@ -35,7 +35,7 @@ def train_transforms(crop_size, lbl_key="label", device="cuda"):
 
     return transforms.Compose(monai_transforms) 
 
-def inference_transforms(crop_size, lbl_key="label", device="cuda"):
+def inference_transforms(crop_size, lbl_key="label"):
     return transforms.Compose([
             transforms.LoadImaged(keys=["image", lbl_key], image_only=False),
             transforms.EnsureChannelFirstd(keys=["image", lbl_key]),
@@ -45,10 +45,9 @@ def inference_transforms(crop_size, lbl_key="label", device="cuda"):
             transforms.ResizeWithPadOrCropd(keys=["image", lbl_key], spatial_size=crop_size,),
             transforms.DivisiblePadd(keys=["image", lbl_key], k=2**5),   # pad inputs to ensure divisibility by no. of layers nnUNet has (5)
             transforms.NormalizeIntensityd(keys=["image"], nonzero=False, channel_wise=False),
-            transforms.EnsureTyped(keys=["image", lbl_key], device=device, track_meta=False),
         ])
 
-def val_transforms(crop_size, lbl_key="label", device="cuda"):
+def val_transforms(crop_size, lbl_key="label"):
     return transforms.Compose([
             transforms.LoadImaged(keys=["image", lbl_key], image_only=False),
             transforms.EnsureChannelFirstd(keys=["image", lbl_key]),
@@ -57,5 +56,4 @@ def val_transforms(crop_size, lbl_key="label", device="cuda"):
             transforms.Spacingd(keys=["image", lbl_key], pixdim=(1.0, 1.0, 1.0), mode=(2, 1)), # mode=("bilinear", "bilinear"),),
             transforms.ResizeWithPadOrCropd(keys=["image", lbl_key], spatial_size=crop_size,),
             transforms.NormalizeIntensityd(keys=["image"], nonzero=False, channel_wise=False),
-            transforms.EnsureTyped(keys=["image", lbl_key], device=device, track_meta=False),
         ])
