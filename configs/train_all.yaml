@@ -62,6 +62,7 @@ model:
     num_classes: 1
     kernel_size: 3            # 3x3x3 and 5x5x5 were tested in publication
     block_counts: [2,2,2,2,1,1,1,1,1] # number of blocks in each layer
+    norm_type: 'layer'
     enable_deep_supervision: True 
 
   swinunetr:
@@ -69,3 +70,4 @@ model:
     depths: [2, 2, 2, 2]
     num_heads: [3, 6, 12, 24]   # number of heads in multi-head Attention
     feature_size: 36
+    use_pretrained: False
