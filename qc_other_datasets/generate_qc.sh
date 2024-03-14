@@ -51,7 +51,6 @@ PATH_MONAI_SCRIPT=$5    # path to the MONAI contrast-agnostic run_inference_sing
 PATH_MONAI_MODEL=$6     # path to the MONAI contrast-agnostic model trained on soft bin labels
 PATH_SWIN_MODEL=$7
 PATH_MEDNEXT_MODEL=$8
-# PATH_MONAI_SCRIPT=$3    # path to the MONAI contrast-agnostic run_inference_single_subject.py
 # PATH_MONAI_MODEL_SOFT=$4     # path to the MONAI contrast-agnostic model trained on soft labels
 # PATH_MONAI_MODEL_SOFTBIN=$5     # path to the MONAI contrast-agnostic model trained on soft_bin labels
 
@@ -63,9 +62,6 @@ echo "PATH_MONAI_SCRIPT: ${PATH_MONAI_SCRIPT}"
 echo "PATH_MONAI_MODEL: ${PATH_MONAI_MODEL}"
 echo "PATH_SWIN_MODEL: ${PATH_SWIN_MODEL}"
 echo "PATH_MEDNEXT_MODEL: ${PATH_MEDNEXT_MODEL}"
-# echo "PATH_MONAI_SCRIPT: ${PATH_MONAI_SCRIPT}"
-# echo "PATH_MONAI_MODEL_SOFT: ${PATH_MONAI_MODEL_SOFT}"
-# echo "PATH_MONAI_MODEL_SOFTBIN: ${PATH_MONAI_MODEL_SOFTBIN}"
 
 # ------------------------------------------------------------------------------
 # CONVENIENCE FUNCTIONS
@@ -107,6 +103,7 @@ copy_gt_seg(){
   if [[ -e $FILESEG ]]; then
       echo "Found! Copying ..."
       rsync -avzh $FILESEG ${file}_seg-manual.nii.gz
+      rsync -avzh ${FILESEG/.nii.gz/.json} ${file}_seg-manual.json
   else
       echo "File ${FILESEG}.nii.gz does not exist" >> ${PATH_LOG}/missing_files.log
       echo "ERROR: Manual Segmentation ${FILESEG} does not exist. Exiting."
@@ -300,6 +297,34 @@ segment_sc_MONAI ${file} 'monai'
 # segment_sc_nnUNet ${file} '3d_fullres'
 # segment_sc ${file} 'deepseg' ${deepseg_input_c}
 
+# Create new "_clean" folder with BIDS-updated derivatives filenames
+date_time=$(date +"%Y-%m-%d %H:%M:%S")
+json_dict='{
+  "GeneratedBy": [
+    {
+      "Name": "contrast-agnostic-softseg-spinalcord",
+      "Version": "2.1",
+      "Date": "'$date_time'"
+    }
+  ]
+}'
+
+PATH_DATA_PROCESSED_CLEAN="${PATH_DATA_PROCESSED}_clean"
+# create new folder and copy only the predictions
+mkdir -p ${PATH_DATA_PROCESSED_CLEAN}/derivatives/labels_softseg_bin/${SUBJECT}/anat
+
+rsync -avzh ${file}_seg_monai.nii.gz ${PATH_DATA_PROCESSED_CLEAN}/derivatives/labels_softseg_bin/${SUBJECT}/anat/${file}_desc-softseg_label-SC_seg.nii.gz
+rsync -avzh ${file}_seg-manual.json ${PATH_DATA_PROCESSED_CLEAN}/derivatives/labels_softseg_bin/${SUBJECT}/anat/${file}_desc-softseg_label-SC_seg.json
+
+# create json file
+echo $json_dict > ${PATH_DATA_PROCESSED_CLEAN}/derivatives/labels_softseg_bin/${SUBJECT}/anat/${file}_desc-softseg_label-SC_seg.json
+# re-save json files with indentation
+python -c "import json;
+json_file = '${PATH_DATA_PROCESSED_CLEAN}/derivatives/labels_softseg_bin/${SUBJECT}/anat/${file}_desc-softseg_label-SC_seg.json'
+with open(json_file, 'r') as f:
+    data = json.load(f)
+    json.dump(data, open(json_file, 'w'), indent=4)
+"
 
 # ------------------------------------------------------------------------------
 # End
