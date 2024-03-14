@@ -76,7 +76,7 @@ def get_parser():
                         ' Default: 64x192x-1')
     parser.add_argument('--device', default="gpu", type=str, choices=["gpu", "cpu"],
                         help='Device to run inference on. Default: cpu')
-    parser.add_argument('--model', default="monai", type=str, choices=["monai", "swinunetr", "mednext"], 
+    parser.add_argument('--model', default="monai", type=str, choices=["monai", "swinunetr", "mednext", "swinpretrained"], 
                         help='Model to use for inference. Default: monai')
     parser.add_argument('--pred-type', default="soft", type=str, choices=["soft", "hard"],
                         help='Type of prediction to output/save. `soft` outputs soft segmentation masks with a threshold of 0.1'
@@ -271,7 +271,7 @@ def main():
         net = create_nnunet_from_plans(plans=nnunet_plans, 
             num_input_channels=1, num_classes=1, deep_supervision=ENABLE_DS)
     
-    elif args.model == "swinunetr":
+    elif args.model in ["swinunetr", "swinpretrained"]:
         # load config file
         config_path = os.path.join(args.chkp_path, "config.yaml")
         with open(config_path, "r") as f:
