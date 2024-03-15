@@ -1,234 +1,267 @@
 import os
+import re
 import json
+import glob
 from tqdm import tqdm
-import yaml
 import argparse
-import joblib
-from utils import FoldGenerator
 from loguru import logger
 from sklearn.model_selection import train_test_split
+from collections import OrderedDict
 
-# root = "/home/GRAMES.POLYMTL.CA/u114716/datasets/spine-generic_uncropped"
+from utils import get_git_branch_and_commit
 
-parser = argparse.ArgumentParser(description='Code for MSD-style JSON datalist for spine-generic dataset.')
-
-parser.add_argument('-pd', '--path-data', required=True, type=str, help='Path to the data set directory')
-parser.add_argument('-pj', '--path-joblib', help='Path to joblib file from ivadomed containing the dataset splits.',
-                    default=None, type=str)
-parser.add_argument('-po', '--path-out', type=str, help='Path to the output directory where dataset json is saved')
-parser.add_argument("--contrast", default="t2w", type=str, help="Contrast to use for training", 
-                    choices=["t1w", "t2w", "t2star", "mton", "mtoff", "dwi", "all"])
-parser.add_argument('--label-type', default='soft', type=str, help="Type of labels to use for training",
-                    choices=['hard', 'soft', 'soft_bin'])
-parser.add_argument('--seed', default=42, type=int, help="Seed for reproducibility")
-args = parser.parse_args()
+import pandas as pd
+pd.set_option('display.max_colwidth', None)
 
 
-root = args.path_data
-seed = args.seed
-contrast = args.contrast
-if args.label_type == 'soft':
-    logger.info("Using SOFT LABELS ...")
-    PATH_DERIVATIVES = os.path.join(root, "derivatives", "labels_softseg")
-    SUFFIX = "softseg"
-elif args.label_type == 'soft_bin':
-    logger.info("Using BINARIZED SOFT LABELS ...")
-    PATH_DERIVATIVES = os.path.join(root, "derivatives", "labels_softseg_bin")
-    SUFFIX = "softseg_bin"
-else:
-    logger.info("Using HARD LABELS ...")
-    PATH_DERIVATIVES = os.path.join(root, "derivatives", "labels")
-    SUFFIX = "seg-manual"
-
-# Get all subjects
-# the participants.tsv file might not be up-to-date, hence rely on the existing folders
-# subjects_df = pd.read_csv(os.path.join(root, 'participants.tsv'), sep='\t')
-# subjects = subjects_df['participant_id'].values.tolist()
-subjects = [subject for subject in os.listdir(root) if subject.startswith('sub-')]
-logger.info(f"Total number of subjects in the root directory: {len(subjects)}")
-
-if args.path_joblib is not None:
-    # load information from the joblib to match train and test subjects
-    # joblib_file = os.path.join(args.path_joblib, 'split_datasets_all_seed=15.joblib')
-    splits = joblib.load(args.path_joblib)
-    # get the subjects from the joblib file
-    train_subjects = sorted(list(set([sub.split('_')[0] for sub in splits['train']])))
-    val_subjects = sorted(list(set([sub.split('_')[0] for sub in splits['valid']])))
-    test_subjects = sorted(list(set([sub.split('_')[0] for sub in splits['test']])))
-
-else:
-    # create one json file with 60-20-20 train-val-test split
-    train_ratio, val_ratio, test_ratio = 0.6, 0.2, 0.2
-    train_subjects, test_subjects = train_test_split(subjects, test_size=test_ratio, random_state=args.seed)
-    # Use the training split to further split into training and validation splits
-    train_subjects, val_subjects = train_test_split(train_subjects, test_size=val_ratio / (train_ratio + val_ratio),
-                                                    random_state=args.seed, )
-    # sort the subjects
-    train_subjects = sorted(train_subjects)
-    val_subjects = sorted(val_subjects)
-    test_subjects = sorted(test_subjects)
-
-logger.info(f"Number of training subjects: {len(train_subjects)}")
-logger.info(f"Number of validation subjects: {len(val_subjects)}")
-logger.info(f"Number of testing subjects: {len(test_subjects)}")
-
-# dump train/val/test splits into a yaml file
-with open(f"data_split_{contrast}_{args.label_type}_seed{seed}.yaml", 'w') as file:
-    yaml.dump({'train': train_subjects, 'val': val_subjects, 'test': test_subjects}, file, indent=2, sort_keys=True)
-
-# keys to be defined in the dataset_0.json
-params = {}
-params["description"] = "spine-generic-uncropped"
-params["labels"] = {
-    "0": "background",
-    "1": "soft-sc-seg"
-    }
-params["license"] = "nk"
-params["modality"] = {
-    "0": "MRI"
-    }
-params["name"] = "spine-generic"
-params["numTest"] = len(test_subjects)
-params["numTraining"] = len(train_subjects)
-params["numValidation"] = len(val_subjects)
-params["seed"] = args.seed
-params["reference"] = "University of Zurich"
-params["tensorImageSize"] = "3D"
-
-train_subjects_dict = {"train": train_subjects}
-val_subjects_dict = {"validation": val_subjects}
-test_subjects_dict =  {"test": test_subjects}
-all_subjects_list = [train_subjects_dict, val_subjects_dict, test_subjects_dict]
-
-# # define the contrasts
-# contrasts_list = ['T1w', 'T2w', 'T2star', 'flip-1_mt-on_MTS', 'flip-2_mt-off_MTS', 'dwi']
-
-for subjects_dict in tqdm(all_subjects_list, desc="Iterating through train/val/test splits"):
-
-    for name, subs_list in subjects_dict.items():
-
-        temp_list = []
-        for subject_no, subject in enumerate(subs_list):
-
-            if contrast == "all":
-                temp_data_t1w = {}
-                temp_data_t2w = {}
-                temp_data_t2star = {}
-                temp_data_mton_mts = {}
-                temp_data_mtoff_mts = {}
-                temp_data_dwi = {}
-
-                # t1w
-                temp_data_t1w["image"] = os.path.join(root, subject, 'anat', f"{subject}_T1w.nii.gz")
-                temp_data_t1w["label"] = os.path.join(PATH_DERIVATIVES, subject, 'anat', f"{subject}_T1w_{SUFFIX}.nii.gz")
-                if os.path.exists(temp_data_t1w["label"]) and os.path.exists(temp_data_t1w["image"]):
-                    temp_list.append(temp_data_t1w)
-
-                # t2w
-                temp_data_t2w["image"] = os.path.join(root, subject, 'anat', f"{subject}_T2w.nii.gz")
-                temp_data_t2w["label"] = os.path.join(PATH_DERIVATIVES, subject, 'anat', f"{subject}_T2w_{SUFFIX}.nii.gz")
-                if os.path.exists(temp_data_t2w["label"]) and os.path.exists(temp_data_t2w["image"]):
-                    temp_list.append(temp_data_t2w)
-
-                # t2star
-                temp_data_t2star["image"] = os.path.join(root, subject, 'anat', f"{subject}_T2star.nii.gz")
-                temp_data_t2star["label"] = os.path.join(PATH_DERIVATIVES, subject, 'anat', f"{subject}_T2star_{SUFFIX}.nii.gz")
-                if os.path.exists(temp_data_t2star["label"]) and os.path.exists(temp_data_t2star["image"]):
-                    temp_list.append(temp_data_t2star)
-
-                # mton_mts
-                temp_data_mton_mts["image"] = os.path.join(root, subject, 'anat', f"{subject}_flip-1_mt-on_MTS.nii.gz")
-                temp_data_mton_mts["label"] = os.path.join(PATH_DERIVATIVES, subject, 'anat', f"{subject}_flip-1_mt-on_MTS_{SUFFIX}.nii.gz")
-                if os.path.exists(temp_data_mton_mts["label"]) and os.path.exists(temp_data_mton_mts["image"]):
-                    temp_list.append(temp_data_mton_mts)
-
-                # t1w_mts
-                temp_data_mtoff_mts["image"] = os.path.join(root, subject, 'anat', f"{subject}_flip-2_mt-off_MTS.nii.gz")
-                temp_data_mtoff_mts["label"] = os.path.join(PATH_DERIVATIVES, subject, 'anat', f"{subject}_flip-2_mt-off_MTS_{SUFFIX}.nii.gz")
-                if os.path.exists(temp_data_mtoff_mts["label"]) and os.path.exists(temp_data_mtoff_mts["image"]):
-                    temp_list.append(temp_data_mtoff_mts)
-
-                # dwi
-                temp_data_dwi["image"] = os.path.join(root, subject, 'dwi', f"{subject}_rec-average_dwi.nii.gz")
-                temp_data_dwi["label"] = os.path.join(PATH_DERIVATIVES, subject, 'dwi', f"{subject}_rec-average_dwi_{SUFFIX}.nii.gz")
-                if os.path.exists(temp_data_dwi["label"]) and os.path.exists(temp_data_dwi["image"]):
-                    temp_list.append(temp_data_dwi)
+# global variables
+FILESEG_SUFFIX = "desc-softseg_label-SC_seg"
 
 
-            elif contrast == "t1w":     # t1w
-                temp_data_t1w = {}
-                temp_data_t1w["image"] = os.path.join(root, subject, 'anat', f"{subject}_T1w.nii.gz")
-                temp_data_t1w["label"] = os.path.join(PATH_DERIVATIVES, subject, 'anat', f"{subject}_T1w_{SUFFIX}.nii.gz")
-                if os.path.exists(temp_data_t1w["label"]) and os.path.exists(temp_data_t1w["image"]):
-                    temp_list.append(temp_data_t1w)
-                else:
-                    logger.info(f"Subject {subject} does not have T1w image or label.")
+def get_parser():
+
+    parser = argparse.ArgumentParser(description='Code for creating a datalist of T2w SC images across healthy and pathology spines from 3 datasets.')
+
+    parser.add_argument('--path-data', nargs='+', required=True, type=str,
+                            help='Path to BIDS dataset(s) (list).')
+    parser.add_argument('--path-out', type=str, help='Path to the output directory where dataset json is saved')
+    parser.add_argument("--contrast", default="t2w", type=str, help="Contrast to use for training", 
+                        choices=["t1w", "t2w", "t2star", "mton", "mtoff", "dwi", "all"])
+    parser.add_argument('--seed', default=42, type=int, help="Seed for reproducibility")
+    parser.add_argument('--label-type', default='soft_bin', type=str, help="Type of labels to use for training",
+                        choices=['soft', 'soft_bin'])
+
+    return parser
 
 
-            elif contrast == "t2w":     # t2w
-                temp_data_t2w = {}
-                temp_data_t2w["image"] = os.path.join(root, subject, 'anat', f"{subject}_T2w.nii.gz")
-                temp_data_t2w["label"] = os.path.join(PATH_DERIVATIVES, subject, 'anat', f"{subject}_T2w_{SUFFIX}.nii.gz")
-                if os.path.exists(temp_data_t2w["label"]) and os.path.exists(temp_data_t2w["image"]):
-                    temp_list.append(temp_data_t2w)
-                else:
-                    logger.info(f"Subject {subject} does not have T2w image or label.")
+def get_boilerplate_json(datasets, dataset_commits):
+    """
+    these are some standard fields that should be included in the json file
+    the content of these fields do not really matter, but they should be there only for the sake of consistency
+    and so that the MSD datalist loader does not throw an error
+    """
+    # keys to be defined in the dataset_0.json
+    params = OrderedDict()
+    params["description"] = "Datasets for contrast-agnostic spinal cord segmentation"
+    params["labels"] = {
+        "0": "background",
+        "1": "sc-seg"
+        }
+    params["license"] = "MIT"
+    params["modality"] = {"0": "MRI"}
+    params["datasets"] = datasets
+    params["reference"] = "BIDS: Brain Imaging Data Structure"
+    params["tensorImageSize"] = "3D"
+    params["dataset_versions"] = dataset_commits
+    
+    return params
 
 
-            elif contrast == "t2star":     # t2star
-                temp_data_t2star = {}
-                temp_data_t2star["image"] = os.path.join(root, subject, 'anat', f"{subject}_T2star.nii.gz")
-                temp_data_t2star["label"] = os.path.join(PATH_DERIVATIVES, subject, 'anat', f"{subject}_T2star_{SUFFIX}.nii.gz")
-                if os.path.exists(temp_data_t2star["label"]) and os.path.exists(temp_data_t2star["image"]):
-                    temp_list.append(temp_data_t2star)
-                else:
-                    logger.info(f"Subject {subject} does not have T2star image or label.")
+def fetch_subject_nifti_details(filename_path):
+    """
+    Get subject ID, session ID and filename from the input BIDS-compatible filename or file path
+    The function works both on absolute file path as well as filename
+    :param filename_path: input nifti filename (e.g., sub-001_ses-01_T1w.nii.gz) or file path
+    (e.g., /home/user/MRI/bids/derivatives/labels/sub-001/ses-01/anat/sub-001_ses-01_T1w.nii.gz
+    :return: subject_session: subject ID and session ID (e.g., sub-001_ses-01) or subject ID (e.g., sub-001)
+    Taken from: 
+    """
+
+    subject = re.search('sub-(.*?)[_/]', filename_path)     # [_/] means either underscore or slash
+    subjectID = subject.group(0)[:-1] if subject else ""    # [:-1] removes the last underscore or slash
+
+    session = re.search('ses-(.*?)[_/]', filename_path)     # [_/] means either underscore or slash
+    sessionID = session.group(0)[:-1] if session else ""    # [:-1] removes the last underscore or slash
+
+    orientation = re.search('acq-(.*?)[_/]', filename_path)     # [_/] means either underscore or slash
+    orientationID = orientation.group(0)[:-1] if orientation else ""    # [:-1] removes the last underscore or slash
+
+    if 'data-multi-subject' in filename_path:
+        # NOTE: the preprocessed spine-generic dataset have a weird BIDS naming convention (due to how they were preprocessed)
+        contrast_pattern =  r'.*_(space-other_T1w|space-other_T2w|space-other_T2star|flip-1_mt-on_space-other_MTS|flip-2_mt-off_space-other_MTS|rec-average_dwi).*'
+    else:
+        contrast_pattern =  r'.*_(T1w|T2w|T2star|PSIR|STIR|UNIT1).*'
+    contrast = re.search(contrast_pattern, filename_path)
+    contrastID = contrast.group(1) if contrast else ""
+
+    # REGEX explanation
+    # . - match any character (except newline)
+    # *? - match the previous element as few times as possible (zero or more times)
+
+    # subject_session = subjectID + '_' + sessionID if subjectID and sessionID else subjectID
+    return subjectID, sessionID, orientationID, contrastID
 
 
-            elif contrast == "mton":     # mton_mts
-                temp_data_mton_mts = {}
-                temp_data_mton_mts["image"] = os.path.join(root, subject, 'anat', f"{subject}_flip-1_mt-on_MTS.nii.gz")
-                temp_data_mton_mts["label"] = os.path.join(PATH_DERIVATIVES, subject, 'anat', f"{subject}_flip-1_mt-on_MTS_{SUFFIX}.nii.gz")
-                if os.path.exists(temp_data_mton_mts["label"]) and os.path.exists(temp_data_mton_mts["image"]):
-                    temp_list.append(temp_data_mton_mts)
-                else:
-                    logger.info(f"Subject {subject} does not have MTOn image or label.")
+def create_df(dataset_path):
+    """
+    Create a dataframe with the following columns: subjectID, sessionID, orientationID, age, sex, pathology, notes
+    Returns a dataframe with all datasetes merged
+    """
 
-            elif contrast == "mtoff":     # t1w_mts
-                temp_data_mtoff_mts = {}
-                temp_data_mtoff_mts["image"] = os.path.join(root, subject, 'anat', f"{subject}_flip-2_mt-off_MTS.nii.gz")
-                temp_data_mtoff_mts["label"] = os.path.join(PATH_DERIVATIVES, subject, 'anat', f"{subject}_flip-2_mt-off_MTS_{SUFFIX}.nii.gz")
-                if os.path.exists(temp_data_mtoff_mts["label"]) and os.path.exists(temp_data_mtoff_mts["image"]):
-                    temp_list.append(temp_data_mtoff_mts)
-                else:
-                    logger.info(f"Subject {subject} does not have MTOff image or label.")
+    if 'data-multi-subject' in dataset_path:
+        # get only the (preprocessed) subject files, which are in the `derivatives` folder
+        path_files = os.path.join(dataset_path, 'derivatives', 'data_preprocessed', 'sub-*', '**', f'*.nii.gz')
+    else:
+        # fetch the files based on the presence of labels 
+        path_files = os.path.join(dataset_path, 'derivatives', 'labels_softseg_bin', 'sub-*', '**', f'*{FILESEG_SUFFIX}.nii.gz')
 
-            elif contrast == "dwi":     # dwi
-                temp_data_dwi = {}
-                temp_data_dwi["image"] = os.path.join(root, subject, 'dwi', f"{subject}_rec-average_dwi.nii.gz")
-                temp_data_dwi["label"] = os.path.join(PATH_DERIVATIVES, subject, 'dwi', f"{subject}_rec-average_dwi_{SUFFIX}.nii.gz")
-                if os.path.exists(temp_data_dwi["label"]) and os.path.exists(temp_data_dwi["image"]):
-                    temp_list.append(temp_data_dwi)
-                else:
-                    logger.info(f"Subject {subject} does not have DWI image or label.")
+    # fetch files only from folders starting with sub-*
+    fname_files = glob.glob(path_files, recursive=True)
+    if len(fname_files) == 0:
+        logger.info(f"No image/label files found in {dataset_path}")
+        return None
 
-            else:
-                raise ValueError(f"Contrast {contrast} not recognized.")
-            
+    # create a dataframe with two columns: filesegname and filename
+    df = pd.DataFrame({'filename': fname_files})
+
+    # get subjectID, sessionID and orientationID
+    df['subjectID'], df['sessionID'], df['orientationID'], df['contrastID'] = zip(*df['filename'].map(fetch_subject_nifti_details))
+
+    df['datasetName'] = os.path.basename(os.path.normpath(dataset_path))
+
+    # refactor to move filename and filesegname to the end of the dataframe
+    df = df[['datasetName', 'subjectID', 'sessionID', 'orientationID', 'contrastID', 'filename']] #, 'filesegname']]
+
+    return df
+
+
+def main():
+
+    args = get_parser().parse_args()
+
+    # output logger to a file
+    logger.add(os.path.join(args.path_out, f"log_{args.contrast}_{args.label_type}_seed{args.seed}.txt"))
+
+    datasets = []
+    # Check if dataset paths exist
+    for path in args.path_data:
+        if not os.path.exists(path):
+            raise ValueError(f"Path {path} does not exist.")
+        else:
+            datasets.append(os.path.basename(os.path.normpath(path)))
+
+    logger.info(f"Creating a dataframe consisting of {len(datasets)} datasets.")
+
+    # temp dict for storing dataset commits
+    dataset_commits = {}
+
+    # create a dataframe for each dataset
+    for dataset_path in args.path_data:
+        df = create_df(dataset_path)
+
+        if df is None:
+            continue
         
-        params[name] = temp_list
-        logger.info(f"Number of images in {name} set: {len(temp_list)}")
+        # get the git commit ID of the dataset
+        dataset_name = os.path.basename(os.path.normpath(dataset_path))
+        branch, commit = get_git_branch_and_commit(dataset_path)
+        dataset_commits[dataset_name] = f"git-{branch}-{commit}"
+        # concatenate the dataframes vertically
+        if 'df_all' not in locals():
+            df_all = df
+        else:
+            df_all = pd.concat([df_all, df], ignore_index=True)
+        
+    train_ratio, val_ratio, test_ratio = 0.65, 0.15, 0.2
+    train_subs_all, val_subs_all, test_subs_all = [], [], []
+    
+    # the idea is to split each dataset into their respective train/val/test splits 
+    # (and not to split the combination of all datasets into train/val/test splits)
+    for dataset in datasets:
 
-final_json = json.dumps(params, indent=4, sort_keys=True)
-if not os.path.exists(args.path_out):
-    os.makedirs(args.path_out, exist_ok=True)
+        all_subjects = sorted(df_all[df_all['datasetName'] == dataset]['subjectID'].unique())
+        train_subjects, test_subjects = train_test_split(all_subjects, test_size=test_ratio, random_state=args.seed)
+        # Use the training split to further split into training and validation splits
+        train_subjects, val_subjects = train_test_split(train_subjects, test_size=val_ratio / (train_ratio + val_ratio),
+                                                        random_state=args.seed)
+        
+        # sort the subjects
+        train_subjects, val_subjects, test_subjects = sorted(train_subjects), sorted(val_subjects), sorted(test_subjects)
 
-jsonFile = open(args.path_out + "/" + f"dataset_{contrast}_{args.label_type}_seed{seed}.json", "w")
-jsonFile.write(final_json)
-jsonFile.close()
+        train_subs_all.extend(train_subjects)
+        val_subs_all.extend(val_subjects)
+        test_subs_all.extend(test_subjects)
+
+    # get boilerplate json
+    params = get_boilerplate_json(datasets, dataset_commits)
+
+    train_subjects_dict = {"train": train_subs_all}
+    val_subjects_dict = {"validation": val_subs_all}
+    test_subjects_dict =  {"test": test_subs_all}
+    all_subjects_list = [train_subjects_dict, val_subjects_dict, test_subjects_dict]
+
+    # list of subjects whose labels don't exist (only for spine-generic)
+    subjects_to_remove = []
+
+    # iterate through train and test subjects
+    for subjects_dict in tqdm(all_subjects_list, desc="Iterating through train/val/test splits"):
+
+        for name, subs_list in subjects_dict.items():
+            
+            temp_list = []            
+            for subject_no, subject in enumerate(subs_list):
+
+                # get all the contrastIDs for the subject
+                contrastIDs = df_all[df_all['subjectID'] == subject]['contrastID'].unique()
+
+                for contrast in contrastIDs:
+                
+                    temp_data = {}
+                    # if the subject belongs to a data-multi-subject dataset, then the filename is different
+                    if df_all[df_all['subjectID'] == subject]['datasetName'].values[0] == 'data-multi-subject':
+                        # NOTE: for spine-generic subjects, we're pulling the data from image filename
+                        fname_image = df_all[(df_all['subjectID'] == subject) & (df_all['contrastID'] == contrast)]['filename'].values[0]
+                        fname_label = fname_image.replace('data_preprocessed', 'labels_softseg_bin').replace('.nii.gz', f'_{FILESEG_SUFFIX}.nii.gz')
+                    
+                    else: 
+                        # NOTE: but for other datasets, we are getting them from the lesion filenames
+                        fname_label = df_all[(df_all['subjectID'] == subject) & (df_all['contrastID'] == contrast)]['filename'].values[0]
+                        fname_image = fname_label.replace('/derivatives/labels_softseg_bin', '').replace(f'_{FILESEG_SUFFIX}.nii.gz', '.nii.gz')
+                                    
+                    temp_data["image"] = fname_image
+                    temp_data["label"] = fname_label
+
+                    if os.path.exists(temp_data["image"]) and os.path.exists(temp_data["label"]):
+                        temp_list.append(temp_data)
+                    else:
+                        if not os.path.exists(temp_data["image"]):
+                            logger.info(f"{temp_data['image']} does not exist.")
+                        if not os.path.exists(temp_data["label"]):
+                            logger.info(f"{temp_data['label']} does not exist.")
+                        subjects_to_remove.append(subject)
+
+                params[name] = temp_list
+
+    # number of training, validation and testing images (not subjects; a subject can have multiple contrasts, and hence multiple images)
+    params["numTrainingImages"] = len(params["train"])
+    params["numValidationImages"] = len(params["validation"])
+    params["numTestImages"] = len(params["test"])
+    params["seed"] = args.seed
+
+    # update the number of train/val/test subjects
+    train_subs_all = list(set(train_subs_all) - set(subjects_to_remove))
+    val_subs_all = list(set(val_subs_all) - set(subjects_to_remove))
+    test_subs_all = list(set(test_subs_all) - set(subjects_to_remove))
+    params["numTrainingSubjects"] = len(train_subs_all)
+    params["numValidationSubjects"] = len(val_subs_all)
+    params["numTestSubjects"] = len(test_subs_all)
+
+    logger.info(f"Number of training images (not subjects): {params['numTrainingImages']}")
+    logger.info(f"Number of validation images (not subjects): {params['numValidationImages']}")
+    logger.info(f"Number of testing images (not subjects): {params['numTestImages']}")
+
+    final_json = json.dumps(params, indent=4, sort_keys=True)
+    if not os.path.exists(args.path_out):
+        os.makedirs(args.path_out, exist_ok=True)
+
+    # jsonFile = open(args.path_out + "/" + f"dataset_{contrast}_{args.label_type}_seed{seed}.json", "w")
+    jsonFile = open(args.path_out + "/" + f"dataset_{args.contrast}_{args.label_type}_seed{args.seed}.json", "w")
+    jsonFile.write(final_json)
+    jsonFile.close()
 
 
-
+if __name__ == "__main__":
+    main()
     
 
 
