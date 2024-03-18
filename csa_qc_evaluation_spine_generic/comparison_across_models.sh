@@ -145,6 +145,7 @@ segment_sc() {
   local method="$3"     # deepseg or propseg
   local contrast_input="$4"   # used for input arg `-c`
   local contrast_name="$5"   # used only for saving output file name
+  local csv_fname="$6"   # used for saving output file name
 
   # Segment spinal cord
   if [[ $method == 'deepseg' ]];then
@@ -180,7 +181,7 @@ segment_sc() {
   fi
 
   # Compute CSA from the the SC segmentation resampled back to native resolution using the GT vertebral labels
-  sct_process_segmentation -i ${FILESEG}.nii.gz -vert 2:3 -vertfile ${file_gt_vert_label}_labeled.nii.gz -o $PATH_RESULTS/csa_label_types_c23.csv -append 1
+  sct_process_segmentation -i ${FILESEG}.nii.gz -vert 2:3 -vertfile ${file_gt_vert_label}_labeled.nii.gz -o $PATH_RESULTS/${csv_fname}.csv -append 1
 
 }
 
@@ -190,6 +191,7 @@ segment_sc_nnUNet(){
   local file_gt_vert_label="$2"
   local kernel="$3"     # 2d or 3d
   local contrast="$4"   # used only for saving output file name
+  local csv_fname="$5"   # used for saving output file name
 
   FILESEG="${file%%_*}_${contrast}_seg_nnunet"
 
@@ -207,7 +209,7 @@ segment_sc_nnUNet(){
   # sct_qc -i ${file}.nii.gz -s ${FILESEG}.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
 
   # Compute CSA from the prediction resampled back to native resolution using the GT vertebral labels
-  sct_process_segmentation -i ${FILESEG}.nii.gz -vert 2:3 -vertfile ${file_gt_vert_label}_labeled.nii.gz -o $PATH_RESULTS/csa_label_types_c23.csv -append 1
+  sct_process_segmentation -i ${FILESEG}.nii.gz -vert 2:3 -vertfile ${file_gt_vert_label}_labeled.nii.gz -o $PATH_RESULTS/${csv_fname}.csv -append 1
 
 }
 
@@ -217,6 +219,7 @@ segment_sc_MONAI(){
   local file_gt_vert_label="$2"
   local model="$3"     # monai or swinunetr or mednext
   local contrast="$4"   # used only for saving output file name
+  local csv_fname="$5"   # used for saving output file name
 
 	if [[ $model == 'monai' ]]; then
 		FILESEG="${file%%_*}_${contrast}_seg_monai"
@@ -310,7 +313,10 @@ rsync -Ravzh ${PATH_DATA}/./${SUBJECT}/dwi/* .
 # contrast
 # ------------------------------------------------------------------------------
 contrasts="T1w T2w T2star flip-1_mt-on_MTS flip-2_mt-off_MTS rec-average_dwi"
-# contrasts="flip-2_mt-off_MTS rec-average_dwi"
+# contrasts="T1w rec-average_dwi"
+
+# output csv filename 
+csv_fname="csa_models_c23"
 
 # Loop across contrasts
 for contrast in ${contrasts}; do
@@ -378,11 +384,11 @@ for contrast in ${contrasts}; do
   sct_process_segmentation -i ${FILETHRESH}.nii.gz -vert 2:3 -vertfile ${file}_seg-manual_labeled.nii.gz -o $PATH_RESULTS/csa_label_types_c23.csv -append 1
 
   # 3. Segment SC using different methods, binarize at 0.5 and compute CSA
-	segment_sc_MONAI ${file} "${file}_seg-manual" 'monai' ${contrast}
-  segment_sc_MONAI ${file} "${file}_seg-manual" 'swinunetr' ${contrast}
-  segment_sc_MONAI ${file} "${file}_seg-manual" 'mednext' ${contrast}
-  segment_sc_nnUNet ${file} "${file}_seg-manual" '3d_fullres' ${contrast}
-  segment_sc ${file} "${file}_seg-manual" 'deepseg' ${deepseg_input_c} ${contrast}
+	CUDA_VISIBLE_DEVICES=2 segment_sc_MONAI ${file} "${file}_seg-manual" 'monai' ${contrast} ${csv_fname}
+  CUDA_VISIBLE_DEVICES=2 segment_sc_MONAI ${file} "${file}_seg-manual" 'mednext' ${contrast} ${csv_fname}
+  CUDA_VISIBLE_DEVICES=2 segment_sc_MONAI ${file} "${file}_seg-manual" 'swinunetr' ${contrast} ${csv_fname}
+  CUDA_VISIBLE_DEVICES=3 segment_sc_nnUNet ${file} "${file}_seg-manual" '3d_fullres' ${contrast} ${csv_fname}
+  segment_sc ${file} "${file}_seg-manual" 'deepseg' ${deepseg_input_c} ${contrast} ${csv_fname}
   # TODO: run on deep/progseg after fixing the contrasts for those
   # segment_sc ${file_res} 't2' 'propseg' '' "${file}_seg-manual" ${native_res}
 
