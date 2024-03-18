@@ -3,6 +3,7 @@ import argparse
 from datetime import datetime
 from loguru import logger
 import yaml
+import json
 
 import numpy as np
 import wandb
@@ -14,8 +15,9 @@ import matplotlib.pyplot as plt
 from utils import dice_score, PolyLRScheduler, plot_slices, check_empty_patch, count_parameters
 from losses import AdapWingLoss
 from transforms import train_transforms, val_transforms
-from models import create_nnunet_from_plans
+from models import create_nnunet_from_plans, load_pretrained_swinunetr
 
+from monai.apps import download_url
 from monai.utils import set_determinism
 from monai.inferers import sliding_window_inference
 from monai.networks.nets import UNETR, SwinUNETR
@@ -112,7 +114,7 @@ class Model(pl.LightningModule):
             lbl_key='label',
             device=self.device,
         )
-        transforms_val = val_transforms(crop_size=self.inference_roi_size, lbl_key='label', device=self.device)
+        transforms_val = val_transforms(crop_size=self.inference_roi_size, lbl_key='label')
         
         # load the dataset
         logger.info(f"Training with {self.cfg['dataset']['label_type']} labels ...")
@@ -136,7 +138,7 @@ class Model(pl.LightningModule):
                                    copy_cache=False)
 
         # define test transforms
-        transforms_test = val_transforms(crop_size=self.inference_roi_size, lbl_key='label', device=self.device)
+        transforms_test = val_transforms(crop_size=self.inference_roi_size, lbl_key='label')
         
         # define post-processing transforms for testing; taken (with explanations) from 
         # https://github.com/Project-MONAI/tutorials/blob/main/3d_segmentation/torch/unet_inference_dict.py#L66
@@ -478,6 +480,15 @@ def main(args):
     # define root path for finding datalists
     dataset_root = config["dataset"]["root_dir"]
 
+    # load the datalist json
+    datalist = os.path.join(dataset_root, 
+        f"dataset_{config['dataset']['contrast']}_{config['dataset']['label_type']}_seed{config['seed']}.json"
+    )
+    with open(datalist, "r") as f:
+        datalist = json.load(f)
+    
+    num_contrasts = len(datalist["contrasts"])
+
     # define optimizer
     if config["opt"]["name"] == "adam":
         optimizer_class = torch.optim.Adam
@@ -486,8 +497,11 @@ def main(args):
 
     # define models
     if args.model in ["swinunetr"]:
-        # # define image size to be fed to the model
-        
+
+        patch_size = f"{config['preprocessing']['crop_pad_size'][0]}x" \
+                        f"{config['preprocessing']['crop_pad_size'][1]}x" \
+                        f"{config['preprocessing']['crop_pad_size'][2]}"
+
         # define model
         net = SwinUNETR(spatial_dims=config["model"]["swinunetr"]["spatial_dims"],
                         in_channels=1, out_channels=1, 
@@ -561,10 +575,8 @@ def main(args):
                         f"{config['preprocessing']['crop_pad_size'][2]}"
         # save experiment id
         save_exp_id = f"{args.model}_seed={config['seed']}_" \
-                        f"{config['dataset']['contrast']}_{config['dataset']['label_type']}_" \
-                        f"nf={config['model']['nnunet']['base_num_features']}_" \
-                        f"opt={config['opt']['name']}_lr={config['opt']['lr']}_AdapW_" \
-                        f"bs={config['opt']['batch_size']}_{patch_size}" \
+                        f"ncont={num_contrasts}_" \
+                        f"nf={config['model']['nnunet']['base_num_features']}" \
 
         if args.debug:
             save_exp_id = f"DEBUG_{save_exp_id}"
