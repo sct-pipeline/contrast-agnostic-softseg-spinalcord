@@ -232,6 +232,9 @@ def main():
 
                 params[name] = temp_list
 
+    # log the contrasts used
+    params["contrasts"] = df_all['contrastID'].unique().tolist()
+
     # number of training, validation and testing images (not subjects; a subject can have multiple contrasts, and hence multiple images)
     params["numTrainingImages"] = len(params["train"])
     params["numValidationImages"] = len(params["validation"])
