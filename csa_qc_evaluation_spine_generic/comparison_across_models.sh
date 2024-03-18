@@ -48,16 +48,18 @@ PATH_NNUNET_SCRIPT=$2   # path to the nnUNet contrast-agnostic run_inference_sin
 PATH_NNUNET_MODEL=$3    # path to the nnUNet contrast-agnostic model
 PATH_MONAI_SCRIPT=$4    # path to the MONAI contrast-agnostic run_inference_single_subject.py
 PATH_MONAI_MODEL=$5     # path to the MONAI contrast-agnostic model trained on soft bin labels
-PATH_SWIN_MODEL=$6
-PATH_MEDNEXT_MODEL=$7
+PATH_MEDNEXT_MODEL=$6
+PATH_SWIN_MODEL=$7
+PATH_SWIN_PTR_MODEL=$8
 
 echo "SUBJECT: ${SUBJECT}"
 echo "PATH_NNUNET_SCRIPT: ${PATH_NNUNET_SCRIPT}"
 echo "PATH_NNUNET_MODEL: ${PATH_NNUNET_MODEL}"
 echo "PATH_MONAI_SCRIPT: ${PATH_MONAI_SCRIPT}"
 echo "PATH_MONAI_MODEL: ${PATH_MONAI_MODEL}"
-echo "PATH_SWIN_MODEL: ${PATH_SWIN_MODEL}"
 echo "PATH_MEDNEXT_MODEL: ${PATH_MEDNEXT_MODEL}"
+echo "PATH_SWIN_MODEL: ${PATH_SWIN_MODEL}"
+echo "PATH_SWIN_PTR_MODEL: ${PATH_SWIN_PTR_MODEL}"
 
 # ------------------------------------------------------------------------------
 # CONVENIENCE FUNCTIONS
@@ -228,7 +230,11 @@ segment_sc_MONAI(){
 	elif [[ $model == 'swinunetr' ]]; then
     FILESEG="${file%%_*}_${contrast}_seg_swinunetr"
     PATH_MODEL=${PATH_SWIN_MODEL}
-  
+
+	elif [[ $model == 'swinpretrained' ]]; then
+    FILESEG="${file%%_*}_${contrast}_seg_swinpretrained"
+    PATH_MODEL=${PATH_SWIN_PTR_MODEL}  
+
   elif [[ $model == 'mednext' ]]; then
     FILESEG="${file%%_*}_${contrast}_seg_mednext"
     PATH_MODEL=${PATH_MEDNEXT_MODEL}
@@ -238,7 +244,12 @@ segment_sc_MONAI(){
   # Get the start time
   start_time=$(date +%s)
   # Run SC segmentation
-  python ${PATH_MONAI_SCRIPT} --path-img ${file}.nii.gz --path-out . --chkp-path ${PATH_MODEL} --device gpu --model ${model} --pred-type soft
+  if [[ $model == 'swinpretrained' ]]; then
+    # NOTE: pre-trained swinunetr model used different input/sliding_window_sizes, hence providing the -crop arg only for this model
+    python ${PATH_MONAI_SCRIPT} --path-img ${file}.nii.gz --path-out . --chkp-path ${PATH_MODEL} --device gpu --model ${model} --pred-type soft -crop 64x160x-1
+  else
+    python ${PATH_MONAI_SCRIPT} --path-img ${file}.nii.gz --path-out . --chkp-path ${PATH_MODEL} --device gpu --model ${model} --pred-type soft
+  fi
   # Rename MONAI output
   mv ${file}_pred.nii.gz ${FILESEG}.nii.gz
   # Get the end time
@@ -271,7 +282,7 @@ segment_sc_ensemble(){
   # Get the start time
   start_time=$(date +%s)
   # Add segmentations from different models
-  sct_maths -i ${FILETEMP}_seg_monai.nii.gz -add ${FILETEMP}_seg_nnunet.nii.gz ${FILETEMP}_seg_swinunetr.nii.gz -add ${FILETEMP}_seg_mednext.nii.gz -o ${FILESEG}.nii.gz
+  sct_maths -i ${FILETEMP}_seg_monai.nii.gz -add ${FILETEMP}_seg_nnunet.nii.gz ${FILETEMP}_seg_swinunetr.nii.gz ${FILETEMP}_seg_mednext.nii.gz -o ${FILESEG}.nii.gz
   # # Average the segmentations
   # sct_maths -i ${FILESEG}.nii.gz -div 4 -o ${FILESEG}.nii.gz
   # Get the end time
@@ -381,12 +392,13 @@ for contrast in ${contrasts}; do
   sct_maths -i ${file}_softseg.nii.gz -bin 0.5 -o ${FILETHRESH}.nii.gz
 
   # 2. Compute CSA of the binarized soft GT 
-  sct_process_segmentation -i ${FILETHRESH}.nii.gz -vert 2:3 -vertfile ${file}_seg-manual_labeled.nii.gz -o $PATH_RESULTS/csa_label_types_c23.csv -append 1
+  sct_process_segmentation -i ${FILETHRESH}.nii.gz -vert 2:3 -vertfile ${file}_seg-manual_labeled.nii.gz -o $PATH_RESULTS/${csv_fname}.csv -append 1
 
   # 3. Segment SC using different methods, binarize at 0.5 and compute CSA
 	CUDA_VISIBLE_DEVICES=2 segment_sc_MONAI ${file} "${file}_seg-manual" 'monai' ${contrast} ${csv_fname}
   CUDA_VISIBLE_DEVICES=2 segment_sc_MONAI ${file} "${file}_seg-manual" 'mednext' ${contrast} ${csv_fname}
   CUDA_VISIBLE_DEVICES=2 segment_sc_MONAI ${file} "${file}_seg-manual" 'swinunetr' ${contrast} ${csv_fname}
+  CUDA_VISIBLE_DEVICES=3 segment_sc_MONAI ${file} "${file}_seg-manual" 'swinpretrained' ${contrast} ${csv_fname}
   CUDA_VISIBLE_DEVICES=3 segment_sc_nnUNet ${file} "${file}_seg-manual" '3d_fullres' ${contrast} ${csv_fname}
   segment_sc ${file} "${file}_seg-manual" 'deepseg' ${deepseg_input_c} ${contrast} ${csv_fname}
   # TODO: run on deep/progseg after fixing the contrasts for those
