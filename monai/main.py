@@ -11,7 +11,7 @@ import pytorch_lightning as pl
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
 
-from utils import dice_score, PolyLRScheduler, plot_slices, check_empty_patch
+from utils import dice_score, PolyLRScheduler, plot_slices, check_empty_patch, count_parameters
 from losses import AdapWingLoss
 from transforms import train_transforms, val_transforms
 from models import create_nnunet_from_plans
@@ -637,7 +637,10 @@ def main(args):
         # checkpoint_callback_dice = pl.callbacks.ModelCheckpoint(
         #     dirpath=save_path, filename='best_model_dice', monitor='val_soft_dice', 
         #     save_top_k=1, mode="max", save_last=False, save_weights_only=True)
-        
+
+        num_model_params = count_parameters(model=net)
+        logger.info(f"Number of Trainable model parameters: {(num_model_params / 1e6):.3f}M")
+
         logger.info(f"Starting training from scratch ...")
         # wandb logger
         exp_logger = pl.loggers.WandbLogger(
