@@ -230,7 +230,7 @@ segment_sc_MONAI(){
 	elif [[ $model == 'swinunetr' ]]; then
     FILESEG="${file%%_*}_${contrast}_seg_swinunetr"
     PATH_MODEL=${PATH_SWIN_MODEL}
-  
+
 	elif [[ $model == 'swinpretrained' ]]; then
     FILESEG="${file%%_*}_${contrast}_seg_swinpretrained"
     PATH_MODEL=${PATH_SWIN_PTR_MODEL}  
@@ -248,7 +248,7 @@ segment_sc_MONAI(){
     # NOTE: pre-trained swinunetr model used different input/sliding_window_sizes, hence providing the -crop arg only for this model
     python ${PATH_MONAI_SCRIPT} --path-img ${file}.nii.gz --path-out . --chkp-path ${PATH_MODEL} --device gpu --model ${model} --pred-type soft -crop 64x160x-1
   else
-  python ${PATH_MONAI_SCRIPT} --path-img ${file}.nii.gz --path-out . --chkp-path ${PATH_MODEL} --device gpu --model ${model} --pred-type soft
+    python ${PATH_MONAI_SCRIPT} --path-img ${file}.nii.gz --path-out . --chkp-path ${PATH_MODEL} --device gpu --model ${model} --pred-type soft
   fi
   # Rename MONAI output
   mv ${file}_pred.nii.gz ${FILESEG}.nii.gz
@@ -267,8 +267,39 @@ segment_sc_MONAI(){
   # Compute CSA from the soft prediction resampled back to native resolution using the GT vertebral labels
   sct_process_segmentation -i ${FILESEG}.nii.gz -vert 2:3 -vertfile ${file_gt_vert_label}_labeled.nii.gz -o $PATH_RESULTS/${csv_fname}.csv -append 1
 }
-}
 
+# Ensemble the predictions from different models
+segment_sc_ensemble(){
+  local file="$1"
+  local file_gt_vert_label="$2"
+  local contrast="$3"   # used only for saving output file name
+  local csv_fname="$4"   # used for saving output file name
+  
+  FILETEMP="${file%%_*}_${contrast}"
+  
+  FILESEG=${FILETEMP}_seg_ensemble
+
+  # Get the start time
+  start_time=$(date +%s)
+  # Add segmentations from different models
+  sct_maths -i ${FILETEMP}_seg_monai.nii.gz -add ${FILETEMP}_seg_nnunet.nii.gz ${FILETEMP}_seg_swinunetr.nii.gz ${FILETEMP}_seg_mednext.nii.gz -o ${FILESEG}.nii.gz
+  # # Average the segmentations
+  # sct_maths -i ${FILESEG}.nii.gz -div 4 -o ${FILESEG}.nii.gz
+  # Get the end time
+  end_time=$(date +%s)
+  # Calculate the time difference
+  execution_time=$(python3 -c "print($end_time - $start_time)")
+  echo "${FILESEG},${execution_time}" >> ${PATH_RESULTS}/execution_time.csv
+
+  # Binarize MONAI output (which is soft by default); output is overwritten
+  sct_maths -i ${FILESEG}.nii.gz -bin 0.5 -o ${FILESEG}.nii.gz
+
+  # Generate QC report with soft prediction
+  sct_qc -i ${file}.nii.gz -s ${FILESEG}.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
+
+  # Compute CSA from the soft prediction resampled back to native resolution using the GT vertebral labels
+  sct_process_segmentation -i ${FILESEG}.nii.gz -vert 2:3 -vertfile ${file_gt_vert_label}_labeled.nii.gz -o $PATH_RESULTS/${csv_fname}.csv -append 1
+}
 
 # ------------------------------------------------------------------------------
 # SCRIPT STARTS HERE
@@ -372,6 +403,9 @@ for contrast in ${contrasts}; do
   segment_sc ${file} "${file}_seg-manual" 'deepseg' ${deepseg_input_c} ${contrast} ${csv_fname}
   # TODO: run on deep/progseg after fixing the contrasts for those
   # segment_sc ${file_res} 't2' 'propseg' '' "${file}_seg-manual" ${native_res}
+
+  # 3.1 Ensemble the predictions from different models
+  segment_sc_ensemble ${file} "${file}_seg-manual" ${contrast} ${csv_fname}
 
 done
 
