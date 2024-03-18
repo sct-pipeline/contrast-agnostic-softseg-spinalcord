@@ -2,6 +2,7 @@ import os
 import re
 import json
 import glob
+import yaml
 from tqdm import tqdm
 import argparse
 from loguru import logger
@@ -252,6 +253,10 @@ def main():
     logger.info(f"Number of training images (not subjects): {params['numTrainingImages']}")
     logger.info(f"Number of validation images (not subjects): {params['numValidationImages']}")
     logger.info(f"Number of testing images (not subjects): {params['numTestImages']}")
+
+    # dump train/val/test splits into a yaml file
+    with open(f"data_split_{args.label_type}_seed{args.seed}.yaml", 'w') as file:
+        yaml.dump({'train': sorted(train_subs_all), 'val': sorted(val_subs_all), 'test': sorted(test_subs_all)}, file, indent=2, sort_keys=True)
 
     final_json = json.dumps(params, indent=4, sort_keys=True)
     if not os.path.exists(args.path_out):
