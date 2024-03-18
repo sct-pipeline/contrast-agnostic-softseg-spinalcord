@@ -1,6 +1,9 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import numpy as np
+from loguru import logger
+from collections import OrderedDict
 
 # ---------------------------- Imports for nnUNet's Model -----------------------------
 from dynamic_network_architectures.architectures.unet import PlainConvUNet, ResidualEncoderUNet
@@ -119,6 +122,58 @@ def create_nnunet_from_plans(plans, num_input_channels: int, num_classes: int, d
     return model
 
 
+def load_pretrained_swinunetr(model, path_pretrained_weights: str):
+
+    logger.info(f"Loading Weights from the Path {path_pretrained_weights}")
+    ssl_dict = torch.load(path_pretrained_weights)
+    ssl_weights = ssl_dict["model"]
+
+    # Generate new state dict so it can be loaded to MONAI SwinUNETR Model
+    monai_loadable_state_dict = OrderedDict()
+    model_prior_dict = model.state_dict()
+    model_update_dict = model_prior_dict
+
+    del ssl_weights["encoder.mask_token"]
+    del ssl_weights["encoder.norm.weight"]
+    del ssl_weights["encoder.norm.bias"]
+    del ssl_weights["out.conv.conv.weight"]
+    del ssl_weights["out.conv.conv.bias"]
+
+    # this is replacing the encoder. with swinViT. in the keys
+    for key, value in ssl_weights.items():
+        if key[:8] == "encoder.":
+            if key[8:19] == "patch_embed":
+                new_key = "swinViT." + key[8:]
+            else:
+                new_key = "swinViT." + key[8:18] + key[20:]
+            monai_loadable_state_dict[new_key] = value
+        else:
+            monai_loadable_state_dict[key] = value
+
+    model_update_dict.update(monai_loadable_state_dict)
+    model.load_state_dict(model_update_dict, strict=True)
+    model_final_loaded_dict = model.state_dict()
+
+    # Safeguard test to ensure that weights got loaded successfully
+    layer_counter = 0
+    for k, _v in model_final_loaded_dict.items():
+        if k in model_prior_dict:
+            layer_counter = layer_counter + 1
+
+            old_wts = model_prior_dict[k]
+            new_wts = model_final_loaded_dict[k]
+
+            old_wts = old_wts.to("cpu").numpy()
+            new_wts = new_wts.to("cpu").numpy()
+            diff = np.mean(np.abs(old_wts, new_wts))
+            logger.info(f"Layer {k}, the update difference is: {diff}")
+            if diff == 0.0:
+                logger.info(f"Warning: No difference found for layer {k}")
+    
+    logger.info(f"Total updated layers {layer_counter} / {len(model_prior_dict)}")
+    logger.info(f"Pretrained Weights Succesfully Loaded !")
+
+    return model
 
 if __name__ == "__main__":
 
