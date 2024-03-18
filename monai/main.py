@@ -14,8 +14,9 @@ import matplotlib.pyplot as plt
 from utils import dice_score, PolyLRScheduler, plot_slices, check_empty_patch, count_parameters
 from losses import AdapWingLoss
 from transforms import train_transforms, val_transforms
-from models import create_nnunet_from_plans
+from models import create_nnunet_from_plans, load_pretrained_swinunetr
 
+from monai.apps import download_url
 from monai.utils import set_determinism
 from monai.inferers import sliding_window_inference
 from monai.networks.nets import UNETR, SwinUNETR
@@ -480,8 +481,11 @@ def main(args):
 
     # define models
     if args.model in ["swinunetr"]:
-        # # define image size to be fed to the model
-        
+
+        patch_size = f"{config['preprocessing']['crop_pad_size'][0]}x" \
+                        f"{config['preprocessing']['crop_pad_size'][1]}x" \
+                        f"{config['preprocessing']['crop_pad_size'][2]}"
+
         # define model
         net = SwinUNETR(spatial_dims=config["model"]["swinunetr"]["spatial_dims"],
                         in_channels=1, out_channels=1, 
@@ -489,13 +493,29 @@ def main(args):
                         depths=config["model"]["swinunetr"]["depths"],
                         feature_size=config["model"]["swinunetr"]["feature_size"], 
                         num_heads=config["model"]["swinunetr"]["num_heads"],
-                    )
-        patch_size = f"{config['preprocessing']['crop_pad_size'][0]}x" \
-                        f"{config['preprocessing']['crop_pad_size'][1]}x" \
-                        f"{config['preprocessing']['crop_pad_size'][2]}"
+                    )    
+
+        if config["model"]["swinunetr"]["use_pretrained"]:
+            logger.info(f"Using SwinUNETR model with pre-trained weights ...")
+            # download the pre-trained weights
+            resource = (
+                "https://github.com/Project-MONAI/MONAI-extra-test-data/releases/download/0.8.1/ssl_pretrained_weights.pth"
+                )
+            dst = os.path.join(config["directories"]["models_dir"], "swinunetr_pretrained")
+            if not os.path.exists(dst):
+                os.makedirs(dst, exist_ok=True)
+            dst = os.path.join(dst, "ssl_pretrained_weights.pth")
+            download_url(resource, dst)
+            pretrained_path = os.path.normpath(dst)
+
+            net = load_pretrained_swinunetr(net, path_pretrained_weights=pretrained_path)
+
+        else: 
+            logger.info(f"Using SwinUNETR model initialized from scratch ...")            
 
         save_exp_id = f"{args.model}_seed={config['seed']}_" \
                         f"{config['dataset']['contrast']}_{config['dataset']['label_type']}_" \
+                        f"ptr={int(config['model']['swinunetr']['use_pretrained'])}_" \
                         f"d={config['model']['swinunetr']['depths'][0]}_" \
                         f"nf={config['model']['swinunetr']['feature_size']}_" \
                         f"opt={config['opt']['name']}_lr={config['opt']['lr']}_AdapW_" \
