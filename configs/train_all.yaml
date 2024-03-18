@@ -1,20 +1,20 @@
-seed: 15
+seed: 30
 save_test_preds: True
 
 directories:
   # Path to the saved models directory
-  models_dir: /home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/saved_models/followup
+  models_dir: /home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/saved_models/lifelong
   # Path to the saved results directory
-  results_dir: /home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/results/models_followup
+  results_dir: /home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/results/models_lifelong
   # Path to the saved wandb logs directory
   # if None, starts training from scratch. Otherwise, resumes training from the specified wandb run folder
   wandb_run_folder: None  
 
 dataset:
   # Dataset name (will be used as "group_name" for wandb logging)
-  name: spine-generic
+  name: lifelong-contrast-agnostic
   # Path to the dataset directory containing all datalists (.json files)
-  root_dir: /home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/datalists/spine-generic/seed15
+  root_dir: /home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/datalists/lifelong-contrast-agnostic
   # Type of contrast to be used for training. "all" corresponds to training on all contrasts
   contrast: all   # choices: ["t1w", "t2w", "t2star", "mton", "mtoff", "dwi", "all"]
   # Type of label to be used for training. 
@@ -33,7 +33,7 @@ opt:
   max_epochs: 200
   batch_size: 2
   # Interval between validation checks in epochs
-  check_val_every_n_epochs: 5
+  check_val_every_n_epochs: 10
   # Early stopping patience (this is until patience * check_val_every_n_epochs)
   early_stopping_patience: 20     
 
