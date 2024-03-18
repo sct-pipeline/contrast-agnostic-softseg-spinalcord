@@ -48,16 +48,18 @@ PATH_NNUNET_SCRIPT=$2   # path to the nnUNet contrast-agnostic run_inference_sin
 PATH_NNUNET_MODEL=$3    # path to the nnUNet contrast-agnostic model
 PATH_MONAI_SCRIPT=$4    # path to the MONAI contrast-agnostic run_inference_single_subject.py
 PATH_MONAI_MODEL=$5     # path to the MONAI contrast-agnostic model trained on soft bin labels
-PATH_SWIN_MODEL=$6
-PATH_MEDNEXT_MODEL=$7
+PATH_MEDNEXT_MODEL=$6
+PATH_SWIN_MODEL=$7
+PATH_SWIN_PTR_MODEL=$8
 
 echo "SUBJECT: ${SUBJECT}"
 echo "PATH_NNUNET_SCRIPT: ${PATH_NNUNET_SCRIPT}"
 echo "PATH_NNUNET_MODEL: ${PATH_NNUNET_MODEL}"
 echo "PATH_MONAI_SCRIPT: ${PATH_MONAI_SCRIPT}"
 echo "PATH_MONAI_MODEL: ${PATH_MONAI_MODEL}"
-echo "PATH_SWIN_MODEL: ${PATH_SWIN_MODEL}"
 echo "PATH_MEDNEXT_MODEL: ${PATH_MEDNEXT_MODEL}"
+echo "PATH_SWIN_MODEL: ${PATH_SWIN_MODEL}"
+echo "PATH_SWIN_PTR_MODEL: ${PATH_SWIN_PTR_MODEL}"
 
 # ------------------------------------------------------------------------------
 # CONVENIENCE FUNCTIONS
@@ -226,6 +228,10 @@ segment_sc_MONAI(){
     FILESEG="${file%%_*}_${contrast}_seg_swinunetr"
     PATH_MODEL=${PATH_SWIN_MODEL}
   
+	elif [[ $model == 'swinpretrained' ]]; then
+    FILESEG="${file%%_*}_${contrast}_seg_swinpretrained"
+    PATH_MODEL=${PATH_SWIN_PTR_MODEL}  
+
   elif [[ $model == 'mednext' ]]; then
     FILESEG="${file%%_*}_${contrast}_seg_mednext"
     PATH_MODEL=${PATH_MEDNEXT_MODEL}
@@ -235,7 +241,12 @@ segment_sc_MONAI(){
   # Get the start time
   start_time=$(date +%s)
   # Run SC segmentation
+  if [[ $model == 'swinpretrained' ]]; then
+    # NOTE: pre-trained swinunetr model used different input/sliding_window_sizes, hence providing the -crop arg only for this model
+    python ${PATH_MONAI_SCRIPT} --path-img ${file}.nii.gz --path-out . --chkp-path ${PATH_MODEL} --device gpu --model ${model} --pred-type soft -crop 64x160x-1
+  else
   python ${PATH_MONAI_SCRIPT} --path-img ${file}.nii.gz --path-out . --chkp-path ${PATH_MODEL} --device gpu --model ${model} --pred-type soft
+  fi
   # Rename MONAI output
   mv ${file}_pred.nii.gz ${FILESEG}.nii.gz
   # Get the end time
@@ -346,11 +357,7 @@ for contrast in ${contrasts}; do
   sct_process_segmentation -i ${FILETHRESH}.nii.gz -vert 2:3 -vertfile ${file}_seg-manual_labeled.nii.gz -o $PATH_RESULTS/csa_label_types_c23.csv -append 1
 
   # 3. Segment SC using different methods, binarize at 0.5 and compute CSA
-	segment_sc_MONAI ${file} "${file}_seg-manual" 'monai' ${contrast}
-  segment_sc_MONAI ${file} "${file}_seg-manual" 'swinunetr' ${contrast}
-  segment_sc_MONAI ${file} "${file}_seg-manual" 'mednext' ${contrast}
-  segment_sc_nnUNet ${file} "${file}_seg-manual" '3d_fullres' ${contrast}
-  segment_sc ${file} "${file}_seg-manual" 'deepseg' ${deepseg_input_c} ${contrast}
+  CUDA_VISIBLE_DEVICES=3 segment_sc_MONAI ${file} "${file}_seg-manual" 'swinpretrained' ${contrast} ${csv_fname}
   # TODO: run on deep/progseg after fixing the contrasts for those
   # segment_sc ${file_res} 't2' 'propseg' '' "${file}_seg-manual" ${native_res}
 
