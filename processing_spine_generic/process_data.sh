@@ -388,7 +388,7 @@ sct_create_mask -i ./anat/${file_t2}.nii.gz -o ./anat/${file_t2}_ones.nii.gz -si
 contrasts_coverage=${inc_contrasts[@]/%/"_ones_reg.nii.gz"}
 sct_maths -i ./anat/${file_t2}_ones.nii.gz -add $(eval echo ${contrasts_coverage[@]}) -o sum_coverage.nii.gz
 # Sum all segmentations
-contrasts_seg=${inc_contrasts[@]/%/"_seg_reg.nii.gz"}
+contrasts_seg=${inc_contrasts[@]/%/"_label-SC_seg_reg.nii.gz"}
 sct_maths -i ./anat/${file_t2_seg}.nii.gz -add $(eval echo ${contrasts_seg[@]}) -o sum_sc_seg.nii.gz
 # Divide sum_sc_seg by sum_coverage
 sct_maths -i sum_sc_seg.nii.gz -div sum_coverage.nii.gz -o ./anat/${file_t2}_seg_soft.nii.gz
@@ -405,7 +405,7 @@ sct_qc -i ./anat/${file_t2}.nii.gz -s ${file_softseg}.nii.gz -p sct_deepseg_sc -
 for file_path in "${inc_contrasts[@]}";do
   type=$(find_contrast $file_path)
   file=${file_path/#"$type"}
-  fileseg=${file_path}_seg
+  fileseg=${file_path}_label-SC_seg
   warping_field_inv=${type}warp_${file_t2}2${file}
 
   # Bring softseg to native space
@@ -421,13 +421,13 @@ for file_path in "${inc_contrasts[@]}";do
     label_if_does_not_exist ./anat/${SUBJECT_T1w} ${fileseg} ${file_path} 
   else
     # Bring T2w disc labels to native space
-    sct_apply_transfo -i ./anat/${file_t2_discs}.nii.gz -d ${file_path}.nii.gz -w ${warping_field_inv}.nii.gz -x label -o ${file_path}_seg_labeled_discs.nii.gz
+    sct_apply_transfo -i ./anat/${file_t2_discs}.nii.gz -d ${file_path}.nii.gz -w ${warping_field_inv}.nii.gz -x label -o ${file_path}_label-SC_seg_labeled_discs.nii.gz
     # Set sform to qform (there are disparencies)
-    sct_image -i ${file_path}_seg_labeled_discs.nii.gz -set-sform-to-qform
+    sct_image -i ${file_path}_label-SC_seg_labeled_discs.nii.gz -set-sform-to-qform
     sct_image -i ${fileseg}.nii.gz -set-sform-to-qform
     sct_image -i ${file_path}.nii.gz -set-sform-to-qform
     # Generate labeled segmentation from warp disc labels
-    sct_label_vertebrae -i ${file_path}.nii.gz -s ${fileseg}.nii.gz -discfile ${file_path}_seg_labeled_discs.nii.gz -c t2 -ofolder $type
+    sct_label_vertebrae -i ${file_path}.nii.gz -s ${fileseg}.nii.gz -discfile ${file_path}_label-SC_seg_labeled_discs.nii.gz -c t2 -ofolder $type
   fi
   # Generate QC report to assess vertebral labeling
   sct_qc -i ${file_path}.nii.gz -s ${fileseg}_labeled.nii.gz -p sct_label_vertebrae -qc ${PATH_QC} -qc-subject ${SUBJECT}
