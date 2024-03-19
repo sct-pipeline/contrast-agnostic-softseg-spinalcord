@@ -3,6 +3,7 @@ import argparse
 from datetime import datetime
 from loguru import logger
 import yaml
+import json
 
 import numpy as np
 import wandb
@@ -11,15 +12,16 @@ import pytorch_lightning as pl
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
 
-from utils import dice_score, PolyLRScheduler, plot_slices, check_empty_patch
+from utils import dice_score, PolyLRScheduler, plot_slices, check_empty_patch, count_parameters
 from losses import AdapWingLoss
 from transforms import train_transforms, val_transforms
-from models import create_nnunet_from_plans
+from models import create_nnunet_from_plans, load_pretrained_swinunetr
 
+from monai.apps import download_url
 from monai.utils import set_determinism
 from monai.inferers import sliding_window_inference
 from monai.networks.nets import UNETR, SwinUNETR
-from monai.data import (DataLoader, CacheDataset, load_decathlon_datalist, decollate_batch)
+from monai.data import (ThreadDataLoader, CacheDataset, load_decathlon_datalist, decollate_batch, set_track_meta)
 from monai.transforms import (Compose, EnsureType, EnsureTyped, Invertd, SaveImage)
 
 # mednext
@@ -109,7 +111,8 @@ class Model(pl.LightningModule):
         # define training and validation transforms
         transforms_train = train_transforms(
             crop_size=self.voxel_cropping_size, 
-            lbl_key='label'
+            lbl_key='label',
+            device=self.device,
         )
         transforms_val = val_transforms(crop_size=self.inference_roi_size, lbl_key='label')
         
@@ -129,8 +132,10 @@ class Model(pl.LightningModule):
             test_files = test_files[:6]
         
         train_cache_rate = 0.25 if args.debug else 0.5
-        self.train_ds = CacheDataset(data=train_files, transform=transforms_train, cache_rate=train_cache_rate, num_workers=4)
-        self.val_ds = CacheDataset(data=val_files, transform=transforms_val, cache_rate=0.25, num_workers=4)
+        self.train_ds = CacheDataset(data=train_files, transform=transforms_train, cache_rate=train_cache_rate, num_workers=4, 
+                                     copy_cache=False)
+        self.val_ds = CacheDataset(data=val_files, transform=transforms_val, cache_rate=0.25, num_workers=4,
+                                   copy_cache=False)
 
         # define test transforms
         transforms_test = val_transforms(crop_size=self.inference_roi_size, lbl_key='label')
@@ -144,22 +149,25 @@ class Model(pl.LightningModule):
                     meta_keys=["pred_meta_dict", "label_meta_dict"],
                     nearest_interp=False, to_tensor=True),
             ])
-        self.test_ds = CacheDataset(data=test_files, transform=transforms_test, cache_rate=0.1, num_workers=4)
+        self.test_ds = CacheDataset(data=test_files, transform=transforms_test, cache_rate=0.1, num_workers=4,
+                                    copy_cache=False)
 
+        # # avoid the computation of meta information in random transforms
+        # set_track_meta(False)
 
     # --------------------------------
     # DATA LOADERS
     # --------------------------------
     def train_dataloader(self):
-        return DataLoader(self.train_ds, batch_size=self.cfg["opt"]["batch_size"], shuffle=True, num_workers=16, 
+        return ThreadDataLoader(self.train_ds, batch_size=self.cfg["opt"]["batch_size"], shuffle=True, num_workers=16, 
                             pin_memory=True, persistent_workers=True) 
 
     def val_dataloader(self):
-        return DataLoader(self.val_ds, batch_size=1, shuffle=False, num_workers=16, pin_memory=True, 
+        return ThreadDataLoader(self.val_ds, batch_size=1, shuffle=False, num_workers=16, pin_memory=True, 
                           persistent_workers=True)
     
     def test_dataloader(self):
-        return DataLoader(self.test_ds, batch_size=1, shuffle=False, num_workers=8, pin_memory=True)
+        return ThreadDataLoader(self.test_ds, batch_size=1, shuffle=False, num_workers=8, pin_memory=True)
 
     
     # --------------------------------
@@ -169,7 +177,7 @@ class Model(pl.LightningModule):
         if self.cfg["opt"]["name"] == "sgd":
             optimizer = self.optimizer_class(self.parameters(), lr=self.lr, momentum=0.99, weight_decay=3e-5, nesterov=True)
         else:
-            optimizer = self.optimizer_class(self.parameters(), lr=self.lr)
+            optimizer = self.optimizer_class(self.parameters(), lr=self.lr, fused=True)
         # scheduler = PolyLRScheduler(optimizer, self.lr, max_steps=self.args.max_epochs)
         # NOTE: ivadomed using CosineAnnealingLR with T_max = 200
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=self.cfg["opt"]["max_epochs"])
@@ -472,6 +480,15 @@ def main(args):
     # define root path for finding datalists
     dataset_root = config["dataset"]["root_dir"]
 
+    # load the datalist json
+    datalist = os.path.join(dataset_root, 
+        f"dataset_{config['dataset']['contrast']}_{config['dataset']['label_type']}_seed{config['seed']}.json"
+    )
+    with open(datalist, "r") as f:
+        datalist = json.load(f)
+    
+    num_contrasts = len(datalist["contrasts"])
+
     # define optimizer
     if config["opt"]["name"] == "adam":
         optimizer_class = torch.optim.Adam
@@ -480,8 +497,11 @@ def main(args):
 
     # define models
     if args.model in ["swinunetr"]:
-        # # define image size to be fed to the model
-        
+
+        patch_size = f"{config['preprocessing']['crop_pad_size'][0]}x" \
+                        f"{config['preprocessing']['crop_pad_size'][1]}x" \
+                        f"{config['preprocessing']['crop_pad_size'][2]}"
+
         # define model
         net = SwinUNETR(spatial_dims=config["model"]["swinunetr"]["spatial_dims"],
                         in_channels=1, out_channels=1, 
@@ -489,13 +509,29 @@ def main(args):
                         depths=config["model"]["swinunetr"]["depths"],
                         feature_size=config["model"]["swinunetr"]["feature_size"], 
                         num_heads=config["model"]["swinunetr"]["num_heads"],
-                    )
-        patch_size = f"{config['preprocessing']['crop_pad_size'][0]}x" \
-                        f"{config['preprocessing']['crop_pad_size'][1]}x" \
-                        f"{config['preprocessing']['crop_pad_size'][2]}"
+                    )    
+
+        if config["model"]["swinunetr"]["use_pretrained"]:
+            logger.info(f"Using SwinUNETR model with pre-trained weights ...")
+            # download the pre-trained weights
+            resource = (
+                "https://github.com/Project-MONAI/MONAI-extra-test-data/releases/download/0.8.1/ssl_pretrained_weights.pth"
+                )
+            dst = os.path.join(config["directories"]["models_dir"], "swinunetr_pretrained")
+            if not os.path.exists(dst):
+                os.makedirs(dst, exist_ok=True)
+            dst = os.path.join(dst, "ssl_pretrained_weights.pth")
+            download_url(resource, dst)
+            pretrained_path = os.path.normpath(dst)
+
+            net = load_pretrained_swinunetr(net, path_pretrained_weights=pretrained_path)
+
+        else: 
+            logger.info(f"Using SwinUNETR model initialized from scratch ...")            
 
         save_exp_id = f"{args.model}_seed={config['seed']}_" \
                         f"{config['dataset']['contrast']}_{config['dataset']['label_type']}_" \
+                        f"ptr={int(config['model']['swinunetr']['use_pretrained'])}_" \
                         f"d={config['model']['swinunetr']['depths'][0]}_" \
                         f"nf={config['model']['swinunetr']['feature_size']}_" \
                         f"opt={config['opt']['name']}_lr={config['opt']['lr']}_AdapW_" \
@@ -539,10 +575,8 @@ def main(args):
                         f"{config['preprocessing']['crop_pad_size'][2]}"
         # save experiment id
         save_exp_id = f"{args.model}_seed={config['seed']}_" \
-                        f"{config['dataset']['contrast']}_{config['dataset']['label_type']}_" \
-                        f"nf={config['model']['nnunet']['base_num_features']}_" \
-                        f"opt={config['opt']['name']}_lr={config['opt']['lr']}_AdapW_" \
-                        f"bs={config['opt']['batch_size']}_{patch_size}" \
+                        f"ncont={num_contrasts}_" \
+                        f"nf={config['model']['nnunet']['base_num_features']}" \
 
         if args.debug:
             save_exp_id = f"DEBUG_{save_exp_id}"
@@ -555,13 +589,14 @@ def main(args):
             in_channels=config["model"]["mednext"]["num_input_channels"],
             n_channels=config["model"]["mednext"]["base_num_features"],
             n_classes=config["model"]["mednext"]["num_classes"],
-            exp_r=2,
+            exp_r=[2,3,4,4,4,4,4,3,2],
             kernel_size=config["model"]["mednext"]["kernel_size"],
             deep_supervision=config["model"]["mednext"]["enable_deep_supervision"],
             do_res=True,
             do_res_up_down=True,
             checkpoint_style="outside_block",
             block_counts=config["model"]["mednext"]["block_counts"],
+            norm_type='layer',
         )
 
         # variable for saving patch size in the experiment id (same as crop_pad_size)
@@ -570,10 +605,12 @@ def main(args):
                         f"{config['preprocessing']['crop_pad_size'][2]}"
         # count number of 2s in the block_counts list
         num_two_blocks = config["model"]["mednext"]["block_counts"].count(2)
+        norm_type = 'LN' if config["model"]["mednext"]["norm_type"] == 'layer' else 'GN'
         # save experiment id
         save_exp_id = f"{args.model}_seed={config['seed']}_" \
                         f"{config['dataset']['contrast']}_{config['dataset']['label_type']}_" \
-                        f"nf={config['model']['mednext']['base_num_features']}_bcs={num_two_blocks}_" \
+                        f"nf={config['model']['mednext']['base_num_features']}_" \
+                        f"expR=base_bcs={num_two_blocks}_{norm_type}_" \
                         f"opt={config['opt']['name']}_lr={config['opt']['lr']}_AdapW_" \
                         f"bs={config['opt']['batch_size']}_{patch_size}" \
 
@@ -631,7 +668,10 @@ def main(args):
         # checkpoint_callback_dice = pl.callbacks.ModelCheckpoint(
         #     dirpath=save_path, filename='best_model_dice', monitor='val_soft_dice', 
         #     save_top_k=1, mode="max", save_last=False, save_weights_only=True)
-        
+
+        num_model_params = count_parameters(model=net)
+        logger.info(f"Number of Trainable model parameters: {(num_model_params / 1e6):.3f}M")
+
         logger.info(f"Starting training from scratch ...")
         # wandb logger
         exp_logger = pl.loggers.WandbLogger(
@@ -647,6 +687,10 @@ def main(args):
         wandb.save("main.py")
         wandb.save("transforms.py")
 
+        # Enable TF32 on matmul and on cuDNN
+        torch.backends.cuda.matmul.allow_tf32 = True    # same as setting torch.set_float32_matmul_precision("high"/"medium")
+        torch.backends.cudnn.allow_tf32 = True
+
         # initialise Lightning's trainer.
         trainer = pl.Trainer(
             devices=1, accelerator="gpu",
@@ -654,9 +698,8 @@ def main(args):
             callbacks=[checkpoint_callback_loss, lr_monitor, early_stopping],
             check_val_every_n_epoch=config["opt"]["check_val_every_n_epochs"],
             max_epochs=config["opt"]["max_epochs"], 
-            precision=32,
-            # deterministic=True,
-            enable_progress_bar=False) 
+            precision="bf16-mixed",
+            enable_progress_bar=True) 
             # profiler="simple",)     # to profile the training time taken for each step
 
         # Train!
@@ -710,7 +753,7 @@ def main(args):
             callbacks=[checkpoint_callback_loss, lr_monitor, early_stopping],
             check_val_every_n_epoch=config["opt"]["check_val_every_n_epochs"],
             max_epochs=config["opt"]["max_epochs"], 
-            precision=32,
+            precision="bf16-mixed",
             enable_progress_bar=True) 
             # profiler="simple",)     # to profile the training time taken for each step
 
