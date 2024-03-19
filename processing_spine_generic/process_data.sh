@@ -510,8 +510,11 @@ for file_path in "${inc_contrasts[@]}";do
  
   # Move disc labels into cleaned derivatives
   # TODO: ADD IF STATEMENT FOR T1 and T2w label-discs_dlabel instead
-  rsync -avzh $PATH_DATA_PROCESSED/${SUBJECT}/${file_path}_seg_labeled_discs.nii.gz $PATH_DATA_PROCESSED_CLEAN/derivatives/labels/${SUBJECT}/${file_path}_label-discs_desc-warp_dlabel.nii.gz
-
+  if [[ $contrast_seg == *"T2w"* || $contrast_seg == *"T1w"* ]];then
+    rsync -avzh $PATH_DATA_PROCESSED/${SUBJECT}/${file_path}_seg_labeled_discs.nii.gz $PATH_DATA_PROCESSED_CLEAN/derivatives/labels/${SUBJECT}/${file_path}_label-discs_dlabel.nii.gz
+  else
+    rsync -avzh $PATH_DATA_PROCESSED/${SUBJECT}/${file_path}_seg_labeled_discs.nii.gz $PATH_DATA_PROCESSED_CLEAN/derivatives/labels/${SUBJECT}/${file_path}_label-discs_desc-warp_dlabel.nii.gz
+  fi
 done
 
 
