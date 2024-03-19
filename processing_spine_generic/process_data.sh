@@ -173,6 +173,8 @@ if [[ -f ${file_t1}.nii.gz ]];then
   # Rename _RPI_r file
   mv ${file_t1}.nii.gz ${SUBJECT}_space-other_T1w.nii.gz
   file_t1="${SUBJECT}_space-other_T1w"
+  # Rename json file:
+  mv ${SUBJECT}_T1w.json "${SUBJECT}_space-other_T1w.json"
   # Delete raw and reoriented to RPI images
   mv ${SUBJECT}_T1w_raw.nii.gz ${SUBJECT}_T1w.nii.gz
   rm -f ${SUBJECT}_T1w_raw_RPI.nii.gz
@@ -194,6 +196,8 @@ if [[ -f ${file_t2}.nii.gz ]];then
 
   # Rename _RPI_r file
   mv ${file_t2}.nii.gz "${SUBJECT}_space-other_T2w.nii.gz"
+  # Rename json file:
+  mv ${SUBJECT}_T2w.json "${SUBJECT}_space-other_T2w.json"
   file_t2="${SUBJECT}_space-other_T2w"
   # Delete raw, reoriented to RPI images
   rm -f ${SUBJECT}_T2w_raw_RPI.nii.gz
@@ -216,6 +220,9 @@ if [[ -f ${file_t2s}.nii.gz ]];then
   # Rename _rms file
   mv ${file_t2s}.nii.gz "${SUBJECT}_space-other_T2star.nii.gz"
   file_t2s="${SUBJECT}_space-other_T2star"
+  # Rename json file:
+  mv ${SUBJECT}_T2star.json "${SUBJECT}_space-other_T2star.json"
+
   # Delete raw images
   rm -f ${SUBJECT}_T2star_raw.nii.gz
 fi
@@ -235,6 +242,9 @@ if [[ -f ${file_t1w}.nii.gz ]];then
   # Rename _RPI file
   mv ${file_t1w}.nii.gz "${SUBJECT}_flip-2_mt-off_space-other_MTS.nii.gz"
   file_t1w="${SUBJECT}_flip-2_mt-off_space-other_MTS"
+  # Rename json file:
+  mv ${SUBJECT}_flip-2_mt-off_MTS.json "${SUBJECT}_flip-2_mt-off_space-other_MTS.json"
+
   # Delete raw
   rm -f ${SUBJECT}_flip-2_mt-off_MTS_raw.nii.gz
 fi
@@ -253,6 +263,9 @@ if [[ -f ${file_mton}.nii.gz ]];then
   # Rename _RPI file
   mv ${file_mton}.nii.gz "${SUBJECT}_flip-1_mt-on_space-other_MTS.nii.gz"
   file_mton="${SUBJECT}_flip-1_mt-on_space-other_MTS"
+  # Rename json file:
+  mv ${SUBJECT}_flip-1_mt-on_MTS.json "${SUBJECT}_flip-1_mt-on_space-other_MTS.json"
+
   # Delete raw
   rm -f ${SUBJECT}_flip-1_mt-on_MTS_raw.nii.gz
 fi
