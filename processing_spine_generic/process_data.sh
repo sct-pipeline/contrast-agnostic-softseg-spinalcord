@@ -411,10 +411,10 @@ for file_path in "${inc_contrasts[@]}";do
   # Bring softseg to native space
   sct_apply_transfo -i ${file_softseg}.nii.gz -d ${file_path}.nii.gz -w ${warping_field_inv}.nii.gz -x linear -o ${file_path}_softseg.nii.gz
   # Apply coverage mask to softseg
-  sct_maths -i ${file_path}_softseg.nii.gz -o ${file_path}_softseg.nii.gz -mul ${file_path}_ones.nii.gz
+  sct_maths -i ${file_path}_softseg.nii.gz -o ${file_path}_label-SC_softseg.nii.gz -mul ${file_path}_ones.nii.gz
 
   # Generate QC report
-  sct_qc -i ${file_path}.nii.gz -s ${file_path}_softseg.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
+  sct_qc -i ${file_path}.nii.gz -s ${file_path}_label-SC_softseg.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
   
   # For T1w contrast, use existing disc file labels
   if [[ $file_path == *"T1w"* ]];then
