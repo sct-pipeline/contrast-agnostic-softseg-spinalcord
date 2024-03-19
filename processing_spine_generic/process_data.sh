@@ -321,7 +321,7 @@ echo "Contrasts are" ${inc_contrasts[@]}
 # Generate softsegs
 # Create mask for regsitration
 find_manual_seg ${file_t2} 'anat' 't2'
-file_t2_seg="${file_t2}_seg"
+file_t2_seg="${file_t2}_label-SC_seg"
 file_t2_mask="${file_t2_seg}_mask"
 sct_create_mask -i ./anat/${file_t2}.nii.gz -p centerline,./anat/${file_t2_seg}.nii.gz -size 55mm -o ./anat/${file_t2_mask}.nii.gz 
 
@@ -355,7 +355,7 @@ for file_path in "${inc_contrasts[@]}";do
 
   type=$(find_contrast $file_path)
   file=${file_path/#"$type"}
-  fileseg=${file_path}_seg
+  fileseg=${file_path}_label-SC_seg
   find_manual_seg $file $type $contrast_seg
 
   # Add padding to seg to overcome edge effect
