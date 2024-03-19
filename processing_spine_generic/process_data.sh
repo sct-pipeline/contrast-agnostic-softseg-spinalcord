@@ -23,7 +23,7 @@
 set -x
 
 # Immediately exit if error
-#set -e -o pipefail  comment if qform/sform error
+set -e -o pipefail  #comment if qform/sform error
 
 # Exit if user presses CTRL+C (Linux) or CMD+C (OSX)
 trap "echo Caught Keyboard Interrupt within script. Exiting now.; exit" INT
