@@ -23,7 +23,7 @@
 set -x
 
 # Immediately exit if error
-set -e -o pipefail  #comment if qform/sform error
+#set -e -o pipefail  #comment if qform/sform error
 
 # Exit if user presses CTRL+C (Linux) or CMD+C (OSX)
 trap "echo Caught Keyboard Interrupt within script. Exiting now.; exit" INT
@@ -511,11 +511,15 @@ for file_path in "${inc_contrasts[@]}";do
   else  
     rsync -avzh $PATH_DATA_PROCESSED/${SUBJECT}/${file_path}.json $PATH_DATA_PROCESSED_CLEAN/${SUBJECT}/${file_path}.json
   fi
-
+  # REORIENT ALL DATA
+  sct_image -i ${filesoftseg}_bin.nii.gz -setorient RPI -o ${filesoftseg}_bin_RPI.nii.gz
+  sct_image -i ${PATH_DATA}/derivatives/labels/${SUBJECT}/${fileseg}.nii.gz -setorient RPI -o ${fileseg}_RPI.nii.gz
+  sct_image -i ${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/${filesoftseg}.nii.gz -setorient RPI -o ${filesoftseg}_RPI.nii.gz
   # Move segmentation and soft segmentation to the cleanded derivatives
-  rsync -avzh ${PATH_DATA}/derivatives/labels/${SUBJECT}/${fileseg}.nii.gz $PATH_DATA_PROCESSED_CLEAN/derivatives/labels/${SUBJECT}/${fileseg}.nii.gz
-  rsync -avzh ${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/${filesoftseg}.nii.gz $PATH_DATA_PROCESSED_CLEAN/derivatives/labels_softseg/${SUBJECT}/${filesoftseg}.nii.gz
-  rsync -avzh ${filesoftseg}_bin.nii.gz $PATH_DATA_PROCESSED_CLEAN/derivatives/labels_softseg_bin/${SUBJECT}/${fileseglabel_bin}.nii.gz
+  rsync -avzh ${fileseg}_RPI.nii.gz $PATH_DATA_PROCESSED_CLEAN/derivatives/labels/${SUBJECT}/${fileseg}.nii.gz
+  rsync -avzh ${filesoftseg}_RPI.nii.gz $PATH_DATA_PROCESSED_CLEAN/derivatives/labels_softseg/${SUBJECT}/${filesoftseg}.nii.gz
+  rsync -avzh ${filesoftseg}_bin_RPI.nii.gz $PATH_DATA_PROCESSED_CLEAN/derivatives/labels_softseg_bin/${SUBJECT}/${fileseglabel_bin}.nii.gz
+  # REORIENT all:
   # Move json files of derivatives
   rsync -avzh "${PATH_DATA}/derivatives/labels/${SUBJECT}/${fileseg}.json" $PATH_DATA_PROCESSED_CLEAN/derivatives/labels/${SUBJECT}/${fileseg}.json
   rsync -avzh "${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/${filesoftseg}.json" $PATH_DATA_PROCESSED_CLEAN/derivatives/labels_softseg/${SUBJECT}/${filesoftseg}.json
