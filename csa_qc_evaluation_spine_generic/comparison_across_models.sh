@@ -49,9 +49,7 @@ SUBJECT=$1
 PATH_MONAI_SCRIPT=$2    # path to the MONAI contrast-agnostic run_inference_single_subject.py
 PATH_OG_MONAI_MODEL=$3     # path to the MONAI contrast-agnostic model trained on soft bin labels
 PATH_LL_MONAI_MODEL=$4     # path to the MONAI contrast-agnostic model trained on soft bin labels
-# PATH_MEDNEXT_MODEL=$6
-# PATH_SWIN_MODEL=$7
-# PATH_SWIN_PTR_MODEL=$8
+# PATH_SWIN_MODEL=$5
 
 echo "SUBJECT: ${SUBJECT}"
 # echo "PATH_NNUNET_SCRIPT: ${PATH_NNUNET_SCRIPT}"
@@ -59,9 +57,7 @@ echo "SUBJECT: ${SUBJECT}"
 echo "PATH_MONAI_SCRIPT: ${PATH_MONAI_SCRIPT}"
 echo "PATH_OG_MONAI_MODEL: ${PATH_OG_MONAI_MODEL}"
 echo "PATH_LL_MONAI_MODEL: ${PATH_LL_MONAI_MODEL}"
-# echo "PATH_MEDNEXT_MODEL: ${PATH_MEDNEXT_MODEL}"
 # echo "PATH_SWIN_MODEL: ${PATH_SWIN_MODEL}"
-# echo "PATH_SWIN_PTR_MODEL: ${PATH_SWIN_PTR_MODEL}"
 
 # ------------------------------------------------------------------------------
 # CONVENIENCE FUNCTIONS
@@ -393,12 +389,6 @@ for contrast in ${contrasts}; do
   # Label vertebral levels in the native resolution
   label_vertebrae ${file} 't2'
 
-  # # 1. Compute (soft) CSA of the original soft GT
-  # # renaming file so that it can be fetched from the CSA csa file later 
-  # FILEINPUT="${file%%_*}_${contrast}_softseg_soft"
-  # cp ${file}_softseg.nii.gz ${FILEINPUT}.nii.gz
-  # sct_process_segmentation -i ${FILEINPUT}.nii.gz -vert 2:4 -vertfile ${file}_seg-manual_labeled.nii.gz -o $PATH_RESULTS/csa_label_types_c24.csv -append 1
-
   # Rename the softseg_bin GT with the shorter contrast name
   FILEBIN="${file%%_*}_${contrast}_softseg_bin"
   mv ${file}_softseg_bin.nii.gz ${FILEBIN}.nii.gz
@@ -411,14 +401,13 @@ for contrast in ${contrasts}; do
 	CUDA_VISIBLE_DEVICES=2 segment_sc_MONAI ${file} "${file}_seg-manual" 'monai_og' ${contrast} ${csv_fname}
   CUDA_VISIBLE_DEVICES=3 segment_sc_MONAI ${file} "${file}_seg-manual" 'monai_ll' ${contrast} ${csv_fname}
   # CUDA_VISIBLE_DEVICES=2 segment_sc_MONAI ${file} "${file}_seg-manual" 'swinunetr' ${contrast} ${csv_fname}
-  # CUDA_VISIBLE_DEVICES=3 segment_sc_MONAI ${file} "${file}_seg-manual" 'swinpretrained' ${contrast} ${csv_fname}
   # CUDA_VISIBLE_DEVICES=3 segment_sc_nnUNet ${file} "${file}_seg-manual" '3d_fullres' ${contrast} ${csv_fname}
   segment_sc ${file} "${file}_seg-manual" 'deepseg' ${deepseg_input_c} ${contrast} ${csv_fname}
   # TODO: run on deep/progseg after fixing the contrasts for those
   # segment_sc ${file_res} 't2' 'propseg' '' "${file}_seg-manual" ${native_res}
 
-  # 3.1 Ensemble the predictions from different models
-  segment_sc_ensemble ${file} "${file}_seg-manual" ${contrast} ${csv_fname}
+  # # 3.1 Ensemble the predictions from different models
+  # segment_sc_ensemble ${file} "${file}_seg-manual" ${contrast} ${csv_fname}
 
 done
 
