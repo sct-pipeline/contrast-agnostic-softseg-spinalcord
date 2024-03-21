@@ -194,8 +194,11 @@ segment_sc() {
 
   fi
 
-  # Compute CSA from the the SC segmentation resampled back to native resolution using the GT vertebral labels
-  sct_process_segmentation -i ${FILESEG}.nii.gz -vert 2:3 -vertfile ${file_gt_vert_label}_labeled.nii.gz -o $PATH_RESULTS/${csv_fname}.csv -append 1
+  # Compute CSA averaged across all slices C2-C3 vertebral levels for plotting the STD across contrasts
+  sct_process_segmentation -i ${FILESEG}.nii.gz -vert 2:3 -vertfile ${file_gt_vert_label}_labeled.nii.gz -o $PATH_RESULTS/${csv_fname}_c2c3.csv -append 1
+
+  # Compute CSA "per slice" across _all_ slices in the SC for plotting the absolute CSA error across contrasts
+  sct_process_segmentation -i ${FILESEG}.nii.gz -perslice 1 -vertfile ${file_gt_vert_label}_labeled.nii.gz -o $PATH_RESULTS/${csv_fname}_${method}_perslice.csv -append 1
 
 }
 
@@ -269,8 +272,13 @@ segment_sc_MONAI(){
   # Generate QC report with soft prediction
   sct_qc -i ${file}.nii.gz -s ${FILESEG}.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
 
-  # Compute CSA from the soft prediction resampled back to native resolution using the GT vertebral labels
-  sct_process_segmentation -i ${FILESEG}.nii.gz -vert 2:3 -vertfile ${file_gt_vert_label}_labeled.nii.gz -o $PATH_RESULTS/${csv_fname}.csv -append 1
+  # Compute CSA averaged across all slices C2-C3 vertebral levels for plotting the STD across contrasts
+  # NOTE: this is per-level because not all contrasts have thes same FoV (C2-C3 is what all contrasts have in common)
+  sct_process_segmentation -i ${FILESEG}.nii.gz -vert 2:3 -vertfile ${file_gt_vert_label}_labeled.nii.gz -o $PATH_RESULTS/${csv_fname}_c2c3.csv -append 1
+
+  # Compute CSA "per slice" across _all_ slices in the SC for plotting the absolute CSA error across contrasts
+  sct_process_segmentation -i ${FILESEG}.nii.gz -perslice 1 -vertfile ${file_gt_vert_label}_labeled.nii.gz -o $PATH_RESULTS/${csv_fname}_${model}_perslice.csv -append 1
+
 }
 
 # Ensemble the predictions from different models
@@ -328,11 +336,11 @@ rsync -Ravzh ${PATH_DATA}/derivatives/data_preprocessed/./${SUBJECT}/dwi/* .
 # ------------------------------------------------------------------------------
 # contrast
 # ------------------------------------------------------------------------------
-contrasts="space-other_T1w space-other_T2w space-other_T2star flip-1_mt-on_space-other_MTS flip-2_mt-off_space-other_MTS rec-average_dwi"
-# contrasts="space-other_T1w rec-average_dwi"
+# contrasts="space-other_T1w space-other_T2w space-other_T2star flip-1_mt-on_space-other_MTS flip-2_mt-off_space-other_MTS rec-average_dwi"
+contrasts="space-other_T1w rec-average_dwi"
 
 # output csv filename 
-csv_fname="csa_lifelong_models_c23"
+csv_fname="csa_new_contrasts"
 
 # Loop across contrasts
 for contrast in ${contrasts}; do
@@ -395,7 +403,12 @@ for contrast in ${contrasts}; do
   # sct_maths -i ${file}_softseg.nii.gz -bin 0.5 -o ${FILETHRESH}.nii.gz
 
   # 2. Compute CSA of the binarized soft GT 
-  sct_process_segmentation -i ${FILEBIN}.nii.gz -vert 2:3 -vertfile ${file}_seg-manual_labeled.nii.gz -o $PATH_RESULTS/${csv_fname}.csv -append 1
+  # 2.1 Compute CSA averaged across all slices C2-C3 vertebral levels for plotting the STD across contrasts
+  # NOTE: this is per-level because not all contrasts have thes same FoV (C2-C3 is what all contrasts have in common)
+  sct_process_segmentation -i ${FILEBIN}.nii.gz -vert 2:3 -vertfile ${file}_seg-manual_labeled.nii.gz -o $PATH_RESULTS/${csv_fname}_c2c3.csv -append 1
+
+  # 2.2 Compute CSA "per slice" across _all_ slices in the SC for plotting the absolute CSA error across contrasts
+  sct_process_segmentation -i ${FILEBIN}.nii.gz -perslice 1 -vertfile ${file}_seg-manual_labeled.nii.gz -o $PATH_RESULTS/${csv_fname}_softbin_perslice.csv -append 1
 
   # 3. Segment SC using different methods, binarize at 0.5 and compute CSA
 	CUDA_VISIBLE_DEVICES=2 segment_sc_MONAI ${file} "${file}_seg-manual" 'monai_og' ${contrast} ${csv_fname}
