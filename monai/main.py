@@ -30,7 +30,7 @@ def get_args():
     parser = argparse.ArgumentParser(description='Script for training contrast-agnositc SC segmentation model.')
     
     # arguments for model
-    parser.add_argument('-m', '--model', choices=['nnunet', 'mednext', 'swinunetr'], 
+    parser.add_argument('-m', '--model', choices=['nnunet', 'mednext', 'unetr', 'swinunetr'], 
                         default='nnunet', type=str, 
                         help='Model type to be used. Options: nnunet, mednext, swinunetr.')
     # path to the config file
@@ -524,6 +524,29 @@ def main(args):
                         f"opt={config['opt']['name']}_lr={config['opt']['lr']}_AdapW_" \
                         f"bs={config['opt']['batch_size']}_{patch_size}" \
         # save_exp_id = f"_CSAdiceL_nspv={args.num_samples_per_volume}_bs={args.batch_size}_{img_size}" \
+
+    elif args.model == "unetr":
+        
+        patch_size = f"{config['preprocessing']['crop_pad_size'][0]}x" \
+                        f"{config['preprocessing']['crop_pad_size'][1]}x" \
+                        f"{config['preprocessing']['crop_pad_size'][2]}"
+
+        net = UNETR(spatial_dims=config["model"]["unetr"]["spatial_dims"],
+                    in_channels=1, out_channels=1, 
+                    img_size=config["preprocessing"]["crop_pad_size"],
+                    feature_size=config["model"]["unetr"]["feature_size"],
+                    hidden_size=config["model"]["unetr"]["hidden_size"],
+                    mlp_dim=config["model"]["unetr"]["mlp_dim"],
+                    num_heads=config["model"]["unetr"]["num_heads"],
+        )
+        
+        save_exp_id = f"{args.model}_seed={config['seed']}_" \
+                        f"nf={config['model']['unetr']['feature_size']}_" \
+                        f"hs={config['model']['unetr']['hidden_size']}_" \
+                        f"mlpd={config['model']['unetr']['mlp_dim']}_" \
+                        f"nh={config['model']['unetr']['num_heads']}_" \
+                        f"opt={config['opt']['name']}_lr={config['opt']['lr']}_AdapW_" \
+                        f"bs={config['opt']['batch_size']}_{patch_size}" \
 
     elif args.model == "nnunet":
 
