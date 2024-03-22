@@ -594,8 +594,7 @@ def main(args):
             save_exp_id = f"DEBUG_{save_exp_id}"
     
     elif args.model == "mednext":
-        # NOTE: the S, B models in the paper don't fit as-is for this data, gpu
-        # hence tweaking the models
+        # NOTE: the S, B models in the paper don't fit as-is for this data, hence tweaking the models
         logger.info(f"Using MedNext model tweaked ...")
         net = MedNeXt(
             in_channels=config["model"]["mednext"]["num_input_channels"],
@@ -743,11 +742,6 @@ def main(args):
             dirpath=save_exp_id, filename='best_model', monitor='val_loss', 
             save_top_k=1, mode="min", save_last=True, save_weights_only=True)
         
-        # # saving the best model based on soft validation dice score
-        # checkpoint_callback_dice = pl.callbacks.ModelCheckpoint(
-        #     dirpath=save_exp_id, filename='best_model_dice', monitor='val_soft_dice', 
-        #     save_top_k=1, mode="max", save_last=False, save_weights_only=True)
-
         # wandb logger
         exp_logger = pl.loggers.WandbLogger(
                             save_dir=save_path,
