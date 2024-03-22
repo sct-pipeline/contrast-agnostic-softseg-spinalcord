@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 from torch.optim.lr_scheduler import _LRScheduler
 import torch
 
+def count_parameters(model):
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 # Check if any label image patch is empty in the batch
 def check_empty_patch(labels):
