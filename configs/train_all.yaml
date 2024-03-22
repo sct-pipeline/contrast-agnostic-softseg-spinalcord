@@ -69,3 +69,10 @@ model:
     depths: [2, 2, 2, 2]
     num_heads: [3, 6, 12, 24]   # number of heads in multi-head Attention
     feature_size: 36
+
+  unetr:
+    spatial_dims: 3
+    feature_size: 32
+    hidden_size: 512
+    mlp_dim: 1024
+    num_heads: 8
