@@ -49,8 +49,9 @@ PATH_NNUNET_MODEL=$3    # path to the nnUNet contrast-agnostic model
 PATH_MONAI_SCRIPT=$4    # path to the MONAI contrast-agnostic run_inference_single_subject.py
 PATH_MONAI_MODEL=$5     # path to the MONAI contrast-agnostic model trained on soft bin labels
 PATH_MEDNEXT_MODEL=$6
-PATH_SWIN_MODEL=$7
-PATH_SWIN_PTR_MODEL=$8
+PATH_UNETR_MODEL=$7
+PATH_SWIN_MODEL=$8
+PATH_SWIN_PTR_MODEL=$9
 
 echo "SUBJECT: ${SUBJECT}"
 echo "PATH_NNUNET_SCRIPT: ${PATH_NNUNET_SCRIPT}"
@@ -58,6 +59,7 @@ echo "PATH_NNUNET_MODEL: ${PATH_NNUNET_MODEL}"
 echo "PATH_MONAI_SCRIPT: ${PATH_MONAI_SCRIPT}"
 echo "PATH_MONAI_MODEL: ${PATH_MONAI_MODEL}"
 echo "PATH_MEDNEXT_MODEL: ${PATH_MEDNEXT_MODEL}"
+echo "PATH_UNETR_MODEL: ${PATH_UNETR_MODEL}"
 echo "PATH_SWIN_MODEL: ${PATH_SWIN_MODEL}"
 echo "PATH_SWIN_PTR_MODEL: ${PATH_SWIN_PTR_MODEL}"
 
@@ -227,6 +229,10 @@ segment_sc_MONAI(){
 		FILESEG="${file%%_*}_${contrast}_seg_monai"
 		PATH_MODEL=${PATH_MONAI_MODEL}
 	
+  elif [[ $model == 'unetr' ]]; then
+    FILESEG="${file%%_*}_${contrast}_seg_unetr"
+    PATH_MODEL=${PATH_UNETR_MODEL}
+	
 	elif [[ $model == 'swinunetr' ]]; then
     FILESEG="${file%%_*}_${contrast}_seg_swinunetr"
     PATH_MODEL=${PATH_SWIN_MODEL}
@@ -395,10 +401,7 @@ for contrast in ${contrasts}; do
   sct_process_segmentation -i ${FILETHRESH}.nii.gz -vert 2:3 -vertfile ${file}_seg-manual_labeled.nii.gz -o $PATH_RESULTS/${csv_fname}.csv -append 1
 
   # 3. Segment SC using different methods, binarize at 0.5 and compute CSA
-	CUDA_VISIBLE_DEVICES=2 segment_sc_MONAI ${file} "${file}_seg-manual" 'monai' ${contrast} ${csv_fname}
-  CUDA_VISIBLE_DEVICES=2 segment_sc_MONAI ${file} "${file}_seg-manual" 'mednext' ${contrast} ${csv_fname}
-  CUDA_VISIBLE_DEVICES=2 segment_sc_MONAI ${file} "${file}_seg-manual" 'swinunetr' ${contrast} ${csv_fname}
-  CUDA_VISIBLE_DEVICES=3 segment_sc_MONAI ${file} "${file}_seg-manual" 'swinpretrained' ${contrast} ${csv_fname}
+  CUDA_VISIBLE_DEVICES=3 segment_sc_MONAI ${file} "${file}_seg-manual" 'unetr' ${contrast} ${csv_fname}
   CUDA_VISIBLE_DEVICES=3 segment_sc_nnUNet ${file} "${file}_seg-manual" '3d_fullres' ${contrast} ${csv_fname}
   segment_sc ${file} "${file}_seg-manual" 'deepseg' ${deepseg_input_c} ${contrast} ${csv_fname}
   # TODO: run on deep/progseg after fixing the contrasts for those
