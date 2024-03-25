@@ -228,7 +228,7 @@ segment_sc_MONAI(){
 	if [[ $model == 'monai' ]]; then
 		FILESEG="${file%%_*}_${contrast}_seg_monai"
 		PATH_MODEL=${PATH_MONAI_MODEL}
-	
+  
   elif [[ $model == 'unetr' ]]; then
     FILESEG="${file%%_*}_${contrast}_seg_unetr"
     PATH_MODEL=${PATH_UNETR_MODEL}
@@ -401,14 +401,18 @@ for contrast in ${contrasts}; do
   sct_process_segmentation -i ${FILETHRESH}.nii.gz -vert 2:3 -vertfile ${file}_seg-manual_labeled.nii.gz -o $PATH_RESULTS/${csv_fname}.csv -append 1
 
   # 3. Segment SC using different methods, binarize at 0.5 and compute CSA
+	CUDA_VISIBLE_DEVICES=1 segment_sc_MONAI ${file} "${file}_seg-manual" 'monai' ${contrast} ${csv_fname}
+  CUDA_VISIBLE_DEVICES=1 segment_sc_MONAI ${file} "${file}_seg-manual" 'mednext' ${contrast} ${csv_fname}
   CUDA_VISIBLE_DEVICES=3 segment_sc_MONAI ${file} "${file}_seg-manual" 'unetr' ${contrast} ${csv_fname}
+  CUDA_VISIBLE_DEVICES=3 segment_sc_MONAI ${file} "${file}_seg-manual" 'swinunetr' ${contrast} ${csv_fname}
+  CUDA_VISIBLE_DEVICES=1 segment_sc_MONAI ${file} "${file}_seg-manual" 'swinpretrained' ${contrast} ${csv_fname}
   CUDA_VISIBLE_DEVICES=3 segment_sc_nnUNet ${file} "${file}_seg-manual" '3d_fullres' ${contrast} ${csv_fname}
   segment_sc ${file} "${file}_seg-manual" 'deepseg' ${deepseg_input_c} ${contrast} ${csv_fname}
   # TODO: run on deep/progseg after fixing the contrasts for those
   # segment_sc ${file_res} 't2' 'propseg' '' "${file}_seg-manual" ${native_res}
 
-  # 3.1 Ensemble the predictions from different models
-  segment_sc_ensemble ${file} "${file}_seg-manual" ${contrast} ${csv_fname}
+  # # 3.1 Ensemble the predictions from different models
+  # segment_sc_ensemble ${file} "${file}_seg-manual" ${contrast} ${csv_fname}
 
 done
 
