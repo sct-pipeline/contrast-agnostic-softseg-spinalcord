@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 
 # Setting the hue order as specified
 # HUE_ORDER = ["softseg_soft", "softseg_bin", "nnunet", "monai_soft", "monai_bin"]
-HUE_ORDER = ["softseg_bin", "deepseg_2d", "nnunet", "monai", "swinunetr", "mednext"]
+HUE_ORDER = ["softseg_bin", "deepseg_2d", "nnunet", "monai", "mednext", "unetr", "swinunetr", "swinpretrained"]
 HUE_ORDER_THR = ["GT", "15", "1", "05", "01", "005"]
 HUE_ORDER_RES = ["1mm", "05mm", "15mm", "3mm", "2mm"]
 CONTRAST_ORDER = ["DWI", "MTon", "MToff", "T1w", "T2star", "T2w"]
@@ -55,7 +55,7 @@ def extract_contrast_and_details(filename, across="Method"):
     # pattern = r'.*iso-(\d+mm).*_(propseg|deepseg_2d|nnunet_3d_fullres|monai).*'
     if across == "Method":
         # pattern = r'.*_(DWI|MTon|MToff|T1w|T2star|T2w).*_(softseg_soft|softseg_bin|nnunet|monai_soft|monai_bin).*'
-        pattern = r'.*_(DWI|MTon|MToff|T1w|T2star|T2w).*_(softseg_bin|deepseg_2d|nnunet|monai|swinunetr|mednext).*'
+        pattern = r'.*_(DWI|MTon|MToff|T1w|T2star|T2w).*_(softseg_bin|deepseg_2d|nnunet|monai|mednext|unetr|swinunetr|swinpretrained).*'
         match = re.search(pattern, filename)
         if match:
             return match.group(1), match.group(2)
@@ -158,7 +158,7 @@ def generate_figure_std(data, file_path, across="Method", hue_order=HUE_ORDER):
         for method in df['Method'].unique():
             mean = df[df['Method'] == method]['std'].mean()
             std = df[df['Method'] == method]['std'].std()
-            plt.text(hue_order.index(method), ymax-0.5, f'{mean:.2f} +- {std:.2f}', ha='center', va='bottom', color='k')
+            plt.text(hue_order.index(method), ymax-1, f'{mean:.2f} +- {std:.2f}', ha='center', va='bottom', color='k')
     elif across == "Threshold":
         # Compute the mean +- std across resolutions for each method and place it above the corresponding violin
         for thr in df['Threshold'].unique():
@@ -241,7 +241,7 @@ def generate_figure_abs_csa_error(file_path, data, hue_order=None):
     for method in df['Method'].unique():
         mean = df[df['Method'] == method]['abs_error_mean'].mean()
         std = df[df['Method'] == method]['abs_error_std'].mean()
-        plt.text(hue_order.index(method), ymax-0.25, f'{mean:.2f} +- {std:.2f}', ha='center', va='bottom', color='k')
+        plt.text(hue_order.index(method), ymax-1, f'{mean:.2f} +- {std:.2f}', ha='center', va='bottom', color='k')
     
     # Save the figure in 300 DPI as a PNG file
     save_figure(file_path, "abs_csa_error.png")
