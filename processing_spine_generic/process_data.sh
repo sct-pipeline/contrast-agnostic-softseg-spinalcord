@@ -5,7 +5,6 @@
 #     For T2s : Compute root-mean square across 4th dimension (if it exists)
 #     For dwi : Generate mean image after motion correction.
 #     
-#     Crop all images.
 #     Generates soft segmentations.
 # Usage:
 #   ./process_data.sh <SUBJECT>
@@ -24,7 +23,7 @@
 set -x
 
 # Immediately exit if error
-#set -e -o pipefail --> will not enter in the loop if so...
+#set -e -o pipefail  #comment if qform/sform error
 
 # Exit if user presses CTRL+C (Linux) or CMD+C (OSX)
 trap "echo Caught Keyboard Interrupt within script. Exiting now.; exit" INT
@@ -92,9 +91,10 @@ concatenate_b0_and_dwi(){
 label_if_does_not_exist(){
   local file="$1"
   local file_seg="$2"
+  local file_space_other="$3"  # image file that has a different resolution than the segmentation file (but still in the same physical space)
   # Update global variable with segmentation file name
-  FILELABEL="${file}_labels-disc"
-  FILELABELMANUAL="${PATH_DATA}/derivatives/labels/${SUBJECT}/${FILELABEL}-manual.nii.gz"
+  FILELABEL="${file}_label-discs_dlabel" #label-discs_dlabel
+  FILELABELMANUAL="${PATH_DATA}/derivatives/labels/${SUBJECT}/${FILELABEL}.nii.gz"
   echo "Looking for manual label: $FILELABELMANUAL"
   if [[ -e $FILELABELMANUAL ]]; then
     echo "Found! Using manual labels."
@@ -104,7 +104,7 @@ label_if_does_not_exist(){
   else
     echo "Not found. Proceeding with automatic labeling."
     # Generate labeled segmentation
-    sct_label_vertebrae -i ${file}.nii.gz -s ${file_seg}.nii.gz -c t2 -ofolder ./anat/
+    sct_label_vertebrae -i ${file_space_other}.nii.gz -s ${file_seg}.nii.gz -c t2 -ofolder ./anat/
   fi
 }
 
@@ -121,8 +121,8 @@ find_manual_seg(){
   fi
 
   # Update global variable with segmentation file name
-  FILESEG="${file}_seg"
-  FILESEGMANUAL="${PATH_DATA}/derivatives/labels/${SUBJECT}/${folder_contrast}/${FILESEG}-manual.nii.gz"
+  FILESEG="${file}_label-SC_seg"
+  FILESEGMANUAL="${PATH_DATA}/derivatives/labels/${SUBJECT}/${folder_contrast}/${FILESEG}.nii.gz"
   echo
   echo "Looking for manual segmentation: $FILESEGMANUAL"
   if [[ -e $FILESEGMANUAL ]]; then
@@ -171,10 +171,13 @@ if [[ -f ${file_t1}.nii.gz ]];then
   file_t1="${file_t1}_RPI_r"
 
   # Rename _RPI_r file
-  mv ${file_t1}.nii.gz ${SUBJECT}_T1w.nii.gz
-
+  mv ${file_t1}.nii.gz ${SUBJECT}_space-other_T1w.nii.gz
+  file_t1="${SUBJECT}_space-other_T1w"
+  # Rename json file:
+  mv ${SUBJECT}_T1w.json "${SUBJECT}_space-other_T1w.json"
   # Delete raw and reoriented to RPI images
-  rm -f ${SUBJECT}_T1w_raw.nii.gz ${SUBJECT}_T1w_raw_RPI.nii.gz
+  mv ${SUBJECT}_T1w_raw.nii.gz ${SUBJECT}_T1w.nii.gz
+  rm -f ${SUBJECT}_T1w_raw_RPI.nii.gz
 fi
 
 # T2
@@ -192,10 +195,13 @@ if [[ -f ${file_t2}.nii.gz ]];then
   file_t2="${file_t2}_RPI_r"
 
   # Rename _RPI_r file
-  mv ${file_t2}.nii.gz ${SUBJECT}_T2w.nii.gz
-
+  mv ${file_t2}.nii.gz "${SUBJECT}_space-other_T2w.nii.gz"
+  # Rename json file:
+  mv ${SUBJECT}_T2w.json "${SUBJECT}_space-other_T2w.json"
+  file_t2="${SUBJECT}_space-other_T2w"
   # Delete raw, reoriented to RPI images
-  rm -f ${SUBJECT}_T2w_raw.nii.gz ${SUBJECT}_T2w_raw_RPI.nii.gz
+  rm -f ${SUBJECT}_T2w_raw_RPI.nii.gz
+  mv ${SUBJECT}_T2w_raw.nii.gz ${SUBJECT}_T2w.nii.gz
 fi
 
 # T2s
@@ -212,7 +218,10 @@ if [[ -f ${file_t2s}.nii.gz ]];then
   file_t2s="${file_t2s}_rms"
 
   # Rename _rms file
-  mv ${file_t2s}.nii.gz ${SUBJECT}_T2star.nii.gz
+  mv ${file_t2s}.nii.gz "${SUBJECT}_space-other_T2star.nii.gz"
+  file_t2s="${SUBJECT}_space-other_T2star"
+  # Rename json file:
+  mv ${SUBJECT}_T2star.json "${SUBJECT}_space-other_T2star.json"
 
   # Delete raw images
   rm -f ${SUBJECT}_T2star_raw.nii.gz
@@ -231,7 +240,10 @@ if [[ -f ${file_t1w}.nii.gz ]];then
   file_t1w="${file_t1w}_RPI"
 
   # Rename _RPI file
-  mv ${file_t1w}.nii.gz ${SUBJECT}_flip-2_mt-off_MTS.nii.gz
+  mv ${file_t1w}.nii.gz "${SUBJECT}_flip-2_mt-off_space-other_MTS.nii.gz"
+  file_t1w="${SUBJECT}_flip-2_mt-off_space-other_MTS"
+  # Rename json file:
+  mv ${SUBJECT}_flip-2_mt-off_MTS.json "${SUBJECT}_flip-2_mt-off_space-other_MTS.json"
 
   # Delete raw
   rm -f ${SUBJECT}_flip-2_mt-off_MTS_raw.nii.gz
@@ -249,7 +261,10 @@ if [[ -f ${file_mton}.nii.gz ]];then
   file_mton="${file_mton}_RPI"
 
   # Rename _RPI file
-  mv ${file_mton}.nii.gz ${SUBJECT}_flip-1_mt-on_MTS.nii.gz
+  mv ${file_mton}.nii.gz "${SUBJECT}_flip-1_mt-on_space-other_MTS.nii.gz"
+  file_mton="${SUBJECT}_flip-1_mt-on_space-other_MTS"
+  # Rename json file:
+  mv ${SUBJECT}_flip-1_mt-on_MTS.json "${SUBJECT}_flip-1_mt-on_space-other_MTS.json"
 
   # Delete raw
   rm -f ${SUBJECT}_flip-1_mt-on_MTS_raw.nii.gz
@@ -279,7 +294,7 @@ if [[ -f ./dwi/${file_dwi}.nii.gz ]];then
 
   # Rename _moco_dwi_mean file
   mv ${FILE_DWI}_moco_dwi_mean.nii.gz ${SUBJECT}_rec-average_dwi.nii.gz
-
+  file_dwi_mean="${SUBJECT}_rec-average_dwi"
   # Remove intermediate files
   if [[ -e ${SUBJECT}_acq-b0_dwi.nii.gz ]]; then
     rm -f mask_${FILE_DWI}_dwi_mean.nii.gz moco_params.tsv moco_params_x.nii.gz moco_params_y.nii.gz ${FILE_DWI}.bval ${FILE_DWI}.bvec ${FILE_DWI}.nii.gz ${FILE_DWI}_b0.nii.gz ${FILE_DWI}_b0_mean.nii.gz ${FILE_DWI}_dwi.nii.gz ${FILE_DWI}_dwi_mean.nii.gz ${FILE_DWI}_dwi_mean_centerline.nii.gz ${FILE_DWI}_moco.nii.gz ${FILE_DWI}_moco_b0_mean.nii.gz ${FILE_DWI}_dwi_mean_centerline.csv
@@ -291,12 +306,6 @@ fi
 
 
 # Initialize filenames
-file_t1="${SUBJECT}_T1w"
-file_t2="${SUBJECT}_T2w"
-file_t2s="${SUBJECT}_T2star"
-file_t1w="${SUBJECT}_flip-2_mt-off_MTS"
-file_mton="${SUBJECT}_flip-1_mt-on_MTS"
-file_dwi_mean="${SUBJECT}_rec-average_dwi"
 contrasts=($file_t1 $file_t2s $file_t1w $file_mton $file_dwi_mean)
 inc_contrasts=()
 
@@ -322,17 +331,15 @@ for contrast in "${contrasts[@]}"; do
 done
 echo "Contrasts are" ${inc_contrasts[@]}
 
-FILESSEGMANUAL="${PATH_DATA}/derivatives/labels/${SUBJECT}/*/*seg-manual.nii.gz"
-
 # Generate softsegs
 # Create mask for regsitration
 find_manual_seg ${file_t2} 'anat' 't2'
-file_t2_seg="${file_t2}_seg"
+file_t2_seg="${file_t2}_label-SC_seg"
 file_t2_mask="${file_t2_seg}_mask"
 sct_create_mask -i ./anat/${file_t2}.nii.gz -p centerline,./anat/${file_t2_seg}.nii.gz -size 55mm -o ./anat/${file_t2_mask}.nii.gz 
 
 # Label intervertebral discs of T2w
-label_if_does_not_exist ./anat/${file_t2} ./anat/${file_t2_seg}
+label_if_does_not_exist ./anat/${SUBJECT}_T2w ./anat/${file_t2_seg} ./anat/${file_t2}
 file_t2_seg_labeled="${file_t2_seg}_labeled"
 file_t2_discs="${file_t2_seg}_labeled_discs"
 
@@ -348,12 +355,12 @@ for file_path in "${inc_contrasts[@]}";do
   elif [[ $file_path == *"T2star"* ]];then
       contrast_seg="t2s"
       contrast=contrast_seg
-  elif [[ $file_path == *"flip-2_mt-off_MTS"* ]];then
+  elif [[ $file_path == *"flip-2_mt-off_space-other_MTS"* ]];then
       contrast_seg="t1"
-      contrast="flip-2_mt-off_MTS"
-  elif [[ $file_path == *"flip-1_mt-on_MTS"* ]];then
+      contrast="flip-2_mt-off_space-other_MTS"
+  elif [[ $file_path == *"flip-1_mt-on_space-other_MTS"* ]];then
       contrast_seg="t2s"
-      contrast="flip-1_mt-on_MTS"
+      contrast="flip-1_mt-on_space-other_MTS"
   elif [[ $file_path == *"dwi"* ]];then
       contrast_seg="dwi"
       contrast=contrast_seg
@@ -361,7 +368,7 @@ for file_path in "${inc_contrasts[@]}";do
 
   type=$(find_contrast $file_path)
   file=${file_path/#"$type"}
-  fileseg=${file_path}_seg
+  fileseg=${file_path}_label-SC_seg
   find_manual_seg $file $type $contrast_seg
 
   # Add padding to seg to overcome edge effect
@@ -394,14 +401,14 @@ sct_create_mask -i ./anat/${file_t2}.nii.gz -o ./anat/${file_t2}_ones.nii.gz -si
 contrasts_coverage=${inc_contrasts[@]/%/"_ones_reg.nii.gz"}
 sct_maths -i ./anat/${file_t2}_ones.nii.gz -add $(eval echo ${contrasts_coverage[@]}) -o sum_coverage.nii.gz
 # Sum all segmentations
-contrasts_seg=${inc_contrasts[@]/%/"_seg_reg.nii.gz"}
+contrasts_seg=${inc_contrasts[@]/%/"_label-SC_seg_reg.nii.gz"}
 sct_maths -i ./anat/${file_t2_seg}.nii.gz -add $(eval echo ${contrasts_seg[@]}) -o sum_sc_seg.nii.gz
 # Divide sum_sc_seg by sum_coverage
 sct_maths -i sum_sc_seg.nii.gz -div sum_coverage.nii.gz -o ./anat/${file_t2}_seg_soft.nii.gz
 
 file_softseg=./anat/"${file_t2}_seg_soft"
 # Check if softseg has NaN values, if so, change to 0
-python ${PATH_SCRIPT}/check_if_nan.py -i ${file_softseg}.nii.gz -o ./anat/${file_t2}_softseg.nii.gz
+python ${PATH_SCRIPT}/check_if_nan.py -i ${file_softseg}.nii.gz -o ./anat/${file_t2}_label-SC_softseg.nii.gz
 
 # Create QC report of softseg on T2w
 sct_qc -i ./anat/${file_t2}.nii.gz -s ${file_softseg}.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
@@ -411,29 +418,29 @@ sct_qc -i ./anat/${file_t2}.nii.gz -s ${file_softseg}.nii.gz -p sct_deepseg_sc -
 for file_path in "${inc_contrasts[@]}";do
   type=$(find_contrast $file_path)
   file=${file_path/#"$type"}
-  fileseg=${file_path}_seg
+  fileseg=${file_path}_label-SC_seg
   warping_field_inv=${type}warp_${file_t2}2${file}
 
   # Bring softseg to native space
   sct_apply_transfo -i ${file_softseg}.nii.gz -d ${file_path}.nii.gz -w ${warping_field_inv}.nii.gz -x linear -o ${file_path}_softseg.nii.gz
   # Apply coverage mask to softseg
-  sct_maths -i ${file_path}_softseg.nii.gz -o ${file_path}_softseg.nii.gz -mul ${file_path}_ones.nii.gz
+  sct_maths -i ${file_path}_softseg.nii.gz -o ${file_path}_label-SC_softseg.nii.gz -mul ${file_path}_ones.nii.gz
 
   # Generate QC report
-  sct_qc -i ${file_path}.nii.gz -s ${file_path}_softseg.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
+  sct_qc -i ${file_path}.nii.gz -s ${file_path}_label-SC_softseg.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
   
   # For T1w contrast, use existing disc file labels
   if [[ $file_path == *"T1w"* ]];then
-    label_if_does_not_exist ${file_path} ${fileseg}
+    label_if_does_not_exist ./anat/${SUBJECT}_T1w ${fileseg} ${file_path} 
   else
     # Bring T2w disc labels to native space
-    sct_apply_transfo -i ./anat/${file_t2_discs}.nii.gz -d ${file_path}.nii.gz -w ${warping_field_inv}.nii.gz -x label -o ${file_path}_seg_labeled_discs.nii.gz
+    sct_apply_transfo -i ./anat/${file_t2_discs}.nii.gz -d ${file_path}.nii.gz -w ${warping_field_inv}.nii.gz -x label -o ${file_path}_label-SC_seg_labeled_discs.nii.gz
     # Set sform to qform (there are disparencies)
-    sct_image -i ${file_path}_seg_labeled_discs.nii.gz -set-sform-to-qform
+    sct_image -i ${file_path}_label-SC_seg_labeled_discs.nii.gz -set-sform-to-qform
     sct_image -i ${fileseg}.nii.gz -set-sform-to-qform
     sct_image -i ${file_path}.nii.gz -set-sform-to-qform
     # Generate labeled segmentation from warp disc labels
-    sct_label_vertebrae -i ${file_path}.nii.gz -s ${fileseg}.nii.gz -discfile ${file_path}_seg_labeled_discs.nii.gz -c t2 -ofolder $type
+    sct_label_vertebrae -i ${file_path}.nii.gz -s ${fileseg}.nii.gz -discfile ${file_path}_label-SC_seg_labeled_discs.nii.gz -c t2 -ofolder $type
   fi
   # Generate QC report to assess vertebral labeling
   sct_qc -i ${file_path}.nii.gz -s ${fileseg}_labeled.nii.gz -p sct_label_vertebrae -qc ${PATH_QC} -qc-subject ${SUBJECT}
@@ -455,22 +462,23 @@ inc_contrasts+=("./anat/${file_t2}")
 for file_path in "${inc_contrasts[@]}";do
   type=$(find_contrast $file_path)
   file=${file_path/#"$type"}
-  fileseg=${file_path}_seg-manual
-  filesoftseg=${file_path}_softseg
-  fileseglabel=${file_path}_seg_labeled
+  fileseg=${file_path}_label-SC_seg
+  filesoftseg=${file_path}_label-SC_softseg
+  fileseglabel=${file_path}_label-SC_seg_labeled
+  fileseglabel_bin=${file_path}_desc-softseg_label-SC_seg
   cd $PATH_DATA_PROCESSED/$SUBJECT 
 
   # Find contrast to name csa files
-  if [[ $file_path == *"flip-2_mt-off_MTS"* ]];then
-      contrast_seg="flip-2_mt-off_MTS"
+  if [[ $file_path == *"flip-2_mt-off_space-other_MTS"* ]];then
+      contrast_seg="flip-2_mt-off_space-other_MTS"
   elif [[ $file_path == *"T1w"* ]];then
       contrast_seg="T1w"
   elif [[ $file_path == *"T2w"* ]];then
       contrast_seg="T2w"
   elif [[ $file_path == *"T2star"* ]];then
       contrast_seg="T2star"
-  elif [[ $file_path == *"flip-1_mt-on_MTS"* ]];then
-      contrast_seg="flip-1_mt-on_MTS"
+  elif [[ $file_path == *"flip-1_mt-on_space-other_MTS"* ]];then
+      contrast_seg="flip-1_mt-on_space-other_MTS"
   elif [[ $file_path == *"dwi"* ]];then
       contrast_seg="dwi"
   fi
@@ -480,10 +488,11 @@ for file_path in "${inc_contrasts[@]}";do
   # Compute CSA on soft GT and hard GT (only from the derivaives)
   # Soft segmentation
   sct_process_segmentation -i ${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/${filesoftseg}.nii.gz -vert 2,3 -vertfile ${fileseglabel}.nii.gz -o ${PATH_RESULTS}/csa_soft_GT_${contrast_seg}.csv -append 1
-  
   # Soft segmentation binarized
   # Binarize output softseg for CSA computation
   sct_maths -i ${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/${filesoftseg}.nii.gz -bin 0.5 -o ${filesoftseg}_bin.nii.gz
+  # Create QC report
+  sct_qc -i $PATH_DATA_PROCESSED/${SUBJECT}/${file_path}.nii.gz -s ${filesoftseg}_bin.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
   sct_process_segmentation -i ${filesoftseg}_bin.nii.gz -vert 2,3 -vertfile ${fileseglabel}.nii.gz -o ${PATH_RESULTS}/csa_soft_GT_bin_${contrast_seg}.csv -append 1
 
   # Hard segmentation
@@ -491,6 +500,7 @@ for file_path in "${inc_contrasts[@]}";do
   
   mkdir -p $PATH_DATA_PROCESSED_CLEAN $PATH_DATA_PROCESSED_CLEAN/${SUBJECT}/$type $PATH_DATA_PROCESSED_CLEAN/derivatives/labels/${SUBJECT}/$type
   mkdir -p $PATH_DATA_PROCESSED_CLEAN/derivatives/labels_softseg/${SUBJECT}/$type
+  mkdir -p $PATH_DATA_PROCESSED_CLEAN/derivatives/labels_softseg_bin/${SUBJECT}/$type  # Create labels_softseg_bin folder
 
   # Put image in cleaned dataset
   rsync -avzh $PATH_DATA_PROCESSED/${SUBJECT}/${file_path}.nii.gz $PATH_DATA_PROCESSED_CLEAN/${SUBJECT}/${file_path}.nii.gz
@@ -501,16 +511,26 @@ for file_path in "${inc_contrasts[@]}";do
   else  
     rsync -avzh $PATH_DATA_PROCESSED/${SUBJECT}/${file_path}.json $PATH_DATA_PROCESSED_CLEAN/${SUBJECT}/${file_path}.json
   fi
-
+  # REORIENT ALL DATA
+  sct_image -i ${filesoftseg}_bin.nii.gz -setorient RPI -o ${filesoftseg}_bin_RPI.nii.gz
+  sct_image -i ${PATH_DATA}/derivatives/labels/${SUBJECT}/${fileseg}.nii.gz -setorient RPI -o ${fileseg}_RPI.nii.gz
+  sct_image -i ${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/${filesoftseg}.nii.gz -setorient RPI -o ${filesoftseg}_RPI.nii.gz
   # Move segmentation and soft segmentation to the cleanded derivatives
-  rsync -avzh ${PATH_DATA}/derivatives/labels/${SUBJECT}/${fileseg}.nii.gz $PATH_DATA_PROCESSED_CLEAN/derivatives/labels/${SUBJECT}/${fileseg}.nii.gz
-  rsync -avzh ${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/${filesoftseg}.nii.gz $PATH_DATA_PROCESSED_CLEAN/derivatives/labels_softseg/${SUBJECT}/${filesoftseg}.nii.gz
+  rsync -avzh ${fileseg}_RPI.nii.gz $PATH_DATA_PROCESSED_CLEAN/derivatives/labels/${SUBJECT}/${fileseg}.nii.gz
+  rsync -avzh ${filesoftseg}_RPI.nii.gz $PATH_DATA_PROCESSED_CLEAN/derivatives/labels_softseg/${SUBJECT}/${filesoftseg}.nii.gz
+  rsync -avzh ${filesoftseg}_bin_RPI.nii.gz $PATH_DATA_PROCESSED_CLEAN/derivatives/labels_softseg_bin/${SUBJECT}/${fileseglabel_bin}.nii.gz
+  # REORIENT all:
   # Move json files of derivatives
   rsync -avzh "${PATH_DATA}/derivatives/labels/${SUBJECT}/${fileseg}.json" $PATH_DATA_PROCESSED_CLEAN/derivatives/labels/${SUBJECT}/${fileseg}.json
   rsync -avzh "${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/${filesoftseg}.json" $PATH_DATA_PROCESSED_CLEAN/derivatives/labels_softseg/${SUBJECT}/${filesoftseg}.json
+  rsync -avzh "${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/${filesoftseg}.json" $PATH_DATA_PROCESSED_CLEAN/derivatives/labels_softseg_bin/${SUBJECT}/${fileseglabel_bin}.json
+ 
   # Move disc labels into cleaned derivatives
-  rsync -avzh $PATH_DATA_PROCESSED/${SUBJECT}/${file_path}_seg_labeled_discs.nii.gz $PATH_DATA_PROCESSED_CLEAN/derivatives/labels/${SUBJECT}/${file_path}_discs.nii.gz
-
+  if [[ $contrast_seg == *"T2w"* || $contrast_seg == *"T1w"* ]];then
+    rsync -avzh $PATH_DATA_PROCESSED/${SUBJECT}/${file_path}_label-SC_seg_labeled_discs.nii.gz $PATH_DATA_PROCESSED_CLEAN/derivatives/labels/${SUBJECT}/${file_path}_label-discs_dlabel.nii.gz
+  else
+    rsync -avzh $PATH_DATA_PROCESSED/${SUBJECT}/${file_path}_label-SC_seg_labeled_discs.nii.gz $PATH_DATA_PROCESSED_CLEAN/derivatives/labels/${SUBJECT}/${file_path}_label-discs_desc-warp_dlabel.nii.gz
+  fi
 done
 
 
@@ -518,9 +538,9 @@ done
 # Verify presence of output files and write log file if error
 # ------------------------------------------------------------------------------
 FILES_TO_CHECK=(
-  "anat/${SUBJECT}_T1w.nii.gz"
-  "anat/${SUBJECT}_T2w.nii.gz"
-  "anat/${SUBJECT}_T2star.nii.gz"
+  "anat/${SUBJECT}_space-other_T1w.nii.gz"
+  "anat/${SUBJECT}_space-other_T2w.nii.gz"
+  "anat/${SUBJECT}_space-other_T2star.nii.gz"
   "dwi/${SUBJECT}_rec-average_dwi.nii.gz"
 )
 pwd

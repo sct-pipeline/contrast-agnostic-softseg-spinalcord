@@ -42,7 +42,7 @@ This repo contains all the code for data preprocessing, training and running inf
 
 ## 1. Main Dependencies
 
-- [SCT 6.0](https://github.com/neuropoly/spinalcordtoolbox/releases/tag/6.0)
+- [SCT 6.2](https://github.com/neuropoly/spinalcordtoolbox/releases/tag/6.2)
 - Python 3.9
 
 ## 2. Dataset
