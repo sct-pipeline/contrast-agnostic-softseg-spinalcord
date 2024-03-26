@@ -357,7 +357,7 @@ for file_path in "${inc_contrasts[@]}";do
       contrast=contrast_seg
   elif [[ $file_path == *"flip-2_mt-off_space-other_MTS"* ]];then
       contrast_seg="t1"
-      contrast="flip-2_mt-off_space-other__MTS"
+      contrast="flip-2_mt-off_space-other_MTS"
   elif [[ $file_path == *"flip-1_mt-on_space-other_MTS"* ]];then
       contrast_seg="t2s"
       contrast="flip-1_mt-on_space-other_MTS"
