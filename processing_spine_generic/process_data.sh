@@ -526,7 +526,6 @@ for file_path in "${inc_contrasts[@]}";do
   rsync -avzh "${PATH_DATA}/derivatives/labels_softseg/${SUBJECT}/${filesoftseg}.json" $PATH_DATA_PROCESSED_CLEAN/derivatives/labels_softseg_bin/${SUBJECT}/${fileseglabel_bin}.json
  
   # Move disc labels into cleaned derivatives
-  # TODO: ADD IF STATEMENT FOR T1 and T2w label-discs_dlabel instead
   if [[ $contrast_seg == *"T2w"* || $contrast_seg == *"T1w"* ]];then
     rsync -avzh $PATH_DATA_PROCESSED/${SUBJECT}/${file_path}_label-SC_seg_labeled_discs.nii.gz $PATH_DATA_PROCESSED_CLEAN/derivatives/labels/${SUBJECT}/${file_path}_label-discs_dlabel.nii.gz
   else
