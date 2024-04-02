@@ -81,6 +81,8 @@ def get_parser():
     parser.add_argument('--pred-type', default="soft", type=str, choices=["soft", "hard"],
                         help='Type of prediction to output/save. `soft` outputs soft segmentation masks with a threshold of 0.1'
                         '`hard` outputs binarized masks thresholded at 0.5  Default: hard')
+    parser.add_argument('--pad-mode', default="constant", type=str, choices=["constant", "edge", "reflect"],
+                        help='Padding mode for the input image. Default: constant')
 
     return parser
 
@@ -88,14 +90,15 @@ def get_parser():
 # ===========================================================================
 #                          Test-time Transforms
 # ===========================================================================
-def inference_transforms_single_image(crop_size):
+def inference_transforms_single_image(crop_size, pad_mode="constant"):
     return Compose([
             LoadImaged(keys=["image"], image_only=False),
             EnsureChannelFirstd(keys=["image"]),
             Orientationd(keys=["image"], axcodes="RPI"),
             Spacingd(keys=["image"], pixdim=(1.0, 1.0, 1.0), mode=(2)),
             ResizeWithPadOrCropd(keys=["image"], spatial_size=crop_size,),
-            DivisiblePadd(keys=["image"], k=2**5),   # pad inputs to ensure divisibility by no. of layers nnUNet has (5)
+            # pad inputs to ensure divisibility by no. of layers nnUNet has (5)
+            DivisiblePadd(keys=["image"], k=2**5, mode=pad_mode),   
             NormalizeIntensityd(keys=["image"], nonzero=False, channel_wise=False),
         ])
 
@@ -186,12 +189,12 @@ def create_nnunet_from_plans(plans, num_input_channels: int, num_classes: int, d
 # ===========================================================================
 #                   Prepare temporary dataset for inference
 # ===========================================================================
-def prepare_data(path_image, crop_size=(64, 160, 320)):
+def prepare_data(path_image, crop_size=(64, 160, 320), pad_mode="constant"):
 
     test_file = [{"image": path_image}]
     
     # define test transforms
-    transforms_test = inference_transforms_single_image(crop_size=crop_size)
+    transforms_test = inference_transforms_single_image(crop_size=crop_size, pad_mode=pad_mode)
     
     # define post-processing transforms for testing; taken (with explanations) from 
     # https://github.com/Project-MONAI/tutorials/blob/main/3d_segmentation/torch/unet_inference_dict.py#L66
@@ -263,7 +266,7 @@ def main():
     inference_roi_size = (64, 192, 320)
 
     # define the dataset and dataloader
-    test_ds, test_post_pred = prepare_data(path_image, crop_size=crop_size)
+    test_ds, test_post_pred = prepare_data(path_image, crop_size=crop_size, pad_mode=args.pad_mode)
     test_loader = DataLoader(test_ds, batch_size=1, shuffle=False, num_workers=8, pin_memory=True)
 
     # define model
