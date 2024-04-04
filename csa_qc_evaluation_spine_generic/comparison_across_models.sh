@@ -257,7 +257,7 @@ segment_sc_MONAI(){
   echo "Running inference from model at ${PATH_MODEL}"
   # Run SC segmentation
   # python ${PATH_MONAI_SCRIPT} --path-img ${file}.nii.gz --path-out . --chkp-path ${PATH_MODEL} --device gpu --model ${model} --pred-type soft
-  python ${PATH_MONAI_SCRIPT} --path-img ${file}.nii.gz --path-out . --chkp-path ${PATH_MODEL} --device gpu --model monai --pred-type soft
+  python ${PATH_MONAI_SCRIPT} --path-img ${file}.nii.gz --path-out . --chkp-path ${PATH_MODEL} --device gpu --model monai --pred-type soft --pad-mode edge
   # Rename MONAI output
   mv ${file}_pred.nii.gz ${FILESEG}.nii.gz
   # Get the end time
@@ -408,7 +408,7 @@ for contrast in ${contrasts}; do
   sct_process_segmentation -i ${FILEBIN}.nii.gz -vert 2:3 -vertfile ${file}_seg-manual_labeled.nii.gz -o $PATH_RESULTS/${csv_fname}_c2c3.csv -append 1
 
   # 2.2 Compute CSA "per slice" across _all_ slices in the SC for plotting the absolute CSA error across contrasts
-  sct_process_segmentation -i ${FILEBIN}.nii.gz -perslice 1 -vertfile ${file}_seg-manual_labeled.nii.gz -o $PATH_RESULTS/${csv_fname}_softbin_perslice.csv -append 1
+  sct_process_segmentation -i ${FILEBIN}.nii.gz -perslice 1 -vertfile ${file}_seg-manual_labeled.nii.gz -o $PATH_RESULTS/${csv_fname}_softseg_bin_perslice.csv -append 1
 
   # 3. Segment SC using different methods, binarize at 0.5 and compute CSA
 	CUDA_VISIBLE_DEVICES=2 segment_sc_MONAI ${file} "${file}_seg-manual" 'monai_og' ${contrast} ${csv_fname}
