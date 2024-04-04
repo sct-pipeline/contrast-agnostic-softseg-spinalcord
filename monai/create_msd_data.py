@@ -138,70 +138,57 @@ def create_df(dataset_path):
 def main():
 
     args = get_parser().parse_args()
+    data_root = args.path_data
 
     # output logger to a file
-    logger.add(os.path.join(args.path_out, f"log_{args.contrast}_{args.label_type}_seed{args.seed}.txt"))
+    logger.add(os.path.join(args.path_out, f"log_{os.path.basename(data_root)}_seed{args.seed}.txt"))
 
-    datasets = []
-    # Check if dataset paths exist
-    for path in args.path_data:
-        if not os.path.exists(path):
-            raise ValueError(f"Path {path} does not exist.")
-        else:
-            datasets.append(os.path.basename(os.path.normpath(path)))
+    # Check if dataset path exists
+    if not os.path.exists(data_root):
+        raise ValueError(f"Path {data_root} does not exist.")
 
-    logger.info(f"Creating a dataframe consisting of {len(datasets)} datasets.")
+    logger.info(f"Creating a dataframe ...")
 
     # temp dict for storing dataset commits
     dataset_commits = {}
 
     # create a dataframe for each dataset
-    for dataset_path in args.path_data:
-        df = create_df(dataset_path)
-
-        if df is None:
-            continue
+    df = create_df(data_root)
         
-        # get the git commit ID of the dataset
-        dataset_name = os.path.basename(os.path.normpath(dataset_path))
-        branch, commit = get_git_branch_and_commit(dataset_path)
-        dataset_commits[dataset_name] = f"git-{branch}-{commit}"
-        # concatenate the dataframes vertically
-        if 'df_all' not in locals():
-            df_all = df
-        else:
-            df_all = pd.concat([df_all, df], ignore_index=True)
+    # get the git commit ID of the dataset
+    dataset_name = os.path.basename(os.path.normpath(data_root))
+    branch, commit = get_git_branch_and_commit(data_root)
+    dataset_commits[dataset_name] = f"git-{branch}-{commit}"
         
     train_ratio, val_ratio, test_ratio = 0.65, 0.15, 0.2
-    train_subs_all, val_subs_all, test_subs_all = [], [], []
+    # train_subs_all, val_subs_all, test_subs_all = [], [], []
     
-    # the idea is to split each dataset into their respective train/val/test splits 
-    # (and not to split the combination of all datasets into train/val/test splits)
-    for dataset in datasets:
+    # the idea is to create a datalist for each dataset we want to use 
+    # these datalists (which have their own train/val/test splits) for each dataset will then be combined 
+    # during the dataloading process of training the contrast-agnostic model
 
-        all_subjects = sorted(df_all[df_all['datasetName'] == dataset]['subjectID'].unique())
-        train_subjects, test_subjects = train_test_split(all_subjects, test_size=test_ratio, random_state=args.seed)
-        # Use the training split to further split into training and validation splits
-        train_subjects, val_subjects = train_test_split(train_subjects, test_size=val_ratio / (train_ratio + val_ratio),
-                                                        random_state=args.seed)
-        
-        # sort the subjects
-        train_subjects, val_subjects, test_subjects = sorted(train_subjects), sorted(val_subjects), sorted(test_subjects)
-
-        train_subs_all.extend(train_subjects)
-        val_subs_all.extend(val_subjects)
-        test_subs_all.extend(test_subjects)
+    all_subjects = df['subjectID'].unique()
+    train_subjects, test_subjects = train_test_split(all_subjects, test_size=test_ratio, random_state=args.seed)
+    # Use the training split to further split into training and validation splits
+    train_subjects, val_subjects = train_test_split(train_subjects, test_size=val_ratio / (train_ratio + val_ratio),
+                                                    random_state=args.seed)
+    
+    # sort the subjects
+    train_subjects, val_subjects, test_subjects = sorted(train_subjects), sorted(val_subjects), sorted(test_subjects)
 
     # get boilerplate json
-    params = get_boilerplate_json(datasets, dataset_commits)
+    params = get_boilerplate_json(dataset_name, dataset_commits)
 
-    train_subjects_dict = {"train": train_subs_all}
-    val_subjects_dict = {"validation": val_subs_all}
-    test_subjects_dict =  {"test": test_subs_all}
+    train_subjects_dict = {"train": train_subjects}
+    val_subjects_dict = {"validation": val_subjects}
+    test_subjects_dict =  {"test": test_subjects}
     all_subjects_list = [train_subjects_dict, val_subjects_dict, test_subjects_dict]
 
     # list of subjects whose labels don't exist (only for spine-generic)
     subjects_to_remove = []
+
+    labels_folder = FILESEG_SUFFIXES[dataset_name][0]
+    labels_suffix = FILESEG_SUFFIXES[dataset_name][1]
 
     # iterate through train and test subjects
     for subjects_dict in tqdm(all_subjects_list, desc="Iterating through train/val/test splits"):
@@ -212,21 +199,21 @@ def main():
             for subject_no, subject in enumerate(subs_list):
 
                 # get all the contrastIDs for the subject
-                contrastIDs = df_all[df_all['subjectID'] == subject]['contrastID'].unique()
+                contrastIDs = df[df['subjectID'] == subject]['contrastID'].unique()
 
                 for contrast in contrastIDs:
                 
                     temp_data = {}
                     # if the subject belongs to a data-multi-subject dataset, then the filename is different
-                    if df_all[df_all['subjectID'] == subject]['datasetName'].values[0] == 'data-multi-subject':
+                    if df['datasetName'].values[0] == 'data-multi-subject':
                         # NOTE: for spine-generic subjects, we're pulling the data from image filename
-                        fname_image = df_all[(df_all['subjectID'] == subject) & (df_all['contrastID'] == contrast)]['filename'].values[0]
-                        fname_label = fname_image.replace('data_preprocessed', 'labels_softseg_bin').replace('.nii.gz', f'_{FILESEG_SUFFIX}.nii.gz')
+                        fname_image = df[(df['subjectID'] == subject) & (df['contrastID'] == contrast)]['filename'].values[0]
+                        fname_label = fname_image.replace('data_preprocessed', labels_folder).replace('.nii.gz', f'_{labels_suffix}.nii.gz')
                     
                     else: 
                         # NOTE: but for other datasets, we are getting them from the lesion filenames
-                        fname_label = df_all[(df_all['subjectID'] == subject) & (df_all['contrastID'] == contrast)]['filename'].values[0]
-                        fname_image = fname_label.replace('/derivatives/labels_softseg_bin', '').replace(f'_{FILESEG_SUFFIX}.nii.gz', '.nii.gz')
+                        fname_label = df[(df['subjectID'] == subject) & (df['contrastID'] == contrast)]['filename'].values[0]
+                        fname_image = fname_label.replace(f'/derivatives/{labels_folder}', '').replace(f'_{labels_suffix}.nii.gz', '.nii.gz')
                                     
                     temp_data["image"] = fname_image
                     temp_data["label"] = fname_label
@@ -243,7 +230,7 @@ def main():
                 params[name] = temp_list
 
     # log the contrasts used
-    params["contrasts"] = df_all['contrastID'].unique().tolist()
+    params["contrasts"] = df['contrastID'].unique().tolist()
 
     # number of training, validation and testing images (not subjects; a subject can have multiple contrasts, and hence multiple images)
     params["numTrainingImages"] = len(params["train"])
@@ -252,9 +239,9 @@ def main():
     params["seed"] = args.seed
 
     # update the number of train/val/test subjects
-    train_subs_all = list(set(train_subs_all) - set(subjects_to_remove))
-    val_subs_all = list(set(val_subs_all) - set(subjects_to_remove))
-    test_subs_all = list(set(test_subs_all) - set(subjects_to_remove))
+    train_subs_all = list(set(train_subjects) - set(subjects_to_remove))
+    val_subs_all = list(set(val_subjects) - set(subjects_to_remove))
+    test_subs_all = list(set(test_subjects) - set(subjects_to_remove))
     params["numTrainingSubjects"] = len(train_subs_all)
     params["numValidationSubjects"] = len(val_subs_all)
     params["numTestSubjects"] = len(test_subs_all)
@@ -264,7 +251,7 @@ def main():
     logger.info(f"Number of testing images (not subjects): {params['numTestImages']}")
 
     # dump train/val/test splits into a yaml file
-    with open(f"data_split_{args.label_type}_seed{args.seed}.yaml", 'w') as file:
+    with open(f"datasplit_{dataset_name}_seed{args.seed}.yaml", 'w') as file:
         yaml.dump({'train': sorted(train_subs_all), 'val': sorted(val_subs_all), 'test': sorted(test_subs_all)}, file, indent=2, sort_keys=True)
 
     final_json = json.dumps(params, indent=4, sort_keys=True)
@@ -272,7 +259,7 @@ def main():
         os.makedirs(args.path_out, exist_ok=True)
 
     # jsonFile = open(args.path_out + "/" + f"dataset_{contrast}_{args.label_type}_seed{seed}.json", "w")
-    jsonFile = open(args.path_out + "/" + f"dataset_{args.contrast}_{args.label_type}_seed{args.seed}.json", "w")
+    jsonFile = open(args.path_out + "/" + f"datasplit_{dataset_name}_seed{args.seed}.json", "w")
     jsonFile.write(final_json)
     jsonFile.close()
 
