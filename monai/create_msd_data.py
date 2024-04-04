@@ -16,7 +16,16 @@ pd.set_option('display.max_colwidth', None)
 
 
 # global variables
-FILESEG_SUFFIX = "desc-softseg_label-SC_seg"
+# NOTE: each dataset follows a different naming convention with some datasets following 
+# an updated BIDS format (e.g., data-multi-subject) and others are in the process of getting updated
+# This dict is used to store the names of the folders and corresponding suffixes for each dataset
+# convention --> "dataset_name (as per git-annex)": ["labels_folder", "labels_suffix"]
+FILESEG_SUFFIXES = {
+    "data-multi-subject": ["labels_softseg_bin", "desc-softseg_label-SC_seg"],
+    "basel-mp2rage": ["labels_softseg_bin", "desc-softseg_label-SC_seg"],
+    "sct-testing-large": ["labels", "seg-manual"],
+    "dcm-zurich": ["labels", "seg-manual"],
+}
 
 
 def get_parser():
