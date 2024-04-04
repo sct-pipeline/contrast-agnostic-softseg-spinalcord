@@ -108,26 +108,68 @@ def create_df(dataset_path):
     Returns a dataframe with all datasetes merged
     """
 
-    if 'data-multi-subject' in dataset_path:
+    dataset_name = os.path.basename(os.path.normpath(dataset_path))
+    labels_folder = FILESEG_SUFFIXES[dataset_name][0]
+    labels_suffix = FILESEG_SUFFIXES[dataset_name][1]
+
+    if dataset_name == 'data-multi-subject':
         # get only the (preprocessed) subject files, which are in the `derivatives` folder
         path_files = os.path.join(dataset_path, 'derivatives', 'data_preprocessed', 'sub-*', '**', f'*.nii.gz')
-    else:
+    
+    elif dataset_name == 'sct-testing-large':
+        
+        path_files = os.path.join(dataset_path, 'derivatives', labels_folder, 'sub-*', '**', f'*_{labels_suffix}.nii.gz')
+
+        df_participants = pd.read_csv(os.path.join(dataset_path, 'participants.tsv'), sep='\t')
+        # get only those subjects where pathology is DCM
+        dcm_subjects = df_participants[df_participants['pathology'] == 'DCM']['participant_id'].tolist()
+
+        # some subjects are in participants.tsv but not in the derivatives/labels folder
+        derivatives_subs = os.listdir(os.path.join(dataset_path, 'derivatives', labels_folder))
+        dcm_subjects = [sub for sub in dcm_subjects if sub in derivatives_subs]
+
+    else: 
         # fetch the files based on the presence of labels 
-        path_files = os.path.join(dataset_path, 'derivatives', 'labels_softseg_bin', 'sub-*', '**', f'*{FILESEG_SUFFIX}.nii.gz')
+        path_files = os.path.join(dataset_path, 'derivatives', labels_folder, 'sub-*', '**', f'*_{labels_suffix}.nii.gz')
 
     # fetch files only from folders starting with sub-*
     fname_files = glob.glob(path_files, recursive=True)
     if len(fname_files) == 0:
         logger.info(f"No image/label files found in {dataset_path}")
         return None
-
+    
     # create a dataframe with two columns: filesegname and filename
     df = pd.DataFrame({'filename': fname_files})
-
+    df['datasetName'] = os.path.basename(os.path.normpath(dataset_path))
     # get subjectID, sessionID and orientationID
     df['subjectID'], df['sessionID'], df['orientationID'], df['contrastID'] = zip(*df['filename'].map(fetch_subject_nifti_details))
 
-    df['datasetName'] = os.path.basename(os.path.normpath(dataset_path))
+    # if dataset is sct-testing-large, then only include subjects with pathology as DCM
+    if dataset_name == 'sct-testing-large':
+        df = df[df['subjectID'].isin(dcm_subjects)]
+
+        for file in df['filename']:
+
+            if df['subjectID'].values[0] in dcm_subjects:
+                
+                # NOTE: sct-testing-large has a lot of images which might/might not have labels. 
+                # Get only those images which have labels and are present in the dataframe (and belong to the pathology)
+                fname_label = file
+                gitannex_cmd_label = f'cd {dataset_path}; git annex get {fname_label}'
+                
+                fname_image = fname_label.replace(f'/derivatives/{labels_folder}', '').replace(f'_{labels_suffix}.nii.gz', '.nii.gz')
+                gitannex_cmd_image = f'cd {dataset_path}; git annex get {fname_image}'
+
+                try:
+                    subprocess.run(gitannex_cmd_label, shell=True, check=True)
+                    subprocess.run(gitannex_cmd_image, shell=True, check=True)
+                    logger.info(f"Downloaded {os.path.basename(fname_label)} from git-annex")
+                    logger.info(f"Downloaded {os.path.basename(fname_image)} from git-annex")
+                except subprocess.CalledProcessError as e:
+                    logger.error(f"Error in downloading {file} from git-annex: {e}")
+            
+            else:
+                logger.info(f"Skipping {file} as pathology is not DCM")
 
     # refactor to move filename and filesegname to the end of the dataframe
     df = df[['datasetName', 'subjectID', 'sessionID', 'orientationID', 'contrastID', 'filename']] #, 'filesegname']]
