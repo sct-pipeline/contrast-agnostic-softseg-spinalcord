@@ -50,6 +50,7 @@ PATH_MONAI_SCRIPT=$2    # path to the MONAI contrast-agnostic run_inference_sing
 PATH_OG_MONAI_MODEL=$3     # path to the MONAI contrast-agnostic model trained on soft bin labels
 PATH_LL_MONAI_MODEL=$4     # path to the MONAI contrast-agnostic model trained on soft bin labels
 # PATH_SWIN_MODEL=$5
+PATH_SWDICE_SCRIPT="/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/contrast-agnostic-softseg-spinalcord/monai/compute_slicewise_dice.py"
 
 echo "SUBJECT: ${SUBJECT}"
 # echo "PATH_NNUNET_SCRIPT: ${PATH_NNUNET_SCRIPT}"
@@ -165,6 +166,7 @@ segment_sc() {
   if [[ $method == 'deepseg' ]];then
       # FILESEG="${file}_seg_${method}_${kernel}"
       FILESEG="${file%%_*}_${contrast_name}_seg_${method}_2d"
+      FILEGT="${file%%_*}_${contrast_name}_softseg_bin"
 
       # Get the start time
       start_time=$(date +%s)
@@ -175,6 +177,9 @@ segment_sc() {
       # Calculate the time difference
       execution_time=$(python3 -c "print($end_time - $start_time)")
       echo "${FILESEG},${execution_time}" >> ${PATH_RESULTS}/execution_time.csv
+      # Compute slicewise Dice
+      slicewise_dice=$(python ${PATH_SWDICE_SCRIPT} --path-pred ${FILESEG}.nii.gz --path-gt ${FILEGT}.nii.gz)
+      echo "${FILESEG},${slicewise_dice}" >> ${PATH_RESULTS}/slicewise_dice.csv
   
   elif [[ $method == 'propseg' ]]; then
       FILESEG="${file}_seg_${method}"
@@ -252,6 +257,8 @@ segment_sc_MONAI(){
 	
 	fi
 
+  FILEGT="${file%%_*}_${contrast}_softseg_bin"
+
   # Get the start time
   start_time=$(date +%s)
   echo "Running inference from model at ${PATH_MODEL}"
@@ -268,6 +275,11 @@ segment_sc_MONAI(){
 
   # Binarize MONAI output (which is soft by default); output is overwritten
   sct_maths -i ${FILESEG}.nii.gz -bin 0.5 -o ${FILESEG}.nii.gz
+
+  # Compute slicewise Dice
+  slicewise_dice=$(python ${PATH_SWDICE_SCRIPT} --path-pred ${FILESEG}.nii.gz --path-gt ${FILEGT}.nii.gz)
+  echo "${FILESEG},${slicewise_dice}"
+  echo "${FILESEG},${slicewise_dice}" >> ${PATH_RESULTS}/slicewise_dice.csv
 
   # Generate QC report with soft prediction
   sct_qc -i ${file}.nii.gz -s ${FILESEG}.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
@@ -336,8 +348,8 @@ rsync -Ravzh ${PATH_DATA}/derivatives/data_preprocessed/./${SUBJECT}/dwi/* .
 # ------------------------------------------------------------------------------
 # contrast
 # ------------------------------------------------------------------------------
-# contrasts="space-other_T1w space-other_T2w space-other_T2star flip-1_mt-on_space-other_MTS flip-2_mt-off_space-other_MTS rec-average_dwi"
-contrasts="space-other_T1w rec-average_dwi"
+contrasts="space-other_T1w space-other_T2w space-other_T2star flip-1_mt-on_space-other_MTS flip-2_mt-off_space-other_MTS rec-average_dwi"
+# contrasts="space-other_T1w rec-average_dwi"
 
 # output csv filename 
 csv_fname="csa_new_contrasts"
@@ -411,7 +423,7 @@ for contrast in ${contrasts}; do
   sct_process_segmentation -i ${FILEBIN}.nii.gz -perslice 1 -vertfile ${file}_seg-manual_labeled.nii.gz -o $PATH_RESULTS/${csv_fname}_softseg_bin_perslice.csv -append 1
 
   # 3. Segment SC using different methods, binarize at 0.5 and compute CSA
-	CUDA_VISIBLE_DEVICES=2 segment_sc_MONAI ${file} "${file}_seg-manual" 'monai_og' ${contrast} ${csv_fname}
+	CUDA_VISIBLE_DEVICES=1 segment_sc_MONAI ${file} "${file}_seg-manual" 'monai_og' ${contrast} ${csv_fname}
   CUDA_VISIBLE_DEVICES=3 segment_sc_MONAI ${file} "${file}_seg-manual" 'monai_ll' ${contrast} ${csv_fname}
   # CUDA_VISIBLE_DEVICES=2 segment_sc_MONAI ${file} "${file}_seg-manual" 'swinunetr' ${contrast} ${csv_fname}
   # CUDA_VISIBLE_DEVICES=3 segment_sc_nnUNet ${file} "${file}_seg-manual" '3d_fullres' ${contrast} ${csv_fname}
