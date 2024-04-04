@@ -21,16 +21,16 @@ FILESEG_SUFFIX = "desc-softseg_label-SC_seg"
 
 def get_parser():
 
-    parser = argparse.ArgumentParser(description='Code for creating a datalist of T2w SC images across healthy and pathology spines from 3 datasets.')
+    parser = argparse.ArgumentParser(description='Code for creating individual datalists for each dataset/contrast for '
+                                    'contrast-agnostic SC segmentation.')
 
-    parser.add_argument('--path-data', nargs='+', required=True, type=str,
-                            help='Path to BIDS dataset(s) (list).')
+    parser.add_argument('--path-data', required=True, type=str, help='Path to BIDS dataset.')
     parser.add_argument('--path-out', type=str, help='Path to the output directory where dataset json is saved')
-    parser.add_argument("--contrast", default="t2w", type=str, help="Contrast to use for training", 
-                        choices=["t1w", "t2w", "t2star", "mton", "mtoff", "dwi", "all"])
+    # parser.add_argument("--contrast", default="t2w", type=str, help="Contrast to use for training", 
+    #                     choices=["t1w", "t2w", "t2star", "mton", "mtoff", "dwi", "all"])
     parser.add_argument('--seed', default=42, type=int, help="Seed for reproducibility")
-    parser.add_argument('--label-type', default='soft_bin', type=str, help="Type of labels to use for training",
-                        choices=['soft', 'soft_bin'])
+    # parser.add_argument('--label-type', default='soft_bin', type=str, help="Type of labels to use for training",
+    #                     choices=['soft', 'soft_bin'])
 
     return parser
 
