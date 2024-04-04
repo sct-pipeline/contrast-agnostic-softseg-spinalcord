@@ -8,6 +8,7 @@ import argparse
 from loguru import logger
 from sklearn.model_selection import train_test_split
 from collections import OrderedDict
+import subprocess
 
 from utils import get_git_branch_and_commit
 
@@ -44,7 +45,7 @@ def get_parser():
     return parser
 
 
-def get_boilerplate_json(datasets, dataset_commits):
+def get_boilerplate_json(dataset, dataset_commits):
     """
     these are some standard fields that should be included in the json file
     the content of these fields do not really matter, but they should be there only for the sake of consistency
@@ -59,10 +60,14 @@ def get_boilerplate_json(datasets, dataset_commits):
         }
     params["license"] = "MIT"
     params["modality"] = {"0": "MRI"}
-    params["datasets"] = datasets
+    params["dataset"] = dataset
     params["reference"] = "BIDS: Brain Imaging Data Structure"
     params["tensorImageSize"] = "3D"
     params["dataset_versions"] = dataset_commits
+    if dataset == 'data-multi-subject':
+        params["subject_type"] = "HC"
+    elif dataset == 'sct-testing-large':
+        params["subject_type"] = ["DCM"]
     
     return params
 
@@ -90,7 +95,8 @@ def fetch_subject_nifti_details(filename_path):
         # NOTE: the preprocessed spine-generic dataset have a weird BIDS naming convention (due to how they were preprocessed)
         contrast_pattern =  r'.*_(space-other_T1w|space-other_T2w|space-other_T2star|flip-1_mt-on_space-other_MTS|flip-2_mt-off_space-other_MTS|rec-average_dwi).*'
     else:
-        contrast_pattern =  r'.*_(T1w|T2w|T2star|PSIR|STIR|UNIT1).*'
+        # TODO: add more contrasts as needed
+        contrast_pattern =  r'.*_(T1w|T2w|T2star|PSIR|STIR|UNIT1|acq-MTon_MTR|acq-dwiMean_dwi).*'
     contrast = re.search(contrast_pattern, filename_path)
     contrastID = contrast.group(1) if contrast else ""
 
