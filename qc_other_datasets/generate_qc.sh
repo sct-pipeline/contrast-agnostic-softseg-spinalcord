@@ -190,6 +190,7 @@ segment_sc_MONAI(){
   local file="$1"
   # local label_type="$2"     # soft or soft_bin
   local model="$2"     # monai, swinunetr, mednext
+  local pad_mode="$3"
 
 	# if [[ $label_type == 'soft' ]]; then
 	# 	FILEPRED="${file}_seg_monai_soft"
@@ -217,7 +218,7 @@ segment_sc_MONAI(){
   # Get the start time
   start_time=$(date +%s)
   # Run SC segmentation
-  python ${PATH_MONAI_SCRIPT} --path-img ${file}.nii.gz --path-out . --chkp-path ${PATH_MODEL} --device gpu --model ${model}
+    python ${PATH_MONAI_SCRIPT} --path-img ${file}.nii.gz --path-out . --chkp-path ${PATH_MODEL} --device gpu --model ${model} --pred-type soft --pad-mode ${pad_mode}
   # Rename MONAI output
   mv ${file}_pred.nii.gz ${FILEPRED}.nii.gz
   # Get the end time
@@ -293,9 +294,7 @@ copy_gt_seg "${file}" "${label_suffix}"
 # Segment SC using different methods, binarize at 0.5 and compute QC
 # segment_sc_MONAI ${file} 'soft'
 # segment_sc_MONAI ${file} 'soft_bin'
-segment_sc_MONAI ${file} 'monai'
-# segment_sc_MONAI ${file} 'swinunetr'
-# segment_sc_MONAI ${file} 'mednext'
+CUDA_VISIBLE_DEVICES=0 segment_sc_MONAI ${file} 'monai' 'edge'
 
 # segment_sc_nnUNet ${file} '3d_fullres'
 # segment_sc ${file} 'deepseg' ${deepseg_input_c}
