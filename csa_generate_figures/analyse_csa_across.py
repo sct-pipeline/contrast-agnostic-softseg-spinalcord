@@ -19,6 +19,23 @@ HUE_ORDER_THR = ["GT", "15", "1", "05", "01", "005"]
 HUE_ORDER_RES = ["1mm", "05mm", "15mm", "3mm", "2mm"]
 CONTRAST_ORDER = ["DWI", "MTon", "MToff", "T1w", "T2star", "T2w"]
 
+XTICKS = ["GT", "DeepSeg2D", "nnUNet", "contrast\nagnostic", "MedNeXt", "UNETR", "SwinUNETR", "SwinUNETR\nPretrained"]
+FONTSIZE = 12
+
+color_palette = {
+        'softseg_bin': '#b3b3b3',
+        'deepseg_2d': '#e78ac3',
+        # 'deepseg3d': '#e31a1c',
+        'nnunet': '#fc8d62',
+        'monai': '#66c2a5',
+        'mednext': '#ffd92f',
+        'unetr': '#8da0cb',
+        'swinunetr': '#66c2a5',
+        'swinpretrained': '#386cb0',
+        # 'GT_hard': '#b3b3b3',
+        # 'soft_all\ndice_loss': '#a6d854'
+    }
+
 
 def save_figure(file_path, save_fname):
     plt.tight_layout()
@@ -136,16 +153,25 @@ def generate_figure_std(data, file_path, across="Method", hue_order=HUE_ORDER):
     # Compute mean and std across contrasts for each method
     df = data.groupby([across, 'Participant'])['MEAN(area)'].agg(['mean', 'std']).reset_index()
 
-    plt.figure(figsize=(12, 6))
-    sns.violinplot(x=across, y='std', data=df, order=hue_order)
+    plt.figure(figsize=(11, 6))
+    sns.violinplot(x=across, y='std', data=df, order=hue_order, palette=color_palette)
     # overlay swarm plot on the violin plot to show individual data points
     sns.swarmplot(x=across, y='std', data=df, color='k', order=hue_order, size=3)
-    # plt.xticks(rotation=45)
-    plt.xlabel(across)
-    plt.ylabel('STD [mm^2]')
-    plt.title(f'STD of C2-C3 CSA for each {across}')
+    
+    plt.xlabel(None)    # plt.xlabel(across, fontsize=FONTSIZE)
+    plt.ylabel('STD [mm^2]', fontweight='bold' ,fontsize=FONTSIZE)
+    # plt.title(f'STD of C2-C3 CSA for each {across}', fontweight='bold', fontsize=FONTSIZE)
+    plt.title(f'STD of C2-C3 CSA for each model', fontweight='bold', fontsize=FONTSIZE)
     # Add horizontal dashed grid
     plt.grid(axis='y', alpha=0.5, linestyle='dashed')
+
+    # rename the x-axis ticks as per XTICKS
+    if across == "Method":
+        plt.xticks(range(len(hue_order)), XTICKS, fontsize=FONTSIZE)
+
+    plt.ylim(-1, 12)
+    plt.yticks(fontsize=FONTSIZE)
+    plt.xticks(fontsize=FONTSIZE)
 
     # Get y-axis limits
     ymin, ymax = plt.gca().get_ylim()
@@ -158,7 +184,8 @@ def generate_figure_std(data, file_path, across="Method", hue_order=HUE_ORDER):
         for method in df['Method'].unique():
             mean = df[df['Method'] == method]['std'].mean()
             std = df[df['Method'] == method]['std'].std()
-            plt.text(hue_order.index(method), ymax-1, f'{mean:.2f} +- {std:.2f}', ha='center', va='bottom', color='k')
+            plt.text(hue_order.index(method), ymax-1, f'{mean:.2f} +- {std:.2f}', ha='center', 
+                     va='bottom', color='k', fontdict={'fontsize': FONTSIZE+1})            
     elif across == "Threshold":
         # Compute the mean +- std across resolutions for each method and place it above the corresponding violin
         for thr in df['Threshold'].unique():
@@ -217,31 +244,38 @@ def generate_figure_abs_csa_error(file_path, data, hue_order=None):
     # # compute the mean and std across contrasts for each method
     # df_agg = df.groupby('Method')[['mean_error', 'std_error']].mean().reset_index()
     # print(df_agg)
+    hue_order = hue_order[1:]
+    df = df[df['Method'].isin(hue_order)]   # remove "softseg_bin" from the list of methods
 
-    plt.figure(figsize=(12, 6))
+    plt.figure(figsize=(11, 6))
     # skip the first method (i.e., softseg_bin)
-    sns.violinplot(x='Method', y='abs_error_mean', data=df, order=hue_order)
+    sns.violinplot(x='Method', y='abs_error_mean', data=df, order=hue_order, palette=color_palette)
     # overlay swarm plot on the violin plot to show individual data points
     sns.swarmplot(x='Method', y='abs_error_mean', data=df, color='k', order=hue_order, size=3)
 
-    # plt.xticks(rotation=45)
-    plt.xlabel('Method')
-    plt.ylabel('Absolute CSA error [mm^2]')
-    plt.title(f'Absolute CSA error between softseg_bin and other methods')
+    plt.xlabel(None)    # plt.xlabel(across, fontsize=FONTSIZE)
+    plt.ylabel('Absolute CSA error [mm^2]', fontweight='bold' ,fontsize=FONTSIZE)
+    plt.title(f'Absolute CSA error GT and different models', fontweight='bold', fontsize=FONTSIZE)
     # Add horizontal dashed grid
     plt.grid(axis='y', alpha=0.5, linestyle='dashed')
 
+    # rename the x-axis ticks as per XTICKS
+    plt.xticks(range(len(hue_order)), XTICKS[1:], fontsize=FONTSIZE)
+
+    # set y-axis limits
+    plt.ylim(-0.5, 10)
+    plt.yticks(fontsize=FONTSIZE)
+    plt.xticks(fontsize=FONTSIZE)
+
     # Get y-axis limits
     ymin, ymax = plt.gca().get_ylim()
-
-    # Draw vertical line between 1st and 2nd violin
-    plt.axvline(x=0.5, color='k', linestyle='--')
 
     # Compute the mean +- std across resolutions for each method and place it above the corresponding violin
     for method in df['Method'].unique():
         mean = df[df['Method'] == method]['abs_error_mean'].mean()
         std = df[df['Method'] == method]['abs_error_std'].mean()
-        plt.text(hue_order.index(method), ymax-1, f'{mean:.2f} +- {std:.2f}', ha='center', va='bottom', color='k')
+        plt.text(hue_order.index(method), ymax-1, f'{mean:.2f} ± {std:.2f}', ha='center', 
+                 va='bottom', color='k', fontdict={'fontsize': FONTSIZE+1})
     
     # Save the figure in 300 DPI as a PNG file
     save_figure(file_path, "abs_csa_error.png")
