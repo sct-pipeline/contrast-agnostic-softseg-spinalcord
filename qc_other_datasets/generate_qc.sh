@@ -45,13 +45,14 @@ echo "PATH_QC: ${PATH_QC}"
 
 SUBJECT=$1
 QC_DATASET=$2           # dataset name to generate QC for
-PATH_NNUNET_SCRIPT=$3   # path to the nnUNet contrast-agnostic run_inference_single_subject.py
-PATH_NNUNET_MODEL=$4    # path to the nnUNet contrast-agnostic model
-PATH_MONAI_SCRIPT=$5    # path to the MONAI contrast-agnostic run_inference_single_subject.py
-PATH_MONAI_MODEL=$6     # path to the MONAI contrast-agnostic model trained on soft bin labels
+PATH_NNUNET_SCRIPT="/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/contrast-agnostic-softseg-spinalcord/nnUnet/run_inference_single_subject.py"
+PATH_NNUNET_MODEL="/home/GRAMES.POLYMTL.CA/u114716/nnunet-v2/nnUNet_results/Dataset714_spineGSoftAvgBin"
+PATH_MONAI_SCRIPT=$3    # path to the MONAI contrast-agnostic run_inference_single_subject.py
+PATH_MONAI_MODEL=$4     # path to the MONAI contrast-agnostic model trained on soft bin labels
+PATH_MEDNEXT_MODEL=$5
+PATH_UNETR_MODEL=$6
 PATH_SWIN_MODEL=$7
-PATH_MEDNEXT_MODEL=$8
-# PATH_MONAI_SCRIPT=$3    # path to the MONAI contrast-agnostic run_inference_single_subject.py
+PATH_SWINPTR_MODEL=$8
 # PATH_MONAI_MODEL_SOFT=$4     # path to the MONAI contrast-agnostic model trained on soft labels
 # PATH_MONAI_MODEL_SOFTBIN=$5     # path to the MONAI contrast-agnostic model trained on soft_bin labels
 
@@ -61,9 +62,10 @@ echo "PATH_NNUNET_SCRIPT: ${PATH_NNUNET_SCRIPT}"
 echo "PATH_NNUNET_MODEL: ${PATH_NNUNET_MODEL}"
 echo "PATH_MONAI_SCRIPT: ${PATH_MONAI_SCRIPT}"
 echo "PATH_MONAI_MODEL: ${PATH_MONAI_MODEL}"
-echo "PATH_SWIN_MODEL: ${PATH_SWIN_MODEL}"
 echo "PATH_MEDNEXT_MODEL: ${PATH_MEDNEXT_MODEL}"
-# echo "PATH_MONAI_SCRIPT: ${PATH_MONAI_SCRIPT}"
+echo "PATH_UNETR_MODEL: ${PATH_UNETR_MODEL}"
+echo "PATH_SWIN_MODEL: ${PATH_SWIN_MODEL}"
+echo "PATH_SWINPTR_MODEL: ${PATH_SWINPTR_MODEL}"
 # echo "PATH_MONAI_MODEL_SOFT: ${PATH_MONAI_MODEL_SOFT}"
 # echo "PATH_MONAI_MODEL_SOFTBIN: ${PATH_MONAI_MODEL_SOFTBIN}"
 
@@ -202,23 +204,37 @@ segment_sc_MONAI(){
 	
 	# fi
 	if [[ $model == 'monai' ]]; then
-		FILEPRED="${file}_seg_monai"
+		# FILEPRED="${file}_seg_monai_${pad_mode}"
+    FILEPRED="${file}_seg_monai"
 		PATH_MODEL=${PATH_MONAI_MODEL}
-	
-	elif [[ $model == 'swinunetr' ]]; then
-    FILEPRED="${file}_seg_swinunetr"
-    PATH_MODEL=${PATH_SWIN_MODEL}
-  
+
   elif [[ $model == 'mednext' ]]; then
     FILEPRED="${file}_seg_mednext"
     PATH_MODEL=${PATH_MEDNEXT_MODEL}
-	
+
+  elif [[ $model == 'unetr' ]]; then
+    FILEPRED="${file}_seg_unetr"
+    PATH_MODEL=${PATH_UNETR_MODEL}
+
+  elif [[ $model == 'swinpretrained' ]]; then
+    FILEPRED="${file}_seg_swinpretrained"
+    PATH_MODEL=${PATH_SWINPTR_MODEL}
+
+	elif [[ $model == 'swinunetr' ]]; then
+    FILEPRED="${file}_seg_swinunetr"
+    PATH_MODEL=${PATH_SWIN_MODEL}
+  	
 	fi
 
   # Get the start time
   start_time=$(date +%s)
   # Run SC segmentation
+  if [[ $model == 'swinpretrained' ]]; then
+    # NOTE: pre-trained swinunetr model used different input/sliding_window_sizes, hence providing the -crop arg only for this model
+    python ${PATH_MONAI_SCRIPT} --path-img ${file}.nii.gz --path-out . --chkp-path ${PATH_MODEL} --device gpu --model ${model} --pred-type soft -crop 64x160x-1 --pad-mode ${pad_mode}
+  else
     python ${PATH_MONAI_SCRIPT} --path-img ${file}.nii.gz --path-out . --chkp-path ${PATH_MODEL} --device gpu --model ${model} --pred-type soft --pad-mode ${pad_mode}
+  fi
   # Rename MONAI output
   mv ${file}_pred.nii.gz ${FILEPRED}.nii.gz
   # Get the end time
@@ -294,10 +310,15 @@ copy_gt_seg "${file}" "${label_suffix}"
 # Segment SC using different methods, binarize at 0.5 and compute QC
 # segment_sc_MONAI ${file} 'soft'
 # segment_sc_MONAI ${file} 'soft_bin'
+# segment_sc_MONAI ${file} 'monai' 'constant'
 CUDA_VISIBLE_DEVICES=0 segment_sc_MONAI ${file} 'monai' 'edge'
+CUDA_VISIBLE_DEVICES=1 segment_sc_MONAI ${file} 'mednext' 'edge'
+CUDA_VISIBLE_DEVICES=3 segment_sc_MONAI ${file} 'unetr' 'edge'
+CUDA_VISIBLE_DEVICES=0 segment_sc_MONAI ${file} 'swinpretrained' 'edge'
+CUDA_VISIBLE_DEVICES=1 segment_sc_MONAI ${file} 'swinunetr' 'edge'
 
-# segment_sc_nnUNet ${file} '3d_fullres'
-# segment_sc ${file} 'deepseg' ${deepseg_input_c}
+CUDA_VISIBLE_DEVICES=3 segment_sc_nnUNet ${file} '3d_fullres'
+segment_sc ${file} 'deepseg' ${deepseg_input_c}
 
 
 # ------------------------------------------------------------------------------
