@@ -3,7 +3,7 @@ import numpy as np
 import monai.transforms as transforms
 
 
-def train_transforms(crop_size, lbl_key="label", device="cuda"):
+def train_transforms(crop_size, lbl_key="label", pad_mode="edge"):
 
     monai_transforms = [    
         # pre-processing
@@ -12,9 +12,7 @@ def train_transforms(crop_size, lbl_key="label", device="cuda"):
         transforms.Orientationd(keys=["image", lbl_key], axcodes="RPI"),
         # NOTE: spine interpolation with order=2 is spline, order=1 is linear
         transforms.Spacingd(keys=["image", "label"], pixdim=(1.0, 1.0, 1.0), mode=(2, 1)),
-        transforms.ResizeWithPadOrCropd(keys=["image", lbl_key], spatial_size=crop_size,),
-        # convert the data to Tensor without meta, move to GPU and cache it to avoid CPU -> GPU sync in every epoch
-        transforms.EnsureTyped(keys=["image", lbl_key], device=device, track_meta=False),
+        transforms.ResizeWithPadOrCropd(keys=["image", lbl_key], spatial_size=crop_size, mode=pad_mode),
         # data-augmentation
         transforms.RandAffined(keys=["image", lbl_key], mode=(2, 1), prob=0.9,
                     rotate_range=(-20. / 360 * 2. * np.pi, 20. / 360 * 2. * np.pi),    # monai expects in radians 
@@ -47,13 +45,12 @@ def inference_transforms(crop_size, lbl_key="label"):
             transforms.NormalizeIntensityd(keys=["image"], nonzero=False, channel_wise=False),
         ])
 
-def val_transforms(crop_size, lbl_key="label"):
+def val_transforms(crop_size, lbl_key="label", pad_mode="edge"):
     return transforms.Compose([
             transforms.LoadImaged(keys=["image", lbl_key], image_only=False),
             transforms.EnsureChannelFirstd(keys=["image", lbl_key]),
             # CropForegroundd(keys=["image", lbl_key], source_key="image"),
-            transforms.Orientationd(keys=["image", lbl_key], axcodes="RPI"),
             transforms.Spacingd(keys=["image", lbl_key], pixdim=(1.0, 1.0, 1.0), mode=(2, 1)), # mode=("bilinear", "bilinear"),),
-            transforms.ResizeWithPadOrCropd(keys=["image", lbl_key], spatial_size=crop_size,),
+            transforms.ResizeWithPadOrCropd(keys=["image", lbl_key], spatial_size=crop_size, mode=pad_mode),
             transforms.NormalizeIntensityd(keys=["image"], nonzero=False, channel_wise=False),
         ])

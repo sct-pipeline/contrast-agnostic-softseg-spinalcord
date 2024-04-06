@@ -24,8 +24,8 @@ from monai.networks.nets import UNETR, SwinUNETR
 from monai.data import (ThreadDataLoader, CacheDataset, load_decathlon_datalist, decollate_batch, set_track_meta)
 from monai.transforms import (Compose, EnsureType, EnsureTyped, Invertd, SaveImage)
 
-# mednext
-from nnunet_mednext import MedNeXt
+# # mednext
+# from nnunet_mednext import MedNeXt
 
 def get_args():
     parser = argparse.ArgumentParser(description='Script for training contrast-agnositc SC segmentation model.')
@@ -112,9 +112,9 @@ class Model(pl.LightningModule):
         transforms_train = train_transforms(
             crop_size=self.voxel_cropping_size, 
             lbl_key='label',
-            device=self.device,
+            pad_mode="edge"
         )
-        transforms_val = val_transforms(crop_size=self.inference_roi_size, lbl_key='label')
+        transforms_val = val_transforms(crop_size=self.inference_roi_size, lbl_key='label', pad_mode="edge")
         
         # load the dataset
         logger.info(f"Training with {self.cfg['dataset']['label_type']} labels ...")
@@ -138,7 +138,7 @@ class Model(pl.LightningModule):
                                    copy_cache=False)
 
         # define test transforms
-        transforms_test = val_transforms(crop_size=self.inference_roi_size, lbl_key='label')
+        transforms_test = val_transforms(crop_size=self.inference_roi_size, lbl_key='label', pad_mode="edge")
         
         # define post-processing transforms for testing; taken (with explanations) from 
         # https://github.com/Project-MONAI/tutorials/blob/main/3d_segmentation/torch/unet_inference_dict.py#L66

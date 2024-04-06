@@ -9,7 +9,6 @@ from loguru import logger
 from sklearn.model_selection import train_test_split
 from collections import OrderedDict
 import subprocess
-
 from utils import get_git_branch_and_commit
 
 import pandas as pd
@@ -189,7 +188,7 @@ def main():
     data_root = args.path_data
 
     # output logger to a file
-    logger.add(os.path.join(args.path_out, f"log_{os.path.basename(data_root)}_seed{args.seed}.txt"))
+    logger.add(os.path.join(args.path_out, "logs", f"log_{os.path.basename(data_root)}_seed{args.seed}.txt"))
 
     # Check if dataset path exists
     if not os.path.exists(data_root):
@@ -315,5 +314,4 @@ def main():
 if __name__ == "__main__":
     main()
     
-
 
