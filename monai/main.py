@@ -21,7 +21,7 @@ from monai.apps import download_url
 from monai.utils import set_determinism
 from monai.inferers import sliding_window_inference
 from monai.networks.nets import UNETR, SwinUNETR
-from monai.data import (ThreadDataLoader, CacheDataset, load_decathlon_datalist, decollate_batch, set_track_meta)
+from monai.data import (ThreadDataLoader, DataLoader, CacheDataset, load_decathlon_datalist, decollate_batch, set_track_meta)
 from monai.transforms import (Compose, EnsureType, EnsureTyped, Invertd, SaveImage)
 
 # NOTE: using this solved the issue of "RuntimeError: received 0 items of ancdata" when using DataLoader
@@ -61,7 +61,7 @@ def get_args():
 
 # create a "model"-agnostic class with PL to use different models
 class Model(pl.LightningModule):
-    def __init__(self, config, data_root, net, loss_function, optimizer_class, exp_id=None, results_path=None):
+    def __init__(self, config, net, loss_function, optimizer_class, exp_id=None, results_path=None):
         super().__init__()
         self.cfg = config
         self.save_hyperparameters(ignore=['net', 'loss_function'])
@@ -147,7 +147,7 @@ class Model(pl.LightningModule):
             test_files = test_files[:6]
         
         train_cache_rate = 0.25 if args.debug else 0.5
-        self.train_ds = CacheDataset(data=train_files, transform=transforms_train, cache_rate=train_cache_rate, num_workers=4, 
+        self.train_ds = CacheDataset(data=train_files, transform=transforms_train, cache_rate=train_cache_rate, num_workers=8, 
                                      copy_cache=False)
         self.val_ds = CacheDataset(data=val_files, transform=transforms_val, cache_rate=0.25, num_workers=4,
                                    copy_cache=False)
@@ -174,15 +174,15 @@ class Model(pl.LightningModule):
     # DATA LOADERS
     # --------------------------------
     def train_dataloader(self):
-        return ThreadDataLoader(self.train_ds, batch_size=self.cfg["opt"]["batch_size"], shuffle=True, num_workers=16, 
+        return DataLoader(self.train_ds, batch_size=self.cfg["opt"]["batch_size"], shuffle=True, num_workers=8, 
                             pin_memory=True, persistent_workers=True) 
 
     def val_dataloader(self):
-        return ThreadDataLoader(self.val_ds, batch_size=1, shuffle=False, num_workers=16, pin_memory=True, 
+        return DataLoader(self.val_ds, batch_size=1, shuffle=False, num_workers=4, pin_memory=True, 
                           persistent_workers=True)
     
     def test_dataloader(self):
-        return ThreadDataLoader(self.test_ds, batch_size=1, shuffle=False, num_workers=8, pin_memory=True)
+        return DataLoader(self.test_ds, batch_size=1, shuffle=False, num_workers=4, pin_memory=True)
 
     
     # --------------------------------
@@ -645,6 +645,7 @@ def main(args):
     with open(os.path.join(args.path_results, f"{save_exp_id}", "config.yaml"), "w") as f:
         yaml.dump(config, f)
 
+    logger.info(f"Using {args.pad_mode} padding for the input images ...")
     logger.info(f"Using {args.input_label} labels as input to the model after data augmentation ...")
 
     # define loss function
@@ -683,11 +684,6 @@ def main(args):
             dirpath=save_path, filename='best_model', monitor='val_loss', 
             save_top_k=1, mode="min", save_last=True, save_weights_only=False)
         
-        # # saving the best model based on soft validation dice score
-        # checkpoint_callback_dice = pl.callbacks.ModelCheckpoint(
-        #     dirpath=save_path, filename='best_model_dice', monitor='val_soft_dice', 
-        #     save_top_k=1, mode="max", save_last=False, save_weights_only=True)
-
         num_model_params = count_parameters(model=net)
         logger.info(f"Number of Trainable model parameters: {(num_model_params / 1e6):.3f}M")
 
@@ -710,10 +706,12 @@ def main(args):
         # Enable TF32 on matmul and on cuDNN
         torch.backends.cuda.matmul.allow_tf32 = True    # same as setting torch.set_float32_matmul_precision("high"/"medium")
         torch.backends.cudnn.allow_tf32 = True
+        num_gpus = torch.cuda.device_count()
+        logger.info(f"Using {num_gpus} GPU(s) for training ...")
 
         # initialise Lightning's trainer.
         trainer = pl.Trainer(
-            devices=1, accelerator="gpu",
+            devices=num_gpus, accelerator="auto",
             logger=exp_logger,
             callbacks=[checkpoint_callback_loss, lr_monitor, early_stopping],
             check_val_every_n_epoch=config["opt"]["check_val_every_n_epochs"],
@@ -742,8 +740,7 @@ def main(args):
         results_path = config["directories"]["results_dir"]
 
         # i.e. train by loading existing weights
-        pl_model = Model(config, data_root=dataset_root,
-                            optimizer_class=optimizer_class, loss_function=loss_func, net=net, 
+        pl_model = Model(config, optimizer_class=optimizer_class, loss_function=loss_func, net=net, 
                             exp_id=save_exp_id, results_path=results_path)
                 
         # saving the best model based on validation CSA loss
