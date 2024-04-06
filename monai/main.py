@@ -758,30 +758,32 @@ def main(args):
         trainer.fit(pl_model, ckpt_path=os.path.join(save_exp_id, "last.ckpt"),) 
         logger.info(f" Training Done!")
 
-    # Test!
-    trainer.test(pl_model)
-    logger.info(f"TESTING DONE!")
+    # # NOTE: this is running into an error because of the inability to install cupy-cuda122
+    # # need to move model to romane and then run inference there
+    # # Test!
+    # trainer.test(pl_model)
+    # logger.info(f"TESTING DONE!")
 
     # closing the current wandb instance so that a new one is created for the next fold
     wandb.finish()
     
-    # TODO: Figure out saving test metrics to a file
-    with open(os.path.join(results_path, 'test_metrics.txt'), 'a') as f:
-        print('\n-------------- Test Metrics ----------------', file=f)
-        print(f"{args.model}_seed={config['seed']}_" \
-                        f"{config['dataset']['contrast']}_{config['dataset']['label_type']}_" \
-                        f"nf={config['model']['nnunet']['base_num_features']}_" \
-                        f"opt={config['opt']['name']}_lr={config['opt']['lr']}_AdapW_" \
-                        f"bs={config['opt']['batch_size']}_{patch_size}" \
-                        f"_{timestamp}", file=f)
+    # # TODO: Figure out saving test metrics to a file
+    # with open(os.path.join(results_path, 'test_metrics.txt'), 'a') as f:
+    #     print('\n-------------- Test Metrics ----------------', file=f)
+    #     print(f"{args.model}_seed={config['seed']}_" \
+    #                     f"ncont={n_contrasts}_" \
+    #                     f"nf={config['model']['nnunet']['base_num_features']}_" \
+    #                     f"opt={config['opt']['name']}_lr={config['opt']['lr']}_AdapW_" \
+    #                     f"bs={config['opt']['batch_size']}_{patch_size}" \
+    #                     f"_{timestamp}", file=f)
         
-        print('\n-------------- Test Hard Dice Scores ----------------', file=f)
-        print("Hard Dice --> Mean: %0.3f, Std: %0.3f" % (pl_model.avg_test_dice_hard, pl_model.std_test_dice_hard), file=f)
+    #     print('\n-------------- Test Hard Dice Scores ----------------', file=f)
+    #     print("Hard Dice --> Mean: %0.3f, Std: %0.3f" % (pl_model.avg_test_dice_hard, pl_model.std_test_dice_hard), file=f)
 
-        print('\n-------------- Test Soft Dice Scores ----------------', file=f)
-        print("Soft Dice --> Mean: %0.3f, Std: %0.3f" % (pl_model.avg_test_dice, pl_model.std_test_dice), file=f)
+    #     print('\n-------------- Test Soft Dice Scores ----------------', file=f)
+    #     print("Soft Dice --> Mean: %0.3f, Std: %0.3f" % (pl_model.avg_test_dice, pl_model.std_test_dice), file=f)
 
-        print('-------------------------------------------------------', file=f)
+    #     print('-------------------------------------------------------', file=f)
 
 
 if __name__ == "__main__":
