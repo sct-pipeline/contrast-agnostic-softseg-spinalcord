@@ -33,6 +33,9 @@ torch.multiprocessing.set_sharing_strategy('file_system')
 def get_args():
     parser = argparse.ArgumentParser(description='Script for training contrast-agnositc SC segmentation model.')
     
+    parser.add_argument('--path-datalists', type=str, default="./datalists", 
+                        help='Path to the folder containing the datalists.')
+    parser.add_argument('--path-results', type=str, default="./results",
     # arguments for model
     parser.add_argument('-m', '--model', choices=['nnunet', 'mednext', 'swinunetr'], 
                         default='nnunet', type=str, 
@@ -651,8 +654,7 @@ def main(args):
             os.makedirs(results_path, exist_ok=True)
 
         # i.e. train by loading weights from scratch
-        pl_model = Model(config, data_root=dataset_root,
-                            optimizer_class=optimizer_class, loss_function=loss_func, net=net, 
+        pl_model = Model(config, optimizer_class=optimizer_class, loss_function=loss_func, net=net, 
                             exp_id=save_exp_id, results_path=results_path)
                 
         # saving the best model based on validation loss
