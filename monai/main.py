@@ -24,6 +24,9 @@ from monai.networks.nets import UNETR, SwinUNETR
 from monai.data import (ThreadDataLoader, CacheDataset, load_decathlon_datalist, decollate_batch, set_track_meta)
 from monai.transforms import (Compose, EnsureType, EnsureTyped, Invertd, SaveImage)
 
+# NOTE: using this solved the issue of "RuntimeError: received 0 items of ancdata" when using DataLoader
+torch.multiprocessing.set_sharing_strategy('file_system')
+
 # # mednext
 # from nnunet_mednext import MedNeXt
 
