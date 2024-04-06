@@ -117,20 +117,19 @@ class Model(pl.LightningModule):
             lbl_key='label',
             pad_mode="edge"
         )
-        transforms_val = val_transforms(crop_size=self.inference_roi_size, lbl_key='label', pad_mode="edge")
-        
+        # get all datalists
+        datalists_list = [f for f in os.listdir(args.path_datalists) if f.endswith(".json")]
+
         # load the dataset
-        logger.info(f"Training with {self.cfg['dataset']['label_type']} labels ...")
-        dataset = os.path.join(self.root, 
-            f"dataset_{self.cfg['dataset']['contrast']}_{self.cfg['dataset']['label_type']}_seed{self.cfg['seed']}.json"
-        )
-        logger.info(f"Loading dataset: {dataset}")
-        train_files = load_decathlon_datalist(dataset, True, "train")
-        val_files = load_decathlon_datalist(dataset, True, "validation")
-        test_files = load_decathlon_datalist(dataset, True, "test")
+        train_files, val_files, test_files = [], [], []
+        for datalist in datalists_list:
+            logger.info(f"Loading datalist: {datalist}")
+            train_files += load_decathlon_datalist(os.path.join(args.path_datalists, datalist), True, "train")
+            val_files += load_decathlon_datalist(os.path.join(args.path_datalists, datalist), True, "validation")
+            test_files += load_decathlon_datalist(os.path.join(args.path_datalists, datalist), True, "test")
 
         if args.debug:
-            train_files = train_files[:15]
+            train_files = train_files[:25]
             val_files = val_files[:15]
             test_files = test_files[:6]
         
@@ -480,17 +479,12 @@ def main(args):
     # Setting the seed
     pl.seed_everything(config["seed"], workers=True)
 
-    # define root path for finding datalists
-    dataset_root = config["dataset"]["root_dir"]
-
-    # load the datalist json
-    datalist = os.path.join(dataset_root, 
-        f"dataset_{config['dataset']['contrast']}_{config['dataset']['label_type']}_seed{config['seed']}.json"
-    )
-    with open(datalist, "r") as f:
-        datalist = json.load(f)
-    
-    num_contrasts = len(datalist["contrasts"])
+    n_contrasts = 0
+    datalists_list = [f for f in os.listdir(args.path_datalists) if f.endswith(".json")]
+    for datalist in datalists_list:
+        with open(os.path.join(args.path_datalists, datalist), "r") as f:
+            datalist = json.load(f)
+            n_contrasts += len(datalist["contrasts"])
 
     # define optimizer
     if config["opt"]["name"] == "adam":
