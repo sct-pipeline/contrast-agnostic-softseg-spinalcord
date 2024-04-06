@@ -36,6 +36,7 @@ def get_args():
     parser.add_argument('--path-datalists', type=str, default="./datalists", 
                         help='Path to the folder containing the datalists.')
     parser.add_argument('--path-results', type=str, default="./results",
+                        help='Path to the folder where the model and predictions will be saved.')
     # arguments for model
     parser.add_argument('-m', '--model', choices=['nnunet', 'mednext', 'swinunetr'], 
                         default='nnunet', type=str, 
@@ -621,10 +622,10 @@ def main(args):
     save_exp_id = f"{save_exp_id}_{timestamp}"
 
     # save output to a log file
-    logger.add(os.path.join(config["directories"]["models_dir"], f"{save_exp_id}", "logs.txt"), rotation="10 MB", level="INFO")
+    logger.add(os.path.join(args.path_results, f"{save_exp_id}", "logs.txt"), rotation="10 MB", level="INFO")
 
     # save config file to the output folder
-    with open(os.path.join(config["directories"]["models_dir"], f"{save_exp_id}", "config.yaml"), "w") as f:
+    with open(os.path.join(args.path_results, f"{save_exp_id}", "config.yaml"), "w") as f:
         yaml.dump(config, f)
 
     # define loss function
@@ -644,12 +645,12 @@ def main(args):
     # training from scratch
     if not args.continue_from_checkpoint:
         # to save the best model on validation
-        save_path = os.path.join(config["directories"]["models_dir"], f"{save_exp_id}")
+        save_path = os.path.join(args.path_results, f"{save_exp_id}", "model")
         if not os.path.exists(save_path):
             os.makedirs(save_path, exist_ok=True)
 
         # to save the results/model predictions 
-        results_path = os.path.join(config["directories"]["results_dir"], f"{save_exp_id}")
+        results_path = os.path.join(args.path_results, f"{save_exp_id}", "results")
         if not os.path.exists(results_path):
             os.makedirs(results_path, exist_ok=True)
 
@@ -673,9 +674,10 @@ def main(args):
 
         logger.info(f"Starting training from scratch ...")
         # wandb logger
+        wandb.init(mode="offline")
         exp_logger = pl.loggers.WandbLogger(
                             name=save_exp_id,
-                            save_dir="/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/saved_models",
+                            save_dir=os.path.join(os.path.dirname(args.path_results), "wandb_logs"),
                             group=config["dataset"]["name"],
                             log_model=True, # save best model using checkpoint callback
                             project='contrast-agnostic',
