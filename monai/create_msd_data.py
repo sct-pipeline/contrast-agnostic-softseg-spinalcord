@@ -11,6 +11,7 @@ from collections import OrderedDict
 import subprocess
 from utils import get_git_branch_and_commit
 from datetime import datetime
+import numpy as np
 
 import pandas as pd
 pd.set_option('display.max_colwidth', None)
@@ -189,6 +190,9 @@ def main():
     data_root = args.path_data
     timestamp = datetime.now().strftime(f"%Y%m%d-%H%M")  
 
+    # set numpy seed
+    np.random.seed(args.seed)
+
     # output logger to a file
     logger.add(os.path.join(args.path_out, "logs", f"log_{os.path.basename(data_root)}_seed{args.seed}_{timestamp}.txt"))
 
@@ -216,11 +220,12 @@ def main():
     # these datalists (which have their own train/val/test splits) for each dataset will then be combined 
     # during the dataloading process of training the contrast-agnostic model
 
-    all_subjects = df['subjectID'].unique()
-    train_subjects, test_subjects = train_test_split(all_subjects, test_size=test_ratio, random_state=args.seed)
+    all_subjects = df['subjectID'].unique()    
+    # NOTE: setting random_state=args.seed is still producing different train/val/test splits when on different
+    # nodes on DRAC. Hence, setting random_state=None (which is default)
+    train_subjects, test_subjects = train_test_split(all_subjects, test_size=test_ratio)
     # Use the training split to further split into training and validation splits
-    train_subjects, val_subjects = train_test_split(train_subjects, test_size=val_ratio / (train_ratio + val_ratio),
-                                                    random_state=args.seed)
+    train_subjects, val_subjects = train_test_split(train_subjects, test_size=val_ratio / (train_ratio + val_ratio))
     
     # sort the subjects
     train_subjects, val_subjects, test_subjects = sorted(train_subjects), sorted(val_subjects), sorted(test_subjects)
