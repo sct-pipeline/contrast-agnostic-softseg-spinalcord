@@ -10,6 +10,7 @@ from sklearn.model_selection import train_test_split
 from collections import OrderedDict
 import subprocess
 from utils import get_git_branch_and_commit
+from datetime import datetime
 
 import pandas as pd
 pd.set_option('display.max_colwidth', None)
@@ -186,9 +187,10 @@ def main():
 
     args = get_parser().parse_args()
     data_root = args.path_data
+    timestamp = datetime.now().strftime(f"%Y%m%d-%H%M")  
 
     # output logger to a file
-    logger.add(os.path.join(args.path_out, "logs", f"log_{os.path.basename(data_root)}_seed{args.seed}.txt"))
+    logger.add(os.path.join(args.path_out, "logs", f"log_{os.path.basename(data_root)}_seed{args.seed}_{timestamp}.txt"))
 
     # Check if dataset path exists
     if not os.path.exists(data_root):
@@ -306,12 +308,10 @@ def main():
         os.makedirs(args.path_out, exist_ok=True)
 
     # jsonFile = open(args.path_out + "/" + f"dataset_{contrast}_{args.label_type}_seed{seed}.json", "w")
-    jsonFile = open(args.path_out + "/" + f"datasplit_{dataset_name}_seed{args.seed}.json", "w")
+    jsonFile = open(args.path_out + "/" + f"datasplit_{dataset_name}_seed{args.seed}_{timestamp}.json", "w")
     jsonFile.write(final_json)
     jsonFile.close()
 
 
 if __name__ == "__main__":
     main()
-    
-
