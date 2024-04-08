@@ -188,7 +188,7 @@ def main():
 
     args = get_parser().parse_args()
     data_root = args.path_data
-    timestamp = datetime.now().strftime(f"%Y%m%d-%H%M")  
+    timestamp = datetime.now().strftime(f"%Y%m%d-%H%M%S")  
 
     # set numpy seed
     np.random.seed(args.seed)
