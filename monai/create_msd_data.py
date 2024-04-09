@@ -158,6 +158,12 @@ def create_df(dataset_path):
         for file in df['filename']:
 
             if df['subjectID'].values[0] in dcm_subjects:
+
+                if file.endswith('_acq-b0Mean_dwi_seg-manual.nii.gz'):
+                    # remove the b0 image
+                    df = df[df['filename'] != file]
+                    # skip the b0 image
+                    continue
                 
                 # NOTE: sct-testing-large has a lot of images which might/might not have labels. 
                 # Get only those images which have labels and are present in the dataframe (and belong to the pathology)
