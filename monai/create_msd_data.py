@@ -10,6 +10,7 @@ from loguru import logger
 from sklearn.model_selection import train_test_split
 from collections import OrderedDict
 import subprocess
+from datetime import datetime
 
 from utils import get_git_branch_and_commit
 
@@ -195,9 +196,10 @@ def main():
     args = get_parser().parse_args()
     data_root = args.path_data
     np.random.seed(args.seed)
+    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
 
     # output logger to a file
-    logger.add(os.path.join(args.path_out, f"log_{os.path.basename(data_root)}_seed{args.seed}.txt"))
+    logger.add(os.path.join(args.path_out, f"log_{os.path.basename(data_root)}_seed{args.seed}_{timestamp}.txt"))
 
     # Check if dataset path exists
     if not os.path.exists(data_root):
