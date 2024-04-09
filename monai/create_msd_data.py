@@ -3,6 +3,7 @@ import re
 import json
 import glob
 import yaml
+import numpy as np
 from tqdm import tqdm
 import argparse
 from loguru import logger
@@ -187,6 +188,7 @@ def main():
 
     args = get_parser().parse_args()
     data_root = args.path_data
+    np.random.seed(args.seed)
 
     # output logger to a file
     logger.add(os.path.join(args.path_out, f"log_{os.path.basename(data_root)}_seed{args.seed}.txt"))
@@ -216,10 +218,9 @@ def main():
     # during the dataloading process of training the contrast-agnostic model
 
     all_subjects = df['subjectID'].unique()
-    train_subjects, test_subjects = train_test_split(all_subjects, test_size=test_ratio, random_state=args.seed)
+    train_subjects, test_subjects = train_test_split(all_subjects, test_size=test_ratio)
     # Use the training split to further split into training and validation splits
-    train_subjects, val_subjects = train_test_split(train_subjects, test_size=val_ratio / (train_ratio + val_ratio),
-                                                    random_state=args.seed)
+    train_subjects, val_subjects = train_test_split(train_subjects, test_size=val_ratio / (train_ratio + val_ratio))
     
     # sort the subjects
     train_subjects, val_subjects, test_subjects = sorted(train_subjects), sorted(val_subjects), sorted(test_subjects)
