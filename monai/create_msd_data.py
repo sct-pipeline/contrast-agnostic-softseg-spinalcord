@@ -25,7 +25,7 @@ FILESEG_SUFFIXES = {
     "data-multi-subject": ["labels_softseg_bin", "desc-softseg_label-SC_seg"],
     "basel-mp2rage": ["labels_softseg_bin", "desc-softseg_label-SC_seg"],
     "sct-testing-large": ["labels", "seg-manual"],
-    "dcm-zurich": ["labels", "seg-manual"],
+    "dcm-zurich": ["labels", "label-SC_mask-manual"],
 }
 
 
