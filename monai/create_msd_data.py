@@ -308,7 +308,7 @@ def main():
     logger.info(f"Number of testing images (not subjects): {params['numTestImages']}")
 
     # dump train/val/test splits into a yaml file
-    with open(f"datasplit_{dataset_name}_seed{args.seed}.yaml", 'w') as file:
+    with open(f"datasplits/datasplit_{dataset_name}_seed{args.seed}.yaml", 'w') as file:
         yaml.dump({'train': sorted(train_subs_all), 'val': sorted(val_subs_all), 'test': sorted(test_subs_all)}, file, indent=2, sort_keys=True)
 
     final_json = json.dumps(params, indent=4, sort_keys=True)
