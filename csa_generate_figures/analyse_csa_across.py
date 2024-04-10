@@ -255,7 +255,8 @@ def generate_figure_abs_csa_error(file_path, data, hue_order=None):
 
     plt.xlabel(None)    # plt.xlabel(across, fontsize=FONTSIZE)
     plt.ylabel('Absolute CSA error [mm^2]', fontweight='bold' ,fontsize=FONTSIZE)
-    plt.title(f'Absolute CSA error GT and different models', fontweight='bold', fontsize=FONTSIZE)
+    plt.title(f'Absolute CSA error between GT and different DL models for contrast-agnostic SC segmentation', 
+              fontweight='bold', fontsize=FONTSIZE)
     # Add horizontal dashed grid
     plt.grid(axis='y', alpha=0.5, linestyle='dashed')
 
