@@ -41,6 +41,8 @@ def get_args():
     parser.add_argument('--debug', default=False, action='store_true', help='if true, results are not logged to wandb')
     parser.add_argument('-c', '--continue_from_checkpoint', default=False, action='store_true', 
                             help='Load model from checkpoint and continue training')
+    # temporaray arg
+    parser.add_argument('--pad-mode', type=str, default="edge", help="Padding mode for the images.")
     parser.add_argument('--input-label', type=str, default="soft", choices=["soft", "bin"],
                         help="Type of label input to the model.")
 
@@ -116,8 +118,10 @@ class Model(pl.LightningModule):
         transforms_train = train_transforms(
             crop_size=self.voxel_cropping_size, 
             lbl_key='label',
+            pad_mode=args.pad_mode,
             device=self.device,
         )
+        transforms_val = val_transforms(crop_size=self.inference_roi_size, lbl_key='label', pad_mode=args.pad_mode,)
 
         # get all datalists
         datalists_list = [f for f in os.listdir(self.root) if f.endswith("_seed50.json")]        
@@ -145,7 +149,7 @@ class Model(pl.LightningModule):
                                    copy_cache=False)
 
         # define test transforms
-        transforms_test = val_transforms(crop_size=self.inference_roi_size, lbl_key='label')
+        transforms_test = val_transforms(crop_size=self.inference_roi_size, lbl_key='label', pad_mode=args.pad_mode,)
         
         # define post-processing transforms for testing; taken (with explanations) from 
         # https://github.com/Project-MONAI/tutorials/blob/main/3d_segmentation/torch/unet_inference_dict.py#L66
@@ -589,7 +593,7 @@ def main(args):
                         f"{config['preprocessing']['crop_pad_size'][2]}"
         # save experiment id
         save_exp_id = f"{args.model}_seed={config['seed']}_" \
-                        f"ncont={num_contrasts}_" \
+                        f"ncont={n_contrasts}_pad={args.pad_mode}_lblIn={args.input_label}_" \
                         f"nf={config['model']['nnunet']['base_num_features']}" \
 
         if args.debug:
@@ -641,6 +645,7 @@ def main(args):
     with open(os.path.join(config["directories"]["models_dir"], f"{save_exp_id}", "config.yaml"), "w") as f:
         yaml.dump(config, f)
 
+    logger.info(f"Using {args.pad_mode} padding for the input images ...")
     logger.info(f"Using {args.input_label} labels as input to the model after data augmentation ...")
 
     # define loss function
@@ -788,7 +793,7 @@ def main(args):
     with open(os.path.join(results_path, 'test_metrics.txt'), 'a') as f:
         print('\n-------------- Test Metrics ----------------', file=f)
         print(f"{args.model}_seed={config['seed']}_" \
-                        f"{config['dataset']['contrast']}_{config['dataset']['label_type']}_" \
+                        f"ncontrasts={n_contrasts}_" \
                         f"nf={config['model']['nnunet']['base_num_features']}_" \
                         f"opt={config['opt']['name']}_lr={config['opt']['lr']}_AdapW_" \
                         f"bs={config['opt']['batch_size']}_{patch_size}" \
