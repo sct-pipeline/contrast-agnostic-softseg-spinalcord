@@ -41,6 +41,9 @@ def get_args():
     parser.add_argument('--debug', default=False, action='store_true', help='if true, results are not logged to wandb')
     parser.add_argument('-c', '--continue_from_checkpoint', default=False, action='store_true', 
                             help='Load model from checkpoint and continue training')
+    parser.add_argument('--input-label', type=str, default="soft", choices=["soft", "bin"],
+                        help="Type of label input to the model.")
+
     args = parser.parse_args()
 
     return args
@@ -53,6 +56,7 @@ class Model(pl.LightningModule):
         self.cfg = config
         self.save_hyperparameters(ignore=['net', 'loss_function'])
 
+        self.input_label_type = args.input_label
         self.root = data_root
         self.net = net
         self.lr = config["opt"]["lr"]
@@ -194,6 +198,10 @@ class Model(pl.LightningModule):
 
         inputs, labels = batch["image"], batch["label"]
 
+        if self.input_label_type == "bin":
+            # binarize the labels with a threshold of 0.5
+            labels = (labels > 0.5).float()
+
         # check if any label image patch is empty in the batch
         if check_empty_patch(labels) is None:
             # print(f"Empty label patch found. Skipping training step ...")
@@ -292,6 +300,10 @@ class Model(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         
         inputs, labels = batch["image"], batch["label"]
+
+        if self.input_label_type == "bin":
+            # binarize the labels with a threshold of 0.5
+            labels = (labels > 0.5).float()
 
         # NOTE: this calculates the loss on the entire image after sliding window
         outputs = sliding_window_inference(inputs, self.inference_roi_size, mode="gaussian",
@@ -628,6 +640,8 @@ def main(args):
     # save config file to the output folder
     with open(os.path.join(config["directories"]["models_dir"], f"{save_exp_id}", "config.yaml"), "w") as f:
         yaml.dump(config, f)
+
+    logger.info(f"Using {args.input_label} labels as input to the model after data augmentation ...")
 
     # define loss function
     loss_func = AdapWingLoss(theta=0.5, omega=8, alpha=2.1, epsilon=1, reduction="sum")
