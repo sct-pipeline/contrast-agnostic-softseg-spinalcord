@@ -1,4 +1,4 @@
-seed: 30
+seed: 50
 save_test_preds: True
 
 directories:
@@ -30,7 +30,7 @@ preprocessing:
 opt:
   name: adam
   lr: 0.001
-  max_epochs: 200
+  max_epochs: 250
   batch_size: 2
   # Interval between validation checks in epochs
   check_val_every_n_epochs: 10
