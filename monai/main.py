@@ -114,17 +114,20 @@ class Model(pl.LightningModule):
             lbl_key='label',
             device=self.device,
         )
-        transforms_val = val_transforms(crop_size=self.inference_roi_size, lbl_key='label')
-        
+
+        # get all datalists
+        datalists_list = [f for f in os.listdir(self.root) if f.endswith("_seed50.json")]        
         # load the dataset
-        logger.info(f"Training with {self.cfg['dataset']['label_type']} labels ...")
-        dataset = os.path.join(self.root, 
-            f"dataset_{self.cfg['dataset']['contrast']}_{self.cfg['dataset']['label_type']}_seed{self.cfg['seed']}.json"
-        )
-        logger.info(f"Loading dataset: {dataset}")
-        train_files = load_decathlon_datalist(dataset, True, "train")
-        val_files = load_decathlon_datalist(dataset, True, "validation")
-        test_files = load_decathlon_datalist(dataset, True, "test")
+        train_files, val_files, test_files = [], [], []
+        for datalist in datalists_list:
+            logger.info(f"Loading dataset: {datalist}")
+            train_files += load_decathlon_datalist(os.path.join(self.root, datalist), True, "train")
+            val_files += load_decathlon_datalist(os.path.join(self.root, datalist), True, "validation")
+            test_files += load_decathlon_datalist(os.path.join(self.root, datalist), True, "test")
+        # logger.info(f"Training with {self.cfg['dataset']['label_type']} labels ...")
+        # dataset = os.path.join(self.root, 
+        #     f"dataset_{self.cfg['dataset']['contrast']}_{self.cfg['dataset']['label_type']}_seed{self.cfg['seed']}.json"
+        # )
 
         if args.debug:
             train_files = train_files[:15]
@@ -480,15 +483,14 @@ def main(args):
     # define root path for finding datalists
     dataset_root = config["dataset"]["root_dir"]
 
-    # load the datalist json
-    datalist = os.path.join(dataset_root, 
-        f"dataset_{config['dataset']['contrast']}_{config['dataset']['label_type']}_seed{config['seed']}.json"
-    )
-    with open(datalist, "r") as f:
-        datalist = json.load(f)
+    n_contrasts = []
+    datalists_list = [f for f in os.listdir(dataset_root) if f.endswith("_seed50.json")]
+    for datalist in datalists_list:
+        with open(os.path.join(dataset_root, datalist), "r") as f:
+            datalist = json.load(f)
+            n_contrasts += datalist["contrasts"]
+    n_contrasts = len(set([c for c in n_contrasts if c != ""]))
     
-    num_contrasts = len(datalist["contrasts"])
-
     # define optimizer
     if config["opt"]["name"] == "adam":
         optimizer_class = torch.optim.Adam
