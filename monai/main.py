@@ -20,7 +20,7 @@ from models import create_nnunet_from_plans, load_pretrained_swinunetr
 from monai.apps import download_url
 from monai.utils import set_determinism
 from monai.inferers import sliding_window_inference
-from monai.networks.nets import UNETR, SwinUNETR
+from monai.networks.nets import SwinUNETR
 from monai.data import (ThreadDataLoader, CacheDataset, load_decathlon_datalist, decollate_batch, set_track_meta)
 from monai.transforms import (Compose, EnsureType, EnsureTyped, Invertd, SaveImage)
 
@@ -573,9 +573,8 @@ def main(args):
             logger.info(f"Using SwinUNETR model initialized from scratch ...")            
 
         save_exp_id = f"{args.model}_seed={config['seed']}_" \
-                        f"{config['dataset']['contrast']}_{config['dataset']['label_type']}_" \
+                        f"ncont={n_contrasts}_pad={args.pad_mode}_lblIn={args.input_label}_" \
                         f"ptr={int(config['model']['swinunetr']['use_pretrained'])}_" \
-                        f"d={config['model']['swinunetr']['depths'][0]}_" \
                         f"nf={config['model']['swinunetr']['feature_size']}_" \
                         f"opt={config['opt']['name']}_lr={config['opt']['lr']}_AdapW_" \
                         f"bs={config['opt']['batch_size']}_{patch_size}" \
@@ -629,6 +628,9 @@ def main(args):
 
     # save output to a log file
     logger.add(os.path.join(args.path_results, f"{save_exp_id}", "logs.txt"), rotation="10 MB", level="INFO")
+
+    logger.info(f"Using datasets: {datasets} ...")
+    logger.info(f"Training on {n_contrasts} contrasts: {contrasts_final} ...")
 
     # save config file to the output folder
     with open(os.path.join(args.path_results, f"{save_exp_id}", "config.yaml"), "w") as f:
