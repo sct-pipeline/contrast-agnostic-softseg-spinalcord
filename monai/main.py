@@ -599,43 +599,7 @@ def main(args):
         if args.debug:
             save_exp_id = f"DEBUG_{save_exp_id}"
     
-    elif args.model == "mednext":
-        # NOTE: the S, B models in the paper don't fit as-is for this data, gpu
-        # hence tweaking the models
-        logger.info(f"Using MedNext model tweaked ...")
-        net = MedNeXt(
-            in_channels=config["model"]["mednext"]["num_input_channels"],
-            n_channels=config["model"]["mednext"]["base_num_features"],
-            n_classes=config["model"]["mednext"]["num_classes"],
-            exp_r=[2,3,4,4,4,4,4,3,2],
-            kernel_size=config["model"]["mednext"]["kernel_size"],
-            deep_supervision=config["model"]["mednext"]["enable_deep_supervision"],
-            do_res=True,
-            do_res_up_down=True,
-            checkpoint_style="outside_block",
-            block_counts=config["model"]["mednext"]["block_counts"],
-            norm_type='layer',
-        )
-
-        # variable for saving patch size in the experiment id (same as crop_pad_size)
-        patch_size = f"{config['preprocessing']['crop_pad_size'][0]}x" \
-                        f"{config['preprocessing']['crop_pad_size'][1]}x" \
-                        f"{config['preprocessing']['crop_pad_size'][2]}"
-        # count number of 2s in the block_counts list
-        num_two_blocks = config["model"]["mednext"]["block_counts"].count(2)
-        norm_type = 'LN' if config["model"]["mednext"]["norm_type"] == 'layer' else 'GN'
-        # save experiment id
-        save_exp_id = f"{args.model}_seed={config['seed']}_" \
-                        f"{config['dataset']['contrast']}_{config['dataset']['label_type']}_" \
-                        f"nf={config['model']['mednext']['base_num_features']}_" \
-                        f"expR=base_bcs={num_two_blocks}_{norm_type}_" \
-                        f"opt={config['opt']['name']}_lr={config['opt']['lr']}_AdapW_" \
-                        f"bs={config['opt']['batch_size']}_{patch_size}" \
-
-        if args.debug:
-            save_exp_id = f"DEBUG_{save_exp_id}"
-
-    timestamp = datetime.now().strftime(f"%Y%m%d-%H%M")   # prints in YYYYMMDD-HHMMSS format
+    timestamp = datetime.now().strftime(f"%Y%m%d-%H%M%S")   # prints in YYYYMMDD-HHMMSS format
     save_exp_id = f"{save_exp_id}_{timestamp}"
 
     # save output to a log file
