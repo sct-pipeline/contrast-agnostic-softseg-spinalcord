@@ -26,7 +26,7 @@ FILESEG_SUFFIXES = {
     "data-multi-subject": ["labels_softseg_bin", "desc-softseg_label-SC_seg"],
     "basel-mp2rage": ["labels_softseg_bin", "desc-softseg_label-SC_seg"],
     "sct-testing-large": ["labels", "seg-manual"],
-    "dcm-zurich": ["labels", "seg-manual"],
+    "dcm-zurich": ["labels", "label-SC_mask-manual"],
 }
 
 
@@ -298,7 +298,7 @@ def main():
         os.makedirs(args.path_out, exist_ok=True)
 
     # jsonFile = open(args.path_out + "/" + f"dataset_{contrast}_{args.label_type}_seed{seed}.json", "w")
-    jsonFile = open(args.path_out + "/" + f"datasplit_{dataset_name}_seed{args.seed}_{timestamp}.json", "w")
+    jsonFile = open(args.path_out + "/" + f"datasplit_{dataset_name}_seed{args.seed}.json", "w")
     jsonFile.write(final_json)
     jsonFile.close()
 
