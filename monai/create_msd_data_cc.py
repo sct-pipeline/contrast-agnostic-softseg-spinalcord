@@ -36,7 +36,10 @@ def get_parser():
                                     'contrast-agnostic SC segmentation.')
 
     parser.add_argument('--path-data', required=True, type=str, help='Path to BIDS dataset.')
-    parser.add_argument('--path-out', type=str, help='Path to the output directory where dataset json is saved')
+    parser.add_argument('--path-datasplit', type=str, required=True,
+                        help='Path to the yaml file containing train/val/test splits')
+    parser.add_argument('--path-out', type=str, required=True,
+                        help='Path to the output directory where dataset json is saved')
     # parser.add_argument("--contrast", default="t2w", type=str, help="Contrast to use for training", 
     #                     choices=["t1w", "t2w", "t2star", "mton", "mtoff", "dwi", "all"])
     parser.add_argument('--seed', default=42, type=int, help="Seed for reproducibility")
@@ -213,19 +216,24 @@ def main():
     branch, commit = get_git_branch_and_commit(data_root)
     dataset_commits[dataset_name] = f"git-{branch}-{commit}"
         
-    train_ratio, val_ratio, test_ratio = 0.65, 0.15, 0.2
+    # train_ratio, val_ratio, test_ratio = 0.65, 0.15, 0.2
     # train_subs_all, val_subs_all, test_subs_all = [], [], []
     
     # the idea is to create a datalist for each dataset we want to use 
     # these datalists (which have their own train/val/test splits) for each dataset will then be combined 
     # during the dataloading process of training the contrast-agnostic model
 
-    all_subjects = df['subjectID'].unique()    
-    # NOTE: setting random_state=args.seed is still producing different train/val/test splits when on different
+    # all_subjects = df['subjectID'].unique()    
+    # NOTE 1: setting random_state=args.seed is still producing different train/val/test splits when on different
     # nodes on DRAC. Hence, setting random_state=None (which is default)
-    train_subjects, test_subjects = train_test_split(all_subjects, test_size=test_ratio)
-    # Use the training split to further split into training and validation splits
-    train_subjects, val_subjects = train_test_split(train_subjects, test_size=val_ratio / (train_ratio + val_ratio))
+    # NOTE 2: despite setting numpy seed, the splits are still different on different nodes; hence using data split yaml
+    with open(args.path_datasplit, 'r') as file:
+        data_split = yaml.load(file, Loader=yaml.FullLoader)
+        train_subjects, val_subjects, test_subjects = data_split['train'], data_split['val'], data_split['test']
+
+    # train_subjects, test_subjects = train_test_split(all_subjects, test_size=test_ratio)
+    # # Use the training split to further split into training and validation splits
+    # train_subjects, val_subjects = train_test_split(train_subjects, test_size=val_ratio / (train_ratio + val_ratio))
     
     # sort the subjects
     train_subjects, val_subjects, test_subjects = sorted(train_subjects), sorted(val_subjects), sorted(test_subjects)
