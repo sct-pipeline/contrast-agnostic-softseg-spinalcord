@@ -21,7 +21,7 @@ from monai.apps import download_url
 from monai.utils import set_determinism
 from monai.inferers import sliding_window_inference
 from monai.networks.nets import UNETR, SwinUNETR
-from monai.data import (ThreadDataLoader, DataLoader, CacheDataset, load_decathlon_datalist, decollate_batch, set_track_meta)
+from monai.data import (ThreadDataLoader, CacheDataset, load_decathlon_datalist, decollate_batch, set_track_meta)
 from monai.transforms import (Compose, EnsureType, EnsureTyped, Invertd, SaveImage)
 
 # NOTE: using this solved the issue of "RuntimeError: received 0 items of ancdata" when using DataLoader
@@ -127,7 +127,10 @@ class Model(pl.LightningModule):
     # --------------------------------
     # DATA PREPARATION
     # --------------------------------   
-    def prepare_data(self):
+    # NOTE: when using DDP, the prepare_data() is only called on local_rank 0. So to have the data accessible
+    # on all GPUs, we need the setup() which is called once per GPU
+    # def prepare_data(self):
+    def setup(self, stage=None):
         # set deterministic training for reproducibility
         set_determinism(seed=self.cfg["seed"])
         
@@ -155,12 +158,12 @@ class Model(pl.LightningModule):
             train_files = train_files[:25]
             val_files = val_files[:15]
             test_files = test_files[:6]
-        
+
         train_cache_rate = 0.25 if args.debug else 0.5
-        self.train_ds = CacheDataset(data=train_files, transform=transforms_train, cache_rate=train_cache_rate, num_workers=8, 
-                                     copy_cache=False)
-        self.val_ds = CacheDataset(data=val_files, transform=transforms_val, cache_rate=0.25, num_workers=4,
-                                   copy_cache=False)
+        self.train_ds = CacheDataset(data=train_files, transform=transforms_train, cache_rate=train_cache_rate, 
+                                     num_workers=8, copy_cache=False)
+        self.val_ds = CacheDataset(data=val_files, transform=transforms_val, cache_rate=0.25, 
+                                   num_workers=4, copy_cache=False)
 
         # define test transforms
         transforms_test = val_transforms(crop_size=self.inference_roi_size, lbl_key='label', pad_mode=args.pad_mode)
@@ -174,26 +177,28 @@ class Model(pl.LightningModule):
                     meta_keys=["pred_meta_dict", "label_meta_dict"],
                     nearest_interp=False, to_tensor=True),
             ])
-        self.test_ds = CacheDataset(data=test_files, transform=transforms_test, cache_rate=0.1, num_workers=4,
-                                    copy_cache=False)
+        self.test_ds = CacheDataset(data=test_files, transform=transforms_test, cache_rate=0.1, 
+                                    num_workers=4, copy_cache=False)
 
-        # # avoid the computation of meta information in random transforms
-        # set_track_meta(False)
 
     # --------------------------------
     # DATA LOADERS
     # --------------------------------
     def train_dataloader(self):
-        return DataLoader(self.train_ds, batch_size=self.cfg["opt"]["batch_size"], shuffle=True, num_workers=8, 
-                            pin_memory=True, persistent_workers=True) 
+        # return DataLoader(self.train_ds, batch_size=self.cfg["opt"]["batch_size"], shuffle=True, num_workers=8, 
+        #                     pin_memory=True, persistent_workers=True) 
+        # NOTE: when ThreadDataLoader is used with multiple workers, it results in 
+        # 'NotImplementedError("sharing CUDA metatensor across processes not implemented")'
+        return ThreadDataLoader(self.train_ds, batch_size=self.cfg["opt"]["batch_size"], shuffle=True, num_workers=0) 
 
     def val_dataloader(self):
-        return DataLoader(self.val_ds, batch_size=1, shuffle=False, num_workers=4, pin_memory=True, 
-                          persistent_workers=True)
-    
-    def test_dataloader(self):
-        return DataLoader(self.test_ds, batch_size=1, shuffle=False, num_workers=4, pin_memory=True)
+        # return DataLoader(self.val_ds, batch_size=2, shuffle=False, num_workers=4, pin_memory=True, 
+        #                   persistent_workers=True)
+        return ThreadDataLoader(self.val_ds, batch_size=2, shuffle=False, num_workers=0)
 
+    def test_dataloader(self):
+        # return DataLoader(self.test_ds, batch_size=2, shuffle=False, num_workers=4, pin_memory=True)
+        return ThreadDataLoader(self.test_ds, batch_size=2, shuffle=False, num_workers=0)
     
     # --------------------------------
     # OPTIMIZATION
@@ -297,7 +302,7 @@ class Model(pl.LightningModule):
                 "train_soft_dice": mean_train_soft_dice, 
                 "train_loss": mean_train_loss,
             }
-            self.log_dict(wandb_logs)
+            self.log_dict(wandb_logs, sync_dist=True)
 
             # # plot the training images
             # fig = plot_slices(image=self.train_step_outputs[0]["train_image"],
@@ -399,7 +404,7 @@ class Model(pl.LightningModule):
         
 
         # log on to wandb
-        self.log_dict(wandb_logs)
+        self.log_dict(wandb_logs, sync_dist=True)
 
         # # plot the validation images
         # fig = plot_slices(image=self.val_step_outputs[0]["val_image"],
@@ -771,4 +776,7 @@ def main(args):
 
 if __name__ == "__main__":
     args = get_args()
+    # NOTE: To deal with:
+    # RuntimeError: Cannot re-initialize CUDA in forked subprocess. To use CUDA with multiprocessing, you must use the 'spawn' start method
+    torch.multiprocessing.set_start_method('spawn')
     main(args)
