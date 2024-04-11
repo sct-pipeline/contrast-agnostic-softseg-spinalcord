@@ -158,29 +158,6 @@ def create_df(dataset_path):
     if dataset_name == 'sct-testing-large':
         df = df[df['subjectID'].isin(dcm_subjects)]
 
-        for file in df['filename']:
-
-            if df['subjectID'].values[0] in dcm_subjects:
-                
-                # NOTE: sct-testing-large has a lot of images which might/might not have labels. 
-                # Get only those images which have labels and are present in the dataframe (and belong to the pathology)
-                fname_label = file
-                gitannex_cmd_label = f'cd {dataset_path}; git annex get {fname_label}'
-                
-                fname_image = fname_label.replace(f'/derivatives/{labels_folder}', '').replace(f'_{labels_suffix}.nii.gz', '.nii.gz')
-                gitannex_cmd_image = f'cd {dataset_path}; git annex get {fname_image}'
-
-                try:
-                    subprocess.run(gitannex_cmd_label, shell=True, check=True)
-                    subprocess.run(gitannex_cmd_image, shell=True, check=True)
-                    logger.info(f"Downloaded {os.path.basename(fname_label)} from git-annex")
-                    logger.info(f"Downloaded {os.path.basename(fname_image)} from git-annex")
-                except subprocess.CalledProcessError as e:
-                    logger.error(f"Error in downloading {file} from git-annex: {e}")
-            
-            else:
-                logger.info(f"Skipping {file} as pathology is not DCM")
-
     # refactor to move filename and filesegname to the end of the dataframe
     df = df[['datasetName', 'subjectID', 'sessionID', 'orientationID', 'contrastID', 'filename']] #, 'filesegname']]
 
