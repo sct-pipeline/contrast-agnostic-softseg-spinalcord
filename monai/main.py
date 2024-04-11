@@ -27,8 +27,18 @@ from monai.transforms import (Compose, EnsureType, EnsureTyped, Invertd, SaveIma
 # NOTE: using this solved the issue of "RuntimeError: received 0 items of ancdata" when using DataLoader
 torch.multiprocessing.set_sharing_strategy('file_system')
 
-# # mednext
-# from nnunet_mednext import MedNeXt
+
+# list of contrasts and their possible various names in the datasets
+CONTRASTS = {
+    "t1w": ["T1w", "space-other_T1w"],
+    "t2w": ["T2w", "space-other_T2w"],
+    "t2star": ["T2star", "space-other_T2star"],
+    "dwi": ["rec-average_dwi", "acq-dwiMean_dwi"],
+    "mt-on": ["flip-1_mt-on_space-other_MTS"],
+    "mt-off": ["flip-2_mt-off_space-other_MTS"],
+    "mtr": ["acq-MTon_MTR"],
+    "unit1": ["unit1"],
+}
 
 def get_args():
     parser = argparse.ArgumentParser(description='Script for training contrast-agnositc SC segmentation model.')
@@ -500,12 +510,22 @@ def main(args):
     # Setting the seed
     pl.seed_everything(config["seed"], workers=True)
 
-    n_contrasts = 0
+    all_contrasts, datasets = [], []
     datalists_list = [f for f in os.listdir(args.path_datalists) if f.endswith(".json")]
     for datalist in datalists_list:
         with open(os.path.join(args.path_datalists, datalist), "r") as f:
             datalist = json.load(f)
-            n_contrasts += len(datalist["contrasts"])
+            all_contrasts += datalist["contrasts"]
+            datasets.append(datalist["dataset"])
+
+    contrasts_final = []
+    for k, v in CONTRASTS.items():
+        for c in all_contrasts:
+            if c in v:
+                contrasts_final.append(k)
+                break
+
+    n_contrasts = len(contrasts_final)
 
     # define optimizer
     if config["opt"]["name"] == "adam":
