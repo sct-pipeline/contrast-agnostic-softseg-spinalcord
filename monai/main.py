@@ -154,6 +154,11 @@ class Model(pl.LightningModule):
             val_files += load_decathlon_datalist(os.path.join(args.path_datalists, datalist), True, "validation")
             test_files += load_decathlon_datalist(os.path.join(args.path_datalists, datalist), True, "test")
 
+        logger.info(f"Combining {len(datalists_list)} datasets ...")
+        logger.info(f"Number of training samples (i.e. images, not subjects): {len(train_files)}")
+        logger.info(f"Number of validation samples (i.e. images, not subjects): {len(val_files)}")
+        logger.info(f"Number of testing samples (i.e. images, not subjects): {len(test_files)}")
+
         if args.debug:
             train_files = train_files[:25]
             val_files = val_files[:15]
