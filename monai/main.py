@@ -401,8 +401,8 @@ class Model(pl.LightningModule):
 
         logger.info(
             f"\nCurrent epoch: {self.current_epoch}"
-            f"\nAverage Soft Dice (VAL): {mean_val_soft_dice:.4f}"
-            f"\nAverage Hard Dice (VAL): {mean_val_hard_dice:.4f}"
+            f"\nAverage Soft Dice (VAL): {(mean_val_soft_dice * self.trainer.world_size):.4f}"
+            f"\nAverage Hard Dice (VAL): {(mean_val_hard_dice * self.trainer.world_size):.4f}"
             f"\nAverage AdapWing Loss (VAL): {mean_val_loss:.4f}"
             f"\nBest Average AdapWing Loss: {self.best_val_loss:.4f} at Epoch: {self.best_val_epoch}"
             f"\n----------------------------------------------------")
