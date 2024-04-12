@@ -199,11 +199,11 @@ class Model(pl.LightningModule):
     def val_dataloader(self):
         # return DataLoader(self.val_ds, batch_size=2, shuffle=False, num_workers=4, pin_memory=True, 
         #                   persistent_workers=True)
-        return ThreadDataLoader(self.val_ds, batch_size=2, shuffle=False, num_workers=0)
+        return ThreadDataLoader(self.val_ds, batch_size=self.trainer.world_size, shuffle=False, num_workers=0)
 
     def test_dataloader(self):
         # return DataLoader(self.test_ds, batch_size=2, shuffle=False, num_workers=4, pin_memory=True)
-        return ThreadDataLoader(self.test_ds, batch_size=2, shuffle=False, num_workers=0)
+        return ThreadDataLoader(self.test_ds, batch_size=self.trainer.world_size, shuffle=False, num_workers=0)
     
     # --------------------------------
     # OPTIMIZATION
