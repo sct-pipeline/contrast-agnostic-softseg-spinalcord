@@ -102,7 +102,10 @@ echo "-------------------------------------------------------"
 wandb offline
 
 # Train the model
-srun python ${PATH_REPO}/monai/main.py \
+# srun python ${PATH_REPO}/monai/main.py \
+srun torchrun --standalone --nnodes=$SLURM_JOB_NUM_NODES --nproc-per-node=$SLURM_GPUS_ON_NODE \
+    --rdzv_id=$SLURM_JOB_ID --rdzv_backend=c10d \
+    ${PATH_REPO}/monai/main.py \
     --path-datalists ${SLURM_TMPDIR}/datalists \
     --path-results ${SLURM_TMPDIR}/results \
     --model 'nnunet' \
