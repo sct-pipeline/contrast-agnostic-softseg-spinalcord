@@ -37,7 +37,7 @@ CONTRASTS = {
     "mt-on": ["flip-1_mt-on_space-other_MTS"],
     "mt-off": ["flip-2_mt-off_space-other_MTS"],
     "mtr": ["acq-MTon_MTR"],
-    "unit1": ["unit1"],
+    "unit1": ["UNIT1"],
 }
 
 def get_args():
