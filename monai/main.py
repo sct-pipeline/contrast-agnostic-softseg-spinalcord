@@ -702,12 +702,11 @@ def main(args):
         # Enable TF32 on matmul and on cuDNN
         torch.backends.cuda.matmul.allow_tf32 = True    # same as setting torch.set_float32_matmul_precision("high"/"medium")
         torch.backends.cudnn.allow_tf32 = True
-        num_gpus = torch.cuda.device_count()
-        logger.info(f"Using {num_gpus} GPU(s) for training ...")
 
         # initialise Lightning's trainer.
+        # devices=num_gpus, accelerator="auto",
         trainer = pl.Trainer(
-            devices=num_gpus, accelerator="auto",
+            devices='-1', accelerator="gpu", strategy="ddp",
             logger=exp_logger,
             callbacks=[checkpoint_callback_loss, lr_monitor, early_stopping],
             check_val_every_n_epoch=config["opt"]["check_val_every_n_epochs"],
@@ -715,6 +714,9 @@ def main(args):
             precision="bf16-mixed",
             enable_progress_bar=True) 
             # profiler="simple",)     # to profile the training time taken for each step
+
+        logger.info(f"Trainer initialized with {trainer.strategy} strategy on devices {trainer.device_ids} ...")
+        logger.info(f"World size -- trainer.strategy.world_size={trainer.strategy.world_size} ...")
 
         # Train!
         trainer.fit(pl_model)        
