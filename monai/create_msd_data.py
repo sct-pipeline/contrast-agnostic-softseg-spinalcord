@@ -290,9 +290,9 @@ def main():
     params["contrasts"] = df['contrastID'].unique().tolist()
 
     # number of training, validation and testing images (not subjects; a subject can have multiple contrasts, and hence multiple images)
-    params["numTrainingImages"] = len(params["train"])
-    params["numValidationImages"] = len(params["validation"])
-    params["numTestImages"] = len(params["test"])
+    params["numTrainingImagesTotal"] = len(params["train"])
+    params["numValidationImagesTotal"] = len(params["validation"])
+    params["numTestImagesTotal"] = len(params["test"])
     params["seed"] = args.seed
 
     # update the number of train/val/test subjects
@@ -303,9 +303,9 @@ def main():
     params["numValidationSubjects"] = len(val_subs_all)
     params["numTestSubjects"] = len(test_subs_all)
 
-    logger.info(f"Number of training images (not subjects): {params['numTrainingImages']}")
-    logger.info(f"Number of validation images (not subjects): {params['numValidationImages']}")
-    logger.info(f"Number of testing images (not subjects): {params['numTestImages']}")
+    logger.info(f"Number of training images (not subjects): {params['numTrainingImagesTotal']}")
+    logger.info(f"Number of validation images (not subjects): {params['numValidationImagesTotal']}")
+    logger.info(f"Number of testing images (not subjects): {params['numTestImagesTotal']}")
 
     # dump train/val/test splits into a yaml file
     with open(f"datasplits/datasplit_{dataset_name}_seed{args.seed}.yaml", 'w') as file:
