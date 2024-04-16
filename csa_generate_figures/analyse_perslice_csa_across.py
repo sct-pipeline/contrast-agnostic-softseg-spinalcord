@@ -13,11 +13,16 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 # Setting the hue order as specified
-# HUE_ORDER = ["softseg_soft", "softseg_bin", "nnunet", "monai_soft", "monai_bin"]
 # HUE_ORDER = ["softseg_bin", "deepseg_2d", "nnunet", "monai", "mednext", "swinunetr", "swinpretrained", "ensemble"]
-HUE_ORDER = ["softseg_bin", "deepseg_2d", "monai_orig", "monai_ll"]
+HUE_ORDER = ["softseg_bin", "deepseg_2d", "monai_single", "monai_2datasets", "monai_4datasets"]
+# HUE_ORDER = ["softseg_bin", "deepseg_2d", "soft_input", "bin_input"]
 HUE_ORDER_RES = ["1mm", "05mm", "15mm", "3mm", "2mm"]
 CONTRAST_ORDER = ["DWI", "MTon", "MToff", "T1w", "T2star", "T2w"]
+
+FONTSIZE = 12
+XTICKS = ["GT", "DeepSeg2D", "contrast-agnostic", 
+          "contrast-agnostic\n& basel-MS", 
+          "contrast-agnostic\n& basel-MS & DCM"]
 
 
 def save_figure(file_path, save_fname):
@@ -54,9 +59,9 @@ def extract_contrast_and_details(filename, across="Method"):
     """
     # pattern = r'.*iso-(\d+mm).*_(propseg|deepseg_2d|nnunet_3d_fullres|monai).*'
     if across == "Method":
-        # pattern = r'.*_(DWI|MTon|MToff|T1w|T2star|T2w).*_(softseg_soft|softseg_bin|nnunet|monai_soft|monai_bin).*'
+        # pattern = r'.*_(DWI|MTon|MToff|T1w|T2star|T2w).*_(softseg_bin|deepseg_2d|soft_input|bin_input).*'
         # pattern = r'.*_(DWI|MTon|MToff|T1w|T2star|T2w).*_(softseg_bin|deepseg_2d|nnunet|monai|mednext|swinunetr|swinpretrained|ensemble).*'
-        pattern = r'.*_(DWI|MTon|MToff|T1w|T2star|T2w).*_(softseg_bin|deepseg_2d|monai_orig|monai_ll).*'
+        pattern = r'.*_(DWI|MTon|MToff|T1w|T2star|T2w).*_(softseg_bin|deepseg_2d|monai_single|monai_2datasets|monai_4datasets).*'
         match = re.search(pattern, filename)
         if match:
             return match.group(1), match.group(2)
@@ -183,12 +188,15 @@ def generate_figure_abs_csa_error(folder_path, data, hue_order=None):
     # overlay swarm plot on the violin plot to show individual data points
     sns.swarmplot(x='Method', y='abs_error_mean', data=df, color='k', order=hue_new, size=3)
 
-    # plt.xticks(rotation=45)
-    plt.xlabel('Method')
-    plt.ylabel('Absolute CSA error [mm^2]')
-    plt.title(f'Per-Slice Absolute CSA error between softseg_bin and other methods')
+    plt.xlabel(None)    # plt.xlabel(across, fontsize=FONTSIZE)
+    plt.ylabel('Absolute CSA error [mm^2]', fontweight='bold' ,fontsize=FONTSIZE)
+    plt.title(f'Per-Slice Absolute CSA error between softseg_bin and other methods', 
+              fontweight='bold' ,fontsize=FONTSIZE)
     # Add horizontal dashed grid
     plt.grid(axis='y', alpha=0.5, linestyle='dashed')
+
+    # rename the x-axis ticks as per XTICKS
+    plt.xticks(range(len(hue_new)), XTICKS[1:], fontsize=FONTSIZE)
 
     # Get y-axis limits
     ymin, ymax = plt.gca().get_ylim()

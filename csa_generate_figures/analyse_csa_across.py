@@ -13,12 +13,17 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 # Setting the hue order as specified
-# HUE_ORDER = ["softseg_soft", "softseg_bin", "nnunet", "monai_soft", "monai_bin"]
 # HUE_ORDER = ["softseg_bin", "deepseg_2d", "nnunet", "monai", "mednext", "swinunetr", "swinpretrained", "ensemble"]
-HUE_ORDER = ["softseg_bin", "deepseg_2d", "monai_orig", "monai_ll"]
+HUE_ORDER = ["softseg_bin", "deepseg_2d", "monai_single", "monai_2datasets", "monai_4datasets"]
+# HUE_ORDER = ["softseg_bin", "deepseg_2d", "soft_input", "bin_input"]
 HUE_ORDER_THR = ["GT", "15", "1", "05", "01", "005"]
 HUE_ORDER_RES = ["1mm", "05mm", "15mm", "3mm", "2mm"]
 CONTRAST_ORDER = ["DWI", "MTon", "MToff", "T1w", "T2star", "T2w"]
+
+FONTSIZE = 12
+XTICKS = ["GT", "DeepSeg2D", "contrast-agnostic", 
+          "contrast-agnostic\n& basel-MS", 
+          "contrast-agnostic\n& basel-MS & DCM"]
 
 
 def save_figure(file_path, save_fname):
@@ -55,9 +60,9 @@ def extract_contrast_and_details(filename, across="Method"):
     """
     # pattern = r'.*iso-(\d+mm).*_(propseg|deepseg_2d|nnunet_3d_fullres|monai).*'
     if across == "Method":
-        # pattern = r'.*_(DWI|MTon|MToff|T1w|T2star|T2w).*_(softseg_soft|softseg_bin|nnunet|monai_soft|monai_bin).*'
+        # pattern = r'.*_(DWI|MTon|MToff|T1w|T2star|T2w).*_(softseg_bin|deepseg_2d|soft_input|bin_input).*'
         # pattern = r'.*_(DWI|MTon|MToff|T1w|T2star|T2w).*_(softseg_bin|deepseg_2d|nnunet|monai|mednext|swinunetr|swinpretrained|ensemble).*'
-        pattern = r'.*_(DWI|MTon|MToff|T1w|T2star|T2w).*_(softseg_bin|deepseg_2d|monai_orig|monai_ll|ensemble).*'
+        pattern = r'.*_(DWI|MTon|MToff|T1w|T2star|T2w).*_(softseg_bin|deepseg_2d|monai_single|monai_2datasets|monai_4datasets).*'
         match = re.search(pattern, filename)
         if match:
             return match.group(1), match.group(2)
@@ -148,9 +153,11 @@ def generate_figure_std(data, file_path, across="Method", metric="csa", hue_orde
         # Draw vertical line between 1st and 2nd violin
         plt.axvline(x=0.5, color='k', linestyle='--')
 
-        plt.xlabel(across)
-        plt.ylabel('STD [mm^2]')
-        plt.title(f'STD of C2-C3 CSA for each {across}')
+        plt.xlabel(None)    # plt.xlabel(across)
+        plt.ylabel('STD [mm^2]', fontweight='bold' ,fontsize=FONTSIZE)
+        plt.title(f'STD of C2-C3 CSA for each {across}', fontweight='bold' ,fontsize=FONTSIZE)
+
+        plt.xticks(range(len(hue_order)), XTICKS, fontsize=FONTSIZE)        
         
         # Get y-axis limits
         ymin, ymax = plt.gca().get_ylim()
@@ -174,9 +181,12 @@ def generate_figure_std(data, file_path, across="Method", metric="csa", hue_orde
         # overlay swarm plot on the violin plot to show individual data points
         sns.swarmplot(x=across, y=plot_values, data=df, color='k', order=hue_order, size=3)
         
-        plt.xlabel(across)
-        plt.ylabel(f"{plot_values.upper()} Dice")
-        plt.title(f"{plot_values.upper()} of average slicewise Dice scores across contrasts for each {across}")
+        plt.xlabel(None)    # plt.xlabel(across)
+        plt.ylabel(f"{plot_values.upper()} Dice", fontweight='bold' ,fontsize=FONTSIZE)
+        plt.title(f"{plot_values.upper()} of average slicewise Dice scores across contrasts for each {across}", 
+                  fontweight='bold' ,fontsize=FONTSIZE)
+
+        plt.xticks(range(len(hue_order)), XTICKS[1:], fontsize=FONTSIZE)        
 
         # Get y-axis limits
         ymin, ymax = plt.gca().get_ylim()
