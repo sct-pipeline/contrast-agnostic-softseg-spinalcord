@@ -65,11 +65,11 @@ def get_boilerplate_json(dataset, dataset_commits):
     params["dataset"] = dataset
     params["reference"] = "BIDS: Brain Imaging Data Structure"
     params["tensorImageSize"] = "3D"
-    params["dataset_versions"] = dataset_commits
+    params["datasetVersions"] = dataset_commits
     if dataset == 'data-multi-subject':
-        params["subject_type"] = "HC"
+        params["subjectType"] = "HC"
     elif dataset == 'sct-testing-large':
-        params["subject_type"] = ["DCM"]
+        params["subjectType"] = ["DCM"]
     
     return params
 
