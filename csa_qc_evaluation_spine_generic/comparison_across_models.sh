@@ -47,8 +47,9 @@ SUBJECT=$1
 # PATH_NNUNET_SCRIPT=$2   # path to the nnUNet contrast-agnostic run_inference_single_subject.py
 # PATH_NNUNET_MODEL=$3    # path to the nnUNet contrast-agnostic model
 PATH_MONAI_SCRIPT=$2    # path to the MONAI contrast-agnostic run_inference_single_subject.py
-PATH_OG_MONAI_MODEL=$3     # path to the MONAI contrast-agnostic model trained on soft bin labels
-PATH_LL_MONAI_MODEL=$4     # path to the MONAI contrast-agnostic model trained on soft bin labels
+PATH_MONAI_MODEL_1=$3     
+PATH_MONAI_MODEL_2=$4     
+PATH_MONAI_MODEL_3=$5     
 # PATH_SWIN_MODEL=$5
 PATH_SWDICE_SCRIPT="/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/contrast-agnostic-softseg-spinalcord/monai/compute_slicewise_dice.py"
 
@@ -56,8 +57,9 @@ echo "SUBJECT: ${SUBJECT}"
 # echo "PATH_NNUNET_SCRIPT: ${PATH_NNUNET_SCRIPT}"
 # echo "PATH_NNUNET_MODEL: ${PATH_NNUNET_MODEL}"
 echo "PATH_MONAI_SCRIPT: ${PATH_MONAI_SCRIPT}"
-echo "PATH_OG_MONAI_MODEL: ${PATH_OG_MONAI_MODEL}"
-echo "PATH_LL_MONAI_MODEL: ${PATH_LL_MONAI_MODEL}"
+echo "PATH_MONAI_MODEL_1: ${PATH_MONAI_MODEL_1}"
+echo "PATH_MONAI_MODEL_2: ${PATH_MONAI_MODEL_2}"
+echo "PATH_MONAI_MODEL_3: ${PATH_MONAI_MODEL_3}"
 # echo "PATH_SWIN_MODEL: ${PATH_SWIN_MODEL}"
 
 # ------------------------------------------------------------------------------
@@ -243,13 +245,19 @@ segment_sc_MONAI(){
   local contrast="$4"   # used only for saving output file name
   local csv_fname="$5"   # used for saving output file name
 
-	if [[ $model == 'monai_og' ]]; then
-		FILESEG="${file%%_*}_${contrast}_seg_monai_orig"
-		PATH_MODEL=${PATH_OG_MONAI_MODEL}
+	if [[ $model == 'monai_single' ]]; then
+		# FILESEG="${file%%_*}_${contrast}_seg_monai_orig"
+    FILESEG="${file%%_*}_${contrast}_seg_${model}"
+		PATH_MODEL=${PATH_MONAI_MODEL_1}
 
-	elif [[ $model == 'monai_ll' ]]; then
-		FILESEG="${file%%_*}_${contrast}_seg_monai_ll"
-		PATH_MODEL=${PATH_LL_MONAI_MODEL}
+	elif [[ $model == 'monai_2datasets' ]]; then
+		# FILESEG="${file%%_*}_${contrast}_seg_monai_ll"
+    FILESEG="${file%%_*}_${contrast}_seg_${model}"
+		PATH_MODEL=${PATH_MONAI_MODEL_2}
+  
+  elif [[ $model == 'monai_4datasets' ]]; then
+    FILESEG="${file%%_*}_${contrast}_seg_${model}"
+    PATH_MODEL=${PATH_MONAI_MODEL_3}
 
 	elif [[ $model == 'swinunetr' ]]; then
     FILESEG="${file%%_*}_${contrast}_seg_swinunetr"
@@ -281,8 +289,8 @@ segment_sc_MONAI(){
   echo "${FILESEG},${slicewise_dice}"
   echo "${FILESEG},${slicewise_dice}" >> ${PATH_RESULTS}/slicewise_dice.csv
 
-  # Generate QC report with soft prediction
-  sct_qc -i ${file}.nii.gz -s ${FILESEG}.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
+  # # Generate QC report with soft prediction
+  # sct_qc -i ${file}.nii.gz -s ${FILESEG}.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
 
   # Compute CSA averaged across all slices C2-C3 vertebral levels for plotting the STD across contrasts
   # NOTE: this is per-level because not all contrasts have thes same FoV (C2-C3 is what all contrasts have in common)
@@ -352,7 +360,7 @@ contrasts="space-other_T1w space-other_T2w space-other_T2star flip-1_mt-on_space
 # contrasts="space-other_T1w rec-average_dwi"
 
 # output csv filename 
-csv_fname="csa_new_contrasts"
+csv_fname="csa_softIn_CL"   # "csa_label_inputs"
 
 # Loop across contrasts
 for contrast in ${contrasts}; do
@@ -423,8 +431,9 @@ for contrast in ${contrasts}; do
   sct_process_segmentation -i ${FILEBIN}.nii.gz -perslice 1 -vertfile ${file}_seg-manual_labeled.nii.gz -o $PATH_RESULTS/${csv_fname}_softseg_bin_perslice.csv -append 1
 
   # 3. Segment SC using different methods, binarize at 0.5 and compute CSA
-	CUDA_VISIBLE_DEVICES=1 segment_sc_MONAI ${file} "${file}_seg-manual" 'monai_og' ${contrast} ${csv_fname}
-  CUDA_VISIBLE_DEVICES=3 segment_sc_MONAI ${file} "${file}_seg-manual" 'monai_ll' ${contrast} ${csv_fname}
+	CUDA_VISIBLE_DEVICES=3 segment_sc_MONAI ${file} "${file}_seg-manual" 'monai_single' ${contrast} ${csv_fname}
+  CUDA_VISIBLE_DEVICES=1 segment_sc_MONAI ${file} "${file}_seg-manual" 'monai_2datasets' ${contrast} ${csv_fname}
+  CUDA_VISIBLE_DEVICES=2 segment_sc_MONAI ${file} "${file}_seg-manual" 'monai_4datasets' ${contrast} ${csv_fname}
   # CUDA_VISIBLE_DEVICES=2 segment_sc_MONAI ${file} "${file}_seg-manual" 'swinunetr' ${contrast} ${csv_fname}
   # CUDA_VISIBLE_DEVICES=3 segment_sc_nnUNet ${file} "${file}_seg-manual" '3d_fullres' ${contrast} ${csv_fname}
   segment_sc ${file} "${file}_seg-manual" 'deepseg' ${deepseg_input_c} ${contrast} ${csv_fname}
