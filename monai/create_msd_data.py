@@ -24,10 +24,9 @@ pd.set_option('display.max_colwidth', None)
 # This dict is used to store the names of the folders and corresponding suffixes for each dataset
 # convention --> "dataset_name (as per git-annex)": ["labels_folder", "labels_suffix"]
 FILESEG_SUFFIXES = {
+    "basel-mp2rage": ["labels_softseg_bin", "desc-softseg_label-SC_seg"],
     "canproco": ["labels", "seg-manual"],
     "data-multi-subject": ["labels_softseg_bin", "desc-softseg_label-SC_seg"],
-    "basel-mp2rage": ["labels_softseg_bin", "desc-softseg_label-SC_seg"],
-    "sct-testing-large": ["labels", "seg-manual"],
     "dcm-zurich": ["labels", "label-SC_mask-manual"],
     "lumbar-epfl": ["labels", "seg-manual"],
     "lumbar-vanderbilt": ["labels", "label-SC_seg"],
@@ -355,8 +354,8 @@ def main():
 
     # number of training, validation and testing images (not subjects; a subject can have multiple contrasts, and hence multiple images)
     params["numTrainingImagesTotal"] = len(params["train"])
-    params["numValidationImagesTotal"] = len(params["validation"])
-    params["numTestImagesTotal"] = len(params["test"])
+    params["numValidationImagesTotal"] = len(params["validation"]) if "validation" in params else 0
+    params["numTestImagesTotal"] = len(params["test"]) if "test" in params else 0
     params["seed"] = args.seed
 
     # update the number of train/val/test subjects
