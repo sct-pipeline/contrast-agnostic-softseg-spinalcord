@@ -30,6 +30,7 @@ FILESEG_SUFFIXES = {
     "dcm-zurich": ["labels", "label-SC_mask-manual"],
     "lumbar-epfl": ["labels", "seg-manual"],
     "lumbar-vanderbilt": ["labels", "label-SC_seg"],
+    "sct-testing-large": ["labels", "seg-manual"],
 }
 
 # add abbreviations of pathologies in sct-testing-large dataset to be included in the dataset
@@ -100,7 +101,7 @@ def fetch_subject_nifti_details(filename_path):
         contrast_pattern =  r'.*_(space-other_T1w|space-other_T2w|space-other_T2star|flip-1_mt-on_space-other_MTS|flip-2_mt-off_space-other_MTS|rec-average_dwi).*'
     else:
         # TODO: add more contrasts as needed
-        contrast_pattern =  r'.*_(T1w|T2w|T2star|PSIR|STIR|UNIT1|acq-MTon_MTR|acq-dwiMean_dwi).*'
+        contrast_pattern =  r'.*_(T1w|T2w|T2star|PSIR|STIR|UNIT1|acq-MTon_MTR|acq-dwiMean_dwi|acq-T1w_MTR).*'
     contrast = re.search(contrast_pattern, filename_path)
     contrastID = contrast.group(1) if contrast else ""
 
@@ -131,12 +132,16 @@ def create_df(dataset_path):
         path_files = os.path.join(dataset_path, 'derivatives', labels_folder, 'sub-*', '**', f'*_{labels_suffix}.nii.gz')
 
         df_participants = pd.read_csv(os.path.join(dataset_path, 'participants.tsv'), sep='\t')
-        # get only those subjects where pathology is DCM
-        dcm_subjects = df_participants[df_participants['pathology'] == 'DCM']['participant_id'].tolist()
+        
+        sct_testing_large_patho_subjects = []
+        # get only those subjects where pathology is in PATHOLOGIES
+        for pathology in PATHOLOGIES:
+            subs = df_participants[df_participants['pathology'] == pathology]['participant_id'].tolist()
+            sct_testing_large_patho_subjects.extend(subs)
 
         # some subjects are in participants.tsv but not in the derivatives/labels folder
         derivatives_subs = os.listdir(os.path.join(dataset_path, 'derivatives', labels_folder))
-        dcm_subjects = [sub for sub in dcm_subjects if sub in derivatives_subs]
+        sct_testing_large_patho_subjects = [sub for sub in sct_testing_large_patho_subjects if sub in derivatives_subs]
 
     else: 
         # fetch the files based on the presence of labels 
@@ -154,6 +159,12 @@ def create_df(dataset_path):
     # get subjectID, sessionID and orientationID
     df['subjectID'], df['sessionID'], df['orientationID'], df['contrastID'] = zip(*df['filename'].map(fetch_subject_nifti_details))
 
+    # sub_files = [ df[df['subjectID'] == 'sub-sherbrookeBiospective006']['filename'].values[idx] for idx in range(len(df[df['subjectID'] == 'sub-sherbrookeBiospective006']))]
+    # print(len(sub_files))
+
+    if dataset_name == 'sct-testing-large':
+        # remove only files where contrastID is "" (i.e. acq-b0Mean_dwi, acq-MocoMean_dwi, etc.)
+        df = df[~df['contrastID'].str.len().eq(0)]
     # if dataset is sct-testing-large, then only include subjects with pathology as DCM
     if dataset_name == 'sct-testing-large':
         df = df[df['subjectID'].isin(dcm_subjects)]
