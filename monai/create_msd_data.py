@@ -30,6 +30,9 @@ FILESEG_SUFFIXES = {
     "dcm-zurich": ["labels", "label-SC_mask-manual"],
 }
 
+# add abbreviations of pathologies in sct-testing-large dataset to be included in the dataset
+PATHOLOGIES = ["ALS", "DCM", "NMO", "MS"]
+
 
 def get_parser():
 
@@ -69,7 +72,7 @@ def get_boilerplate_json(dataset, dataset_commits):
     if dataset == 'data-multi-subject':
         params["subjectType"] = "HC"
     elif dataset == 'sct-testing-large':
-        params["subjectType"] = ["DCM"]
+        params["subjectType"] = PATHOLOGIES
     
     return params
 
