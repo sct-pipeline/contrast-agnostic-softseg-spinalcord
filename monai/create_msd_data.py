@@ -29,6 +29,7 @@ FILESEG_SUFFIXES = {
     "sct-testing-large": ["labels", "seg-manual"],
     "dcm-zurich": ["labels", "label-SC_mask-manual"],
     "lumbar-epfl": ["labels", "seg-manual"],
+    "lumbar-vanderbilt": ["labels", "label-SC_seg"],
 }
 
 # add abbreviations of pathologies in sct-testing-large dataset to be included in the dataset
@@ -42,11 +43,8 @@ def get_parser():
 
     parser.add_argument('--path-data', required=True, type=str, help='Path to BIDS dataset.')
     parser.add_argument('--path-out', type=str, help='Path to the output directory where dataset json is saved')
-    # parser.add_argument("--contrast", default="t2w", type=str, help="Contrast to use for training", 
-    #                     choices=["t1w", "t2w", "t2star", "mton", "mtoff", "dwi", "all"])
+    parser.add_argument('--exclude', type=str, help='YAML file containing list of subjects to exclude')
     parser.add_argument('--seed', default=42, type=int, help="Seed for reproducibility")
-    # parser.add_argument('--label-type', default='soft_bin', type=str, help="Type of labels to use for training",
-    #                     choices=['soft', 'soft_bin'])
 
     return parser
 
@@ -216,7 +214,15 @@ def main():
 
     # create a dataframe for each dataset
     df = create_df(data_root)
-        
+
+    # do some post-mortem on the dataframe based on '--include' args    
+    # NOTE: for lumbar-vanderbilt we are excluding subjects only 2 subjects: sub-247090 and sub-247091 
+    if args.exclude is not None:
+        with open(args.exclude, 'r') as file:
+            exclude_subjects = yaml.safe_load(file)['EXCLUDE']
+
+        df = df[~df['subjectID'].isin(exclude_subjects)]
+    
     # get the git commit ID of the dataset
     dataset_name = os.path.basename(os.path.normpath(data_root))
     branch, commit = get_git_branch_and_commit(data_root)
