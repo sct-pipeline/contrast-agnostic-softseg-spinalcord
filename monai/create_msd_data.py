@@ -24,6 +24,7 @@ pd.set_option('display.max_colwidth', None)
 # This dict is used to store the names of the folders and corresponding suffixes for each dataset
 # convention --> "dataset_name (as per git-annex)": ["labels_folder", "labels_suffix"]
 FILESEG_SUFFIXES = {
+    "canproco": ["labels", "seg-manual"],
     "data-multi-subject": ["labels_softseg_bin", "desc-softseg_label-SC_seg"],
     "basel-mp2rage": ["labels_softseg_bin", "desc-softseg_label-SC_seg"],
     "sct-testing-large": ["labels", "seg-manual"],
@@ -101,6 +102,7 @@ def fetch_subject_nifti_details(filename_path):
         contrast_pattern =  r'.*_(space-other_T1w|space-other_T2w|space-other_T2star|flip-1_mt-on_space-other_MTS|flip-2_mt-off_space-other_MTS|rec-average_dwi).*'
     else:
         # TODO: add more contrasts as needed
+        # contrast_pattern =  r'.*_(T1w|T2w|T2star|PSIR|STIR|UNIT1|acq-MTon_MTR|acq-dwiMean_dwi|acq-b0Mean_dwi|acq-T1w_MTR).*'
         contrast_pattern =  r'.*_(T1w|T2w|T2star|PSIR|STIR|UNIT1|acq-MTon_MTR|acq-dwiMean_dwi|acq-T1w_MTR).*'
     contrast = re.search(contrast_pattern, filename_path)
     contrastID = contrast.group(1) if contrast else ""
@@ -143,6 +145,11 @@ def create_df(dataset_path):
         derivatives_subs = os.listdir(os.path.join(dataset_path, 'derivatives', labels_folder))
         sct_testing_large_patho_subjects = [sub for sub in sct_testing_large_patho_subjects if sub in derivatives_subs]
 
+    elif dataset_name == 'canproco':
+
+        # 2024/04/23: only pick the ses-M0 images
+        path_files = os.path.join(dataset_path, 'derivatives', labels_folder, 'sub-*', 'ses-M0', '**', f'*_{labels_suffix}.nii.gz')
+
     else: 
         # fetch the files based on the presence of labels 
         path_files = os.path.join(dataset_path, 'derivatives', labels_folder, 'sub-*', '**', f'*_{labels_suffix}.nii.gz')
@@ -165,9 +172,18 @@ def create_df(dataset_path):
     if dataset_name == 'sct-testing-large':
         # remove only files where contrastID is "" (i.e. acq-b0Mean_dwi, acq-MocoMean_dwi, etc.)
         df = df[~df['contrastID'].str.len().eq(0)]
+    
+    elif dataset_name == 'canproco':
+        # remove subjects from the exclude list: https://github.com/ivadomed/canproco/blob/main/exclude.yml
+        exclude_subs_canproco = ['sub-cal088', 'sub-cal209', 'sub-cal161', 'sub-mon006', 'sub-mon009', 'sub-mon032', 'sub-mon097', 
+                                'sub-mon113', 'sub-mon118', 'sub-mon148', 'sub-mon152', 'sub-mon168', 'sub-mon191', 'sub-van134', 
+                                'sub-van135', 'sub-van171', 'sub-van176', 'sub-van181', 'sub-van201', 'sub-van206', 'sub-van207', 
+                                'sub-tor014', 'sub-tor133', 'sub-cal149']
+        df = df[~df['subjectID'].isin(exclude_subs_canproco)]
+    
     # if dataset is sct-testing-large, then only include subjects with pathology as DCM
     if dataset_name == 'sct-testing-large':
-        df = df[df['subjectID'].isin(dcm_subjects)]
+        df = df[df['subjectID'].isin(sct_testing_large_patho_subjects)]
 
         for file in df['filename']:
 
@@ -191,6 +207,25 @@ def create_df(dataset_path):
             
             else:
                 logger.info(f"Skipping {file} as pathology is not DCM")
+    
+    elif dataset_name == 'canproco':
+
+        for file in df['filename']: 
+
+            fname_label = file
+            gitannex_cmd_label = f'cd {dataset_path}; git annex get {fname_label}'
+
+            fname_image = fname_label.replace(f'/derivatives/{labels_folder}', '').replace(f'_{labels_suffix}.nii.gz', '.nii.gz')
+            gitannex_cmd_image = f'cd {dataset_path}; git annex get {fname_image}'
+
+            try:
+                subprocess.run(gitannex_cmd_label, shell=True, check=True)
+                subprocess.run(gitannex_cmd_image, shell=True, check=True)
+                logger.info(f"Downloaded {os.path.basename(fname_label)} from git-annex")
+                logger.info(f"Downloaded {os.path.basename(fname_image)} from git-annex")
+            except subprocess.CalledProcessError as e:
+                logger.error(f"Error in downloading {file} from git-annex: {e}")
+
 
     # refactor to move filename and filesegname to the end of the dataframe
     df = df[['datasetName', 'subjectID', 'sessionID', 'orientationID', 'contrastID', 'filename']] #, 'filesegname']]
