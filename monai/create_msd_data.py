@@ -28,6 +28,7 @@ FILESEG_SUFFIXES = {
     "basel-mp2rage": ["labels_softseg_bin", "desc-softseg_label-SC_seg"],
     "sct-testing-large": ["labels", "seg-manual"],
     "dcm-zurich": ["labels", "label-SC_mask-manual"],
+    "lumbar-epfl": ["labels", "seg-manual"],
 }
 
 # add abbreviations of pathologies in sct-testing-large dataset to be included in the dataset
@@ -235,6 +236,12 @@ def main():
     
     # sort the subjects
     train_subjects, val_subjects, test_subjects = sorted(train_subjects), sorted(val_subjects), sorted(test_subjects)
+
+    # NOTE: lumbar-epfl dataset only has 11 subjects no point in train/val/test splits; use all subjects for training
+    if dataset_name == 'lumbar-epfl':
+        train_subjects.extend(val_subjects)
+        train_subjects.extend(test_subjects)
+        val_subjects, test_subjects = [], []
 
     # add a column specifying whether the subject is in train, val or test split
     df['split'] = 'none'
