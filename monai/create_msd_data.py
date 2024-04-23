@@ -171,13 +171,7 @@ def create_df(dataset_path):
 
         for file in df['filename']:
 
-            if df['subjectID'].values[0] in dcm_subjects:
-
-                if file.endswith('_acq-b0Mean_dwi_seg-manual.nii.gz'):
-                    # remove the b0 image
-                    df = df[df['filename'] != file]
-                    # skip the b0 image
-                    continue
+            if df['subjectID'].values[0] in sct_testing_large_patho_subjects:
                 
                 # NOTE: sct-testing-large has a lot of images which might/might not have labels. 
                 # Get only those images which have labels and are present in the dataframe (and belong to the pathology)
@@ -288,21 +282,23 @@ def main():
             temp_list = []            
             for subject_no, subject in enumerate(subs_list):
 
-                # get all the contrastIDs for the subject
-                contrastIDs = df[df['subjectID'] == subject]['contrastID'].unique()
+                # NOTE: looping over unique contrast IDs is not working for `sct-testing-large` because there exist multiple files
+                # for the same contrast (e.g. acq-sagcerv_T2w, acq-sagthor_T2w, etc.) and only 1 of them is picked. Hence, switching
+                # to looping over all the files for a given subject. 
+                num_files_per_subject = len(df[df['subjectID'] == subject])
 
-                for contrast in contrastIDs:
+                for idx in range(num_files_per_subject):
                 
                     temp_data = {}
                     # if the subject belongs to a data-multi-subject dataset, then the filename is different
                     if df['datasetName'].values[0] == 'data-multi-subject':
                         # NOTE: for spine-generic subjects, we're pulling the data from image filename
-                        fname_image = df[(df['subjectID'] == subject) & (df['contrastID'] == contrast)]['filename'].values[0]
+                        fname_image = df[df['subjectID'] == subject]['filename'].values[idx]
                         fname_label = fname_image.replace('data_preprocessed', labels_folder).replace('.nii.gz', f'_{labels_suffix}.nii.gz')
                     
                     else: 
                         # NOTE: but for other datasets, we are getting them from the lesion filenames
-                        fname_label = df[(df['subjectID'] == subject) & (df['contrastID'] == contrast)]['filename'].values[0]
+                        fname_label = df[df['subjectID'] == subject]['filename'].values[idx]
                         fname_image = fname_label.replace(f'/derivatives/{labels_folder}', '').replace(f'_{labels_suffix}.nii.gz', '.nii.gz')
                                     
                     temp_data["image"] = fname_image
