@@ -266,9 +266,12 @@ def main():
     dataset_name = os.path.basename(os.path.normpath(data_root))
     branch, commit = get_git_branch_and_commit(data_root)
     dataset_commits[dataset_name] = f"git-{branch}-{commit}"
-        
-    train_ratio, val_ratio, test_ratio = 0.65, 0.15, 0.2
-    # train_subs_all, val_subs_all, test_subs_all = [], [], []
+
+    if dataset_name in ['data-multi-subject', 'canproco']:    
+        # NOTE: we need to have the same spine-generic test set across for all new datasets we're adding
+        train_ratio, val_ratio, test_ratio = 0.65, 0.15, 0.2
+    else:
+        train_ratio, val_ratio, test_ratio = 0.8, 0.1, 0.1
     
     # the idea is to create a datalist for each dataset we want to use 
     # these datalists (which have their own train/val/test splits) for each dataset will then be combined 
