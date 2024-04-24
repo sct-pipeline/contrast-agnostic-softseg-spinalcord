@@ -129,7 +129,6 @@ def create_df(dataset_path):
         path_files = os.path.join(dataset_path, 'derivatives', 'data_preprocessed', 'sub-*', '**', f'*.nii.gz')
     
     elif dataset_name == 'sct-testing-large':
-        
         path_files = os.path.join(dataset_path, 'derivatives', labels_folder, 'sub-*', '**', f'*_{labels_suffix}.nii.gz')
 
         df_participants = pd.read_csv(os.path.join(dataset_path, 'participants.tsv'), sep='\t')
@@ -145,7 +144,6 @@ def create_df(dataset_path):
         sct_testing_large_patho_subjects = [sub for sub in sct_testing_large_patho_subjects if sub in derivatives_subs]
 
     elif dataset_name == 'canproco':
-
         # 2024/04/23: only pick the ses-M0 images
         path_files = os.path.join(dataset_path, 'derivatives', labels_folder, 'sub-*', 'ses-M0', '**', f'*_{labels_suffix}.nii.gz')
 
@@ -168,21 +166,35 @@ def create_df(dataset_path):
     # sub_files = [ df[df['subjectID'] == 'sub-sherbrookeBiospective006']['filename'].values[idx] for idx in range(len(df[df['subjectID'] == 'sub-sherbrookeBiospective006']))]
     # print(len(sub_files))
 
-    if dataset_name == 'sct-testing-large':
+    if dataset_name == 'basel-mp2rage':
+        
+        # set the type of pathologyID as str
+        df['pathologyID'] = 'n/a'
+
+        # store the pathology info
+        for subject in df['subjectID'].unique():
+            if subject.startswith('sub-C'):
+                df.loc[df['subjectID'] == subject, 'pathologyID'] = 'HC'
+            else:
+                df.loc[df['subjectID'] == subject, 'pathologyID'] = 'MS'
+            
+
+    elif dataset_name == 'sct-testing-large':
+
+        df_participants = pd.read_csv(os.path.join(dataset_path, 'participants.tsv'), sep='\t')
+
         # remove only files where contrastID is "" (i.e. acq-b0Mean_dwi, acq-MocoMean_dwi, etc.)
         df = df[~df['contrastID'].str.len().eq(0)]
-    
-    elif dataset_name == 'canproco':
-        # remove subjects from the exclude list: https://github.com/ivadomed/canproco/blob/main/exclude.yml
-        exclude_subs_canproco = ['sub-cal088', 'sub-cal209', 'sub-cal161', 'sub-mon006', 'sub-mon009', 'sub-mon032', 'sub-mon097', 
-                                'sub-mon113', 'sub-mon118', 'sub-mon148', 'sub-mon152', 'sub-mon168', 'sub-mon191', 'sub-van134', 
-                                'sub-van135', 'sub-van171', 'sub-van176', 'sub-van181', 'sub-van201', 'sub-van206', 'sub-van207', 
-                                'sub-tor014', 'sub-tor133', 'sub-cal149']
-        df = df[~df['subjectID'].isin(exclude_subs_canproco)]
-    
-    # if dataset is sct-testing-large, then only include subjects with pathology as DCM
-    if dataset_name == 'sct-testing-large':
+
+        # only include subjects with pathology included in the PATHOLOGIES list
         df = df[df['subjectID'].isin(sct_testing_large_patho_subjects)]
+
+        # NOTE: sub-xuanwuChenxi002 is causing issues with the git-annex get command, so we're excluding it
+        df = df[~df['subjectID'].str.contains('sub-xuanwuChenxi002')]
+
+        # store the pathology info by merging the "pathology_M0" colume from df_participants to the df dataframe
+        df = pd.merge(df, df_participants[['participant_id', 'pathology']], left_on='subjectID', right_on='participant_id', how='left')
+        df.rename(columns={'pathology': 'pathologyID'}, inplace=True)
 
         for file in df['filename']:
                 
@@ -204,6 +216,21 @@ def create_df(dataset_path):
             
 
     elif dataset_name == 'canproco':
+        # remove subjects from the exclude list: https://github.com/ivadomed/canproco/blob/main/exclude.yml
+        exclude_subs_canproco = ['sub-cal088', 'sub-cal209', 'sub-cal161', 'sub-mon006', 'sub-mon009', 'sub-mon032', 'sub-mon097', 
+                                'sub-mon113', 'sub-mon118', 'sub-mon148', 'sub-mon152', 'sub-mon168', 'sub-mon191', 'sub-van134', 
+                                'sub-van135', 'sub-van171', 'sub-van176', 'sub-van181', 'sub-van201', 'sub-van206', 'sub-van207', 
+                                'sub-tor014', 'sub-tor133', 'sub-cal149']
+        df = df[~df['subjectID'].isin(exclude_subs_canproco)]
+
+        # load the participants.tsv file
+        df_participants = pd.read_csv(os.path.join(dataset_path, 'participants.tsv'), sep='\t')
+        
+        # store the pathology info by merging the "pathology_M0" colume from df_participants to the df dataframe
+        df = pd.merge(df, df_participants[['participant_id', 'pathology_M0']], left_on='subjectID', right_on='participant_id', how='left')
+
+        # rename the column to 'pathologyID'
+        df.rename(columns={'pathology_M0': 'pathologyID'}, inplace=True)
 
         for file in df['filename']: 
 
@@ -220,10 +247,23 @@ def create_df(dataset_path):
                 logger.info(f"Downloaded {os.path.basename(fname_image)} from git-annex")
             except subprocess.CalledProcessError as e:
                 logger.error(f"Error in downloading {file} from git-annex: {e}")
+    
+    else:
+        # load the participants.tsv file
+        df_participants = pd.read_csv(os.path.join(dataset_path, 'participants.tsv'), sep='\t')
 
+        if 'pathology' in df_participants.columns:
+            # store the pathology info by merging the "pathology" colume from df_participants to the df dataframe
+            df = pd.merge(df, df_participants[['participant_id', 'pathology']], left_on='subjectID', right_on='participant_id', how='left')
 
+            # rename the column to 'pathologyID'
+            df.rename(columns={'pathology': 'pathologyID'}, inplace=True)
+        
+        else: 
+            df['pathologyID'] = 'n/a'
+         
     # refactor to move filename and filesegname to the end of the dataframe
-    df = df[['datasetName', 'subjectID', 'sessionID', 'orientationID', 'contrastID', 'filename']] #, 'filesegname']]
+    df = df[['datasetName', 'subjectID', 'sessionID', 'orientationID', 'contrastID', 'pathologyID', 'filename']] #, 'filesegname']]
 
     return df
 
@@ -385,6 +425,10 @@ def main():
     # dump train/val/test splits into a yaml file
     with open(f"datasplits/datasplit_{dataset_name}_seed{args.seed}.yaml", 'w') as file:
         yaml.dump({'train': sorted(train_subs_all), 'val': sorted(val_subs_all), 'test': sorted(test_subs_all)}, file, indent=2, sort_keys=True)
+
+    # save the dataframe to a csv file
+    df.drop(columns=['filename'], inplace=True)     # drop the filename column
+    df.to_csv(os.path.join(args.path_out, f"df_{dataset_name}_seed{args.seed}.csv"), index=False)
 
     final_json = json.dumps(params, indent=4, sort_keys=True)
     if not os.path.exists(args.path_out):
