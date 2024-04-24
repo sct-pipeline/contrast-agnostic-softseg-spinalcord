@@ -150,17 +150,18 @@ class Model(pl.LightningModule):
             train_files += load_decathlon_datalist(os.path.join(self.root, datalist), True, "train")
             val_files += load_decathlon_datalist(os.path.join(self.root, datalist), True, "validation")
             test_files += load_decathlon_datalist(os.path.join(self.root, datalist), True, "test")
-        # logger.info(f"Training with {self.cfg['dataset']['label_type']} labels ...")
-        # dataset = os.path.join(self.root, 
-        #     f"dataset_{self.cfg['dataset']['contrast']}_{self.cfg['dataset']['label_type']}_seed{self.cfg['seed']}.json"
-        # )
+
+        logger.info(f"Combining {len(datalists_list)} datasets ...")
+        logger.info(f"Number of training samples (i.e. images, not subjects): {len(train_files)}")
+        logger.info(f"Number of validation samples (i.e. images, not subjects): {len(val_files)}")
+        logger.info(f"Number of testing samples (i.e. images, not subjects): {len(test_files)}")
 
         if args.debug:
             train_files = train_files[:15]
             val_files = val_files[:15]
             test_files = test_files[:6]
         
-        train_cache_rate = 0.25 if args.debug else 0.5
+        train_cache_rate = 0.5 # 0.25 if args.model == 'swinunetr' else 0.5
         self.train_ds = CacheDataset(data=train_files, transform=transforms_train, cache_rate=train_cache_rate, num_workers=4, 
                                      copy_cache=False)
         self.val_ds = CacheDataset(data=val_files, transform=transforms_val, cache_rate=0.25, num_workers=4,
@@ -575,12 +576,13 @@ def main(args):
             logger.info(f"Using SwinUNETR model initialized from scratch ...")            
 
         save_exp_id = f"{args.model}_seed={config['seed']}_" \
-                        f"{config['dataset']['contrast']}_{config['dataset']['label_type']}_" \
+                        f"ndata={n_datasets}_ncont={n_contrasts}_" \
                         f"ptr={int(config['model']['swinunetr']['use_pretrained'])}_" \
                         f"d={config['model']['swinunetr']['depths'][0]}_" \
                         f"nf={config['model']['swinunetr']['feature_size']}_" \
                         f"opt={config['opt']['name']}_lr={config['opt']['lr']}_AdapW_" \
-                        f"bs={config['opt']['batch_size']}_{patch_size}" \
+                        f"bs={config['opt']['batch_size']}" \
+                        # f"bs={config['opt']['batch_size']}_{patch_size}" \
         # save_exp_id = f"_CSAdiceL_nspv={args.num_samples_per_volume}_bs={args.batch_size}_{img_size}" \
 
     elif args.model == "nnunet":
@@ -620,8 +622,10 @@ def main(args):
                         f"{config['preprocessing']['crop_pad_size'][2]}"
         # save experiment id
         save_exp_id = f"{args.model}_seed={config['seed']}_" \
-                        f"ncont={n_contrasts}_pad={args.pad_mode}_lblIn={args.input_label}_" \
-                        f"nf={config['model']['nnunet']['base_num_features']}" \
+                        f"ndata={n_datasets}_ncont={n_contrasts}_" \
+                        f"nf={config['model']['nnunet']['base_num_features']}_" \
+                        f"opt={config['opt']['name']}_lr={config['opt']['lr']}_AdapW_" \
+                        f"bs={config['opt']['batch_size']}" \
 
         if args.debug:
             save_exp_id = f"DEBUG_{save_exp_id}"
