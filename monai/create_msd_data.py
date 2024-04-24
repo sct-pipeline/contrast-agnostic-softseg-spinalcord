@@ -185,28 +185,24 @@ def create_df(dataset_path):
         df = df[df['subjectID'].isin(sct_testing_large_patho_subjects)]
 
         for file in df['filename']:
-
-            if df['subjectID'].values[0] in sct_testing_large_patho_subjects:
                 
-                # NOTE: sct-testing-large has a lot of images which might/might not have labels. 
-                # Get only those images which have labels and are present in the dataframe (and belong to the pathology)
-                fname_label = file
-                gitannex_cmd_label = f'cd {dataset_path}; git annex get {fname_label}'
-                
-                fname_image = fname_label.replace(f'/derivatives/{labels_folder}', '').replace(f'_{labels_suffix}.nii.gz', '.nii.gz')
-                gitannex_cmd_image = f'cd {dataset_path}; git annex get {fname_image}'
-
-                try:
-                    subprocess.run(gitannex_cmd_label, shell=True, check=True)
-                    subprocess.run(gitannex_cmd_image, shell=True, check=True)
-                    logger.info(f"Downloaded {os.path.basename(fname_label)} from git-annex")
-                    logger.info(f"Downloaded {os.path.basename(fname_image)} from git-annex")
-                except subprocess.CalledProcessError as e:
-                    logger.error(f"Error in downloading {file} from git-annex: {e}")
+            # NOTE: sct-testing-large has a lot of images which might/might not have labels. 
+            # Get only those images which have labels and are present in the dataframe (and belong to the pathology)
+            fname_label = file
+            gitannex_cmd_label = f'cd {dataset_path}; git annex get {fname_label}'
             
-            else:
-                logger.info(f"Skipping {file} as pathology is not DCM")
-    
+            fname_image = fname_label.replace(f'/derivatives/{labels_folder}', '').replace(f'_{labels_suffix}.nii.gz', '.nii.gz')
+            gitannex_cmd_image = f'cd {dataset_path}; git annex get {fname_image}'
+
+            try:
+                subprocess.run(gitannex_cmd_label, shell=True, check=True)
+                subprocess.run(gitannex_cmd_image, shell=True, check=True)
+                logger.info(f"Downloaded {os.path.basename(fname_label)} from git-annex")
+                logger.info(f"Downloaded {os.path.basename(fname_image)} from git-annex")
+            except subprocess.CalledProcessError as e:
+                logger.error(f"Error in downloading {file} from git-annex: {e}")
+            
+
     elif dataset_name == 'canproco':
 
         for file in df['filename']: 
