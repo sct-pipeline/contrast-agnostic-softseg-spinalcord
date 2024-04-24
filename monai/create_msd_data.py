@@ -282,12 +282,6 @@ def main():
     # sort the subjects
     train_subjects, val_subjects, test_subjects = sorted(train_subjects), sorted(val_subjects), sorted(test_subjects)
 
-    # NOTE: lumbar-epfl dataset only has 11 subjects no point in train/val/test splits; use all subjects for training
-    if dataset_name == 'lumbar-epfl':
-        train_subjects.extend(val_subjects)
-        train_subjects.extend(test_subjects)
-        val_subjects, test_subjects = [], []
-
     # add a column specifying whether the subject is in train, val or test split
     df['split'] = 'none'
     df.loc[df['subjectID'].isin(train_subjects), 'split'] = 'train'
@@ -354,8 +348,8 @@ def main():
 
     # number of training, validation and testing images (not subjects; a subject can have multiple contrasts, and hence multiple images)
     params["numTrainingImagesTotal"] = len(params["train"])
-    params["numValidationImagesTotal"] = len(params["validation"]) if "validation" in params else 0
-    params["numTestImagesTotal"] = len(params["test"]) if "test" in params else 0
+    params["numValidationImagesTotal"] = len(params["validation"])
+    params["numTestImagesTotal"] = len(params["test"])
     params["seed"] = args.seed
 
     # update the number of train/val/test subjects
