@@ -12,7 +12,7 @@ import pytorch_lightning as pl
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
 
-from utils import dice_score, PolyLRScheduler, plot_slices, check_empty_patch, count_parameters
+from utils import dice_score, PolyLRScheduler, check_empty_patch, count_parameters, get_datasets_stats
 from losses import AdapWingLoss
 from transforms import train_transforms, val_transforms
 from models import create_nnunet_from_plans, load_pretrained_swinunetr
@@ -26,6 +26,19 @@ from monai.transforms import (Compose, EnsureType, EnsureTyped, Invertd, SaveIma
 
 # mednext
 from nnunet_mednext import MedNeXt
+
+# list of contrasts and their possible various names in the datasets
+CONTRASTS = {
+    "t1w": ["T1w", "space-other_T1w"],
+    "t2w": ["T2w", "space-other_T2w"],
+    "t2star": ["T2star", "space-other_T2star"],
+    "dwi": ["rec-average_dwi", "acq-dwiMean_dwi"],
+    "mt-on": ["flip-1_mt-on_space-other_MTS", "acq-MTon_MTR"],
+    "mt-off": ["flip-2_mt-off_space-other_MTS"],
+    "unit1": ["UNIT1"],
+    "psir": ["PSIR"],
+    "stir": ["STIR"]
+}
 
 def get_args():
     parser = argparse.ArgumentParser(description='Script for training contrast-agnositc SC segmentation model.')
@@ -122,6 +135,11 @@ class Model(pl.LightningModule):
             device=self.device,
         )
         transforms_val = val_transforms(crop_size=self.inference_roi_size, lbl_key='label', pad_mode=args.pad_mode,)
+
+        # get the dataset statistics
+        save_path = os.path.join(self.cfg["directories"]["models_dir"], os.path.basename(self.results_path))
+        get_datasets_stats(datalists_root=self.root, contrasts_dict=CONTRASTS, path_save=save_path)
+        logger.info(f"Dataset statistics saved to {save_path} ...")
 
         # get all datalists
         datalists_list = [f for f in os.listdir(self.root) if f.endswith("_seed50.json")]        
@@ -499,13 +517,22 @@ def main(args):
     # define root path for finding datalists
     dataset_root = config["dataset"]["root_dir"]
 
-    n_contrasts = []
-    datalists_list = [f for f in os.listdir(dataset_root) if f.endswith("_seed50.json")]
+    all_contrasts, datasets = [], []
+    datalists_list = [os.path.join(dataset_root, f) for f in os.listdir(dataset_root) if f.endswith("_seed50.json")]
     for datalist in datalists_list:
-        with open(os.path.join(dataset_root, datalist), "r") as f:
+        with open(datalist, "r") as f:
             datalist = json.load(f)
-            n_contrasts += datalist["contrasts"]
-    n_contrasts = len(set([c for c in n_contrasts if c != ""]))
+            all_contrasts += datalist["contrasts"]
+            datasets.append(datalist["dataset"])
+
+    contrasts_final = []
+    for k, v in CONTRASTS.items():
+        for c in all_contrasts:
+            if c in v:
+                contrasts_final.append(k)
+                break
+
+    n_contrasts, n_datasets = len(contrasts_final), len(datasets)
     
     # define optimizer
     if config["opt"]["name"] == "adam":
