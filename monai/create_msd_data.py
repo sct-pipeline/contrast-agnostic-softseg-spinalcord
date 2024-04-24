@@ -381,6 +381,11 @@ def main():
         params["numImagesPerContrast"]["validation"][contrast] = len(df[(df['subjectID'].isin(val_subs_all)) & (df['contrastID'] == contrast)])
         params["numImagesPerContrast"]["test"][contrast] = len(df[(df['contrastID'] == contrast) & (df['subjectID'].isin(test_subs_all))])
 
+    # ensure that the sum of training images per contrast is equal to the total number of training images
+    assert sum(params["numImagesPerContrast"]["train"].values()) == params["numTrainingImagesTotal"]
+    assert sum(params["numImagesPerContrast"]["validation"].values()) == params["numValidationImagesTotal"]
+    assert sum(params["numImagesPerContrast"]["test"].values()) == params["numTestImagesTotal"]
+
     # dump train/val/test splits into a yaml file
     with open(f"datasplits/datasplit_{dataset_name}_seed{args.seed}.yaml", 'w') as file:
         yaml.dump({'train': sorted(train_subs_all), 'val': sorted(val_subs_all), 'test': sorted(test_subs_all)}, file, indent=2, sort_keys=True)
