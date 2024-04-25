@@ -146,6 +146,10 @@ def create_df(dataset_path):
         derivatives_subs = os.listdir(os.path.join(dataset_path, 'derivatives', labels_folder))
         sct_testing_large_patho_subjects = [sub for sub in sct_testing_large_patho_subjects if sub in derivatives_subs]
 
+    elif dataset_name == 'canproco':
+        # 2024/04/23: only pick the ses-M0 images
+        path_files = os.path.join(dataset_path, 'derivatives', labels_folder, 'sub-*', 'ses-M0', '**', f'*_{labels_suffix}.nii.gz')
+
     else: 
         # fetch the files based on the presence of labels 
         path_files = os.path.join(dataset_path, 'derivatives', labels_folder, 'sub-*', '**', f'*_{labels_suffix}.nii.gz')
@@ -179,6 +183,23 @@ def create_df(dataset_path):
         df = pd.merge(df, df_participants[['participant_id', 'pathology']], left_on='subjectID', right_on='participant_id', how='left')
         df.rename(columns={'pathology': 'pathologyID'}, inplace=True)            
 
+    elif dataset_name == 'canproco':
+        # remove subjects from the exclude list: https://github.com/ivadomed/canproco/blob/main/exclude.yml
+        exclude_subs_canproco = ['sub-cal088', 'sub-cal209', 'sub-cal161', 'sub-mon006', 'sub-mon009', 'sub-mon032', 'sub-mon097', 
+                                'sub-mon113', 'sub-mon118', 'sub-mon148', 'sub-mon152', 'sub-mon168', 'sub-mon191', 'sub-van134', 
+                                'sub-van135', 'sub-van171', 'sub-van176', 'sub-van181', 'sub-van201', 'sub-van206', 'sub-van207', 
+                                'sub-tor014', 'sub-tor133', 'sub-cal149']
+        df = df[~df['subjectID'].isin(exclude_subs_canproco)]
+
+        # load the participants.tsv file
+        df_participants = pd.read_csv(os.path.join(dataset_path, 'participants.tsv'), sep='\t')
+        
+        # store the pathology info by merging the "pathology_M0" colume from df_participants to the df dataframe
+        df = pd.merge(df, df_participants[['participant_id', 'pathology_M0']], left_on='subjectID', right_on='participant_id', how='left')
+
+        # rename the column to 'pathologyID'
+        df.rename(columns={'pathology_M0': 'pathologyID'}, inplace=True)
+    
     # refactor to move filename and filesegname to the end of the dataframe
     df = df[['datasetName', 'subjectID', 'sessionID', 'orientationID', 'contrastID', 'filename']] #, 'filesegname']]
 
