@@ -34,10 +34,11 @@ CONTRASTS = {
     "t2w": ["T2w", "space-other_T2w"],
     "t2star": ["T2star", "space-other_T2star"],
     "dwi": ["rec-average_dwi", "acq-dwiMean_dwi"],
-    "mt-on": ["flip-1_mt-on_space-other_MTS"],
+    "mt-on": ["flip-1_mt-on_space-other_MTS", "acq-MTon_MTR"],
     "mt-off": ["flip-2_mt-off_space-other_MTS"],
-    "mtr": ["acq-MTon_MTR"],
     "unit1": ["UNIT1"],
+    "psir": ["PSIR"],
+    "stir": ["STIR"]
 }
 
 def get_args():
@@ -63,6 +64,8 @@ def get_args():
     parser.add_argument('--pad-mode', type=str, default="edge", help="Padding mode for the images.")
     parser.add_argument('--input-label', type=str, default="soft", choices=["soft", "bin"],
                         help="Type of label input to the model.")
+    parser.add_argument('--enable-pbar', default=False, action='store_true',
+                        help='Enable progress bar during training. (useful for debugging 1-2 epochs)')
 
     args = parser.parse_args()
 
@@ -168,7 +171,7 @@ class Model(pl.LightningModule):
             val_files = val_files[:15]
             test_files = test_files[:6]
 
-        train_cache_rate = 0.25 if args.debug else 0.5
+        train_cache_rate = 0.25 # if args.debug else 0.5
         self.train_ds = CacheDataset(data=train_files, transform=transforms_train, cache_rate=train_cache_rate, 
                                      num_workers=8, copy_cache=False)
         self.val_ds = CacheDataset(data=val_files, transform=transforms_val, cache_rate=0.25, 
@@ -439,7 +442,7 @@ def main(args):
                 contrasts_final.append(k)
                 break
 
-    n_contrasts = len(contrasts_final)
+    n_contrasts, n_datasets = len(contrasts_final), len(datasets)
 
     # define optimizer
     if config["opt"]["name"] == "adam":
@@ -526,8 +529,10 @@ def main(args):
                         f"{config['preprocessing']['crop_pad_size'][2]}"
         # save experiment id
         save_exp_id = f"{args.model}_seed={config['seed']}_" \
-                        f"ncont={n_contrasts}_pad={args.pad_mode}_lblIn={args.input_label}_" \
-                        f"nf={config['model']['nnunet']['base_num_features']}" \
+                        f"ndata={n_datasets}_ncont={n_contrasts}_" \
+                        f"nf={config['model']['nnunet']['base_num_features']}_" \
+                        f"opt={config['opt']['name']}_lr={config['opt']['lr']}_AdapW_" \
+                        f"bs={config['opt']['batch_size']}" \
 
         if args.debug:
             save_exp_id = f"DEBUG_{save_exp_id}"
@@ -570,8 +575,10 @@ def main(args):
             os.makedirs(save_path, exist_ok=True)
 
         # i.e. train by loading weights from scratch
+        # NOTE: abusing the results_path arg to save the dataset csv instead of saving model predictions
+        # as done in the original code (because we're not testing on Compute Canada)
         pl_model = Model(config, optimizer_class=optimizer_class, loss_function=loss_func, net=net, 
-                            exp_id=save_exp_id, results_path=results_path)
+                            exp_id=save_exp_id, results_path=os.path.join(args.path_results, f"{save_exp_id}"))
                 
         # saving the best model based on validation loss
         logger.info(f"Saving best model to {save_path}!")
@@ -611,7 +618,7 @@ def main(args):
             check_val_every_n_epoch=config["opt"]["check_val_every_n_epochs"],
             max_epochs=config["opt"]["max_epochs"], 
             precision="bf16-mixed",
-            enable_progress_bar=True) 
+            enable_progress_bar=True if args.enable_pbar else False,) 
             # profiler="simple",)     # to profile the training time taken for each step
 
         logger.info(f"Trainer initialized with {trainer.strategy} strategy on devices {trainer.device_ids} ...")
