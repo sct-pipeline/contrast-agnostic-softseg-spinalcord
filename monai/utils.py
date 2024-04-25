@@ -1,8 +1,74 @@
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 from torch.optim.lr_scheduler import _LRScheduler
 import torch
 import subprocess
+import pandas as pd 
+import json
+import re
+
+
+def get_datasets_stats(datalists_root, contrasts_dict, path_save):
+
+    datalists = [file for file in os.listdir(datalists_root) if file.endswith('_seed50.json')]
+
+    df = pd.DataFrame(columns=['train', 'validation', 'test'])
+    # collect all the contrasts from the datalists
+    for datalist in datalists:
+        json_path = os.path.join(datalists_root, datalist)
+        with open(json_path, 'r') as f:
+            data = json.load(f)
+            data = data['numImagesPerContrast'].items()
+
+        for split, contrast_info in data:
+            for contrast, num_images in contrast_info.items():
+                # add the contrast and the number of images to the dataframe
+                if contrast not in df.index:
+                    df.loc[contrast] = [0, 0, 0]
+                df.loc[contrast, split] += num_images
+
+    # reshape dataframe and add a column for contrast
+    df = df.reset_index()
+    df = df.rename(columns={'index': 'contrast'})
+
+    contrasts_final = list(contrasts_dict.keys())
+
+    # rename the contrasts column as per contrasts_final
+    for c in df['contrast'].unique():
+        for cf in contrasts_final:
+            if re.search(cf, c.lower()):
+                df.loc[df['contrast'] == c, 'contrast'] = cf
+                break
+    
+    # NOTE: MTon-MTR is same as flip-1_mt-on_space-other_MTS, but the naming is not mt-on
+    # so doing the renaming manually
+    df.loc[df['contrast'] == 'acq-MTon_MTR', 'contrast'] = 'mt-on'
+
+    # sum the duplicate contrasts 
+    df = df.groupby('contrast').sum().reset_index()
+    
+    # rename columns
+    df = df.rename(columns={'contrast': 'Contrast', 'train': '#train_images', 'validation': '#validation_images', 'test': '#test_images'})
+    # add a row for the total number of images
+    df.loc[len(df)] = ['TOTAL', df['#train_images'].sum(), df['#validation_images'].sum(), df['#test_images'].sum()]
+    # print(df.to_markdown(index=False))
+    df.to_markdown(os.path.join(path_save, 'dataset_split.md'), index=False)
+
+    # # total number of images for each split
+    # print(f"Total number of training images: {df['#train_images'].sum()}")
+    # print(f"Total number of validation images: {df['#validation_images'].sum()}")
+    # print(f"Total number of test images: {df['#test_images'].sum()}")
+
+    # create a unified dataframe combining all datasets
+    csvs = [os.path.join(datalists_root, file) for file in os.listdir(datalists_root) if file.endswith('.csv')]
+    unified_df = pd.concat([pd.read_csv(csv) for csv in csvs], ignore_index=True)
+    
+    # sort the dataframe by the dataset column
+    unified_df = unified_df.sort_values(by='datasetName', ascending=True)
+
+    # save as csv
+    unified_df.to_csv(os.path.join(path_save, 'dataset_contrast_agnostic.csv'), index=False)
 
 
 def count_parameters(model):
