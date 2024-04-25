@@ -38,11 +38,15 @@ source /home/$(whoami)/envs/venv_monai/bin/activate
 PATH_REPO="/home/$(whoami)/code/contrast-agnostic/contrast-agnostic-softseg-spinalcord"
 
 DATASETS_ROOT="/home/$(whoami)/projects/rrg-bengioy-ad/$(whoami)/datasets"
-PATH_DATALIST_ROOT="/home/$(whoami)/code/contrast-agnostic/datalists"
 PATH_DATASPLITS="/home/$(whoami)/code/contrast-agnostic/datasplits"
+PATH_DATALIST_ROOT="/home/$(whoami)/code/contrast-agnostic/datalists/model_v3_7datasets"
+if [[ ! -d $PATH_DATALIST_ROOT ]]; then
+    mkdir $PATH_DATALIST_ROOT
+    mkdir $PATH_DATALIST_ROOT/logs
+fi
 
 # List of datasets to train on
-DATASETS=("data-multi-subject" "dcm-zurich" "sct-testing-large" "basel-mp2rage")
+DATASETS=("basel-mp2rage" "canproco" "data-multi-subject" "dcm-zurich" "lumbar-epfl" "lumbar-vanderbilt" "sct-testing-large" )
 
 PATH_RESULTS="/home/$(whoami)/code/contrast-agnostic/results"
 PATH_CONFIG="${PATH_REPO}/configs/train_all.yaml"
@@ -60,8 +64,9 @@ if [[ ! -d $SLURM_TMPDIR/datalists ]]; then
     mkdir $SLURM_TMPDIR/datalists
 fi
 
-# create folders in SLURM_TMPDIR
+if [[ ! -d $SLURM_TMPDIR/results ]]; then
 mkdir $SLURM_TMPDIR/results
+fi
 
 
 for dataset in ${DATASETS[@]}; do
@@ -92,6 +97,7 @@ echo "Copying the datalists back to: ${PATH_DATALIST_ROOT} ..."
 echo "-------------------------------------------------------"
 # copy the datalist to the datalist root
 cp ${SLURM_TMPDIR}/datalists/*.json ${PATH_DATALIST_ROOT}
+cp ${SLURM_TMPDIR}/datalists/*.csv ${PATH_DATALIST_ROOT}
 cp ${SLURM_TMPDIR}/datalists/logs/*.txt ${PATH_DATALIST_ROOT}/logs
 
 echo "-------------------------------------------------------"
@@ -112,6 +118,7 @@ srun torchrun --standalone --nnodes=$SLURM_JOB_NUM_NODES --nproc-per-node=$SLURM
     --config $PATH_CONFIG \
     --pad-mode zero \
     --input-label 'soft' \
+    # --enable-pbar \
 
 echo "-------------------------------------------------------"
 echo "Model training done! Copying the results back to home ..."
