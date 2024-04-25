@@ -12,7 +12,7 @@ import pytorch_lightning as pl
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
 
-from utils import dice_score, PolyLRScheduler, plot_slices, check_empty_patch, count_parameters
+from utils import dice_score, PolyLRScheduler, check_empty_patch, count_parameters, get_datasets_stats
 from losses import AdapWingLoss
 from transforms import train_transforms, val_transforms
 from models import create_nnunet_from_plans, load_pretrained_swinunetr
@@ -142,6 +142,11 @@ class Model(pl.LightningModule):
         )
         transforms_val = val_transforms(crop_size=self.inference_roi_size, lbl_key='label', pad_mode=args.pad_mode)
 
+        # get the dataset statistics
+        # save_path = os.path.join(self.cfg["directories"]["models_dir"], os.path.basename(self.results_path))
+        get_datasets_stats(datalists_root=args.path_datalists, contrasts_dict=CONTRASTS, path_save=self.results_path)
+        logger.info(f"Dataset statistics saved to {self.results_path} ...")
+
         # get all datalists
         datalists_list = [f for f in os.listdir(args.path_datalists) if f.endswith(".json")]
 
@@ -184,10 +189,6 @@ class Model(pl.LightningModule):
         # return DataLoader(self.val_ds, batch_size=2, shuffle=False, num_workers=4, pin_memory=True, 
         #                   persistent_workers=True)
         return ThreadDataLoader(self.val_ds, batch_size=self.trainer.world_size, shuffle=False, num_workers=0)
-
-    def test_dataloader(self):
-        # return DataLoader(self.test_ds, batch_size=2, shuffle=False, num_workers=4, pin_memory=True)
-        return ThreadDataLoader(self.test_ds, batch_size=self.trainer.world_size, shuffle=False, num_workers=0)
     
     # --------------------------------
     # OPTIMIZATION
