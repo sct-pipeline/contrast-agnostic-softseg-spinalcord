@@ -105,7 +105,6 @@ class Model(pl.LightningModule):
         # temp lists for storing outputs from training, validation, and testing
         self.train_step_outputs = []
         self.val_step_outputs = []
-        self.test_step_outputs = []
 
 
     # --------------------------------
@@ -169,21 +168,6 @@ class Model(pl.LightningModule):
                                      num_workers=8, copy_cache=False)
         self.val_ds = CacheDataset(data=val_files, transform=transforms_val, cache_rate=0.25, 
                                    num_workers=4, copy_cache=False)
-
-        # define test transforms
-        transforms_test = val_transforms(crop_size=self.inference_roi_size, lbl_key='label', pad_mode=args.pad_mode)
-        
-        # define post-processing transforms for testing; taken (with explanations) from 
-        # https://github.com/Project-MONAI/tutorials/blob/main/3d_segmentation/torch/unet_inference_dict.py#L66
-        self.test_post_pred = Compose([
-            EnsureTyped(keys=["pred", "label"]),
-            Invertd(keys=["pred", "label"], transform=transforms_test, 
-                    orig_keys=["image", "label"], 
-                    meta_keys=["pred_meta_dict", "label_meta_dict"],
-                    nearest_interp=False, to_tensor=True),
-            ])
-        self.test_ds = CacheDataset(data=test_files, transform=transforms_test, cache_rate=0.1, 
-                                    num_workers=4, copy_cache=False)
 
 
     # --------------------------------
@@ -424,88 +408,7 @@ class Model(pl.LightningModule):
         
         # return {"log": wandb_logs}
 
-    # --------------------------------
-    # TESTING
-    # --------------------------------
-    def test_step(self, batch, batch_idx):
-        
-        test_input = batch["image"]
-        # print(batch["label_meta_dict"]["filename_or_obj"][0])
-        batch["pred"] = sliding_window_inference(test_input, self.inference_roi_size, 
-                                                 sw_batch_size=4, predictor=self.forward, overlap=0.5)
-        
-        if args.model in ["nnunet", "mednext"] and self.cfg['model'][args.model]["enable_deep_supervision"]:
-            # we only need the output with the highest resolution
-            batch["pred"] = batch["pred"][0]
-
-        # normalize the logits
-        batch["pred"] = F.relu(batch["pred"]) / F.relu(batch["pred"]).max() if bool(F.relu(batch["pred"]).max()) else F.relu(batch["pred"])
-
-        post_test_out = [self.test_post_pred(i) for i in decollate_batch(batch)]
-
-        # make sure that the shapes of prediction and GT label are the same
-        # print(f"pred shape: {post_test_out[0]['pred'].shape}, label shape: {post_test_out[0]['label'].shape}")
-        assert post_test_out[0]['pred'].shape == post_test_out[0]['label'].shape
-        
-        pred, label = post_test_out[0]['pred'].cpu(), post_test_out[0]['label'].cpu()
-
-        # save the prediction and label
-        if self.cfg["save_test_preds"]:
-
-            subject_name = (batch["image_meta_dict"]["filename_or_obj"][0]).split("/")[-1].replace(".nii.gz", "")
-            logger.info(f"Saving subject: {subject_name}")
-
-            # image saver class
-            save_folder = os.path.join(self.results_path, subject_name.split("_")[0])
-            pred_saver = SaveImage(
-                output_dir=save_folder, output_postfix="pred", output_ext=".nii.gz", 
-                separate_folder=False, print_log=False, resample=True)
-            # save the prediction
-            pred_saver(pred)
-
-            # label_saver = SaveImage(
-            #     output_dir=save_folder, output_postfix="gt", output_ext=".nii.gz", 
-            #     separate_folder=False, print_log=False, resample=True)
-            # # save the label
-            # label_saver(label)
-            
-
-        # NOTE: Important point from the SoftSeg paper - binarize predictions before computing metrics
-        # calculate soft and hard dice here (for quick overview), other metrics can be computed from 
-        # the saved predictions using ANIMA
-        # 1. Dice Score
-        test_soft_dice = self.soft_dice_metric(pred, label)
-
-        # binarizing the predictions 
-        pred = (post_test_out[0]['pred'].detach().cpu() > 0.5).float()
-        label = (post_test_out[0]['label'].detach().cpu() > 0.5).float()
-
-        # 1.1 Hard Dice Score
-        test_hard_dice = self.soft_dice_metric(pred.numpy(), label.numpy())
-
-        metrics_dict = {
-            "test_hard_dice": test_hard_dice,
-            "test_soft_dice": test_soft_dice,
-        }
-        self.test_step_outputs.append(metrics_dict)
-
-        return metrics_dict
-
-    def on_test_epoch_end(self):
-        
-        avg_hard_dice_test, std_hard_dice_test = np.stack([x["test_hard_dice"] for x in self.test_step_outputs]).mean(), \
-                                                    np.stack([x["test_hard_dice"] for x in self.test_step_outputs]).std()
-        avg_soft_dice_test, std_soft_dice_test = np.stack([x["test_soft_dice"] for x in self.test_step_outputs]).mean(), \
-                                                    np.stack([x["test_soft_dice"] for x in self.test_step_outputs]).std()
-        
-        logger.info(f"Test (Soft) Dice: {avg_soft_dice_test}")
-        logger.info(f"Test (Hard) Dice: {avg_hard_dice_test}")
-        
-        self.avg_test_dice, self.std_test_dice = avg_soft_dice_test, std_soft_dice_test
-        self.avg_test_dice_hard, self.std_test_dice_hard = avg_hard_dice_test, std_hard_dice_test
-        
-        # free up memory
-        self.test_step_outputs.clear()
+    # NOTE: removing the testing part as it is not done on Compute Canada
 
 
 # --------------------------------
@@ -664,11 +567,6 @@ def main(args):
         save_path = os.path.join(args.path_results, f"{save_exp_id}", "model")
         if not os.path.exists(save_path):
             os.makedirs(save_path, exist_ok=True)
-
-        # to save the results/model predictions 
-        results_path = os.path.join(args.path_results, f"{save_exp_id}", "results")
-        if not os.path.exists(results_path):
-            os.makedirs(results_path, exist_ok=True)
 
         # i.e. train by loading weights from scratch
         pl_model = Model(config, optimizer_class=optimizer_class, loss_function=loss_func, net=net, 
