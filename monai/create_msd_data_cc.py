@@ -7,7 +7,6 @@ from tqdm import tqdm
 import argparse
 from loguru import logger
 from collections import OrderedDict
-import subprocess
 from utils import get_git_branch_and_commit
 from datetime import datetime
 import numpy as np
@@ -264,10 +263,7 @@ def main():
     dataset_name = os.path.basename(os.path.normpath(data_root))
     branch, commit = get_git_branch_and_commit(data_root)
     dataset_commits[dataset_name] = f"git-{branch}-{commit}"
-        
-    # train_ratio, val_ratio, test_ratio = 0.65, 0.15, 0.2
-    # train_subs_all, val_subs_all, test_subs_all = [], [], []
-    
+            
     # the idea is to create a datalist for each dataset we want to use 
     # these datalists (which have their own train/val/test splits) for each dataset will then be combined 
     # during the dataloading process of training the contrast-agnostic model
@@ -315,21 +311,23 @@ def main():
             temp_list = []            
             for subject_no, subject in enumerate(subs_list):
 
-                # get all the contrastIDs for the subject
-                contrastIDs = df[df['subjectID'] == subject]['contrastID'].unique()
+                # NOTE: looping over unique contrast IDs is not working for `sct-testing-large` because there exist multiple files
+                # for the same contrast (e.g. acq-sagcerv_T2w, acq-sagthor_T2w, etc.) and only 1 of them is picked. Hence, switching
+                # to looping over all the files for a given subject. 
+                num_files_per_subject = len(df[df['subjectID'] == subject])
 
-                for contrast in contrastIDs:
+                for idx in range(num_files_per_subject):
                 
                     temp_data = {}
                     # if the subject belongs to a data-multi-subject dataset, then the filename is different
                     if df['datasetName'].values[0] == 'data-multi-subject':
                         # NOTE: for spine-generic subjects, we're pulling the data from image filename
-                        fname_image = df[(df['subjectID'] == subject) & (df['contrastID'] == contrast)]['filename'].values[0]
+                        fname_image = df[df['subjectID'] == subject]['filename'].values[idx]
                         fname_label = fname_image.replace('data_preprocessed', labels_folder).replace('.nii.gz', f'_{labels_suffix}.nii.gz')
                     
                     else: 
                         # NOTE: but for other datasets, we are getting them from the lesion filenames
-                        fname_label = df[(df['subjectID'] == subject) & (df['contrastID'] == contrast)]['filename'].values[0]
+                        fname_label = df[df['subjectID'] == subject]['filename'].values[idx]
                         fname_image = fname_label.replace(f'/derivatives/{labels_folder}', '').replace(f'_{labels_suffix}.nii.gz', '.nii.gz')
                                     
                     temp_data["image"] = fname_image
@@ -350,9 +348,9 @@ def main():
     params["contrasts"] = df['contrastID'].unique().tolist()
 
     # number of training, validation and testing images (not subjects; a subject can have multiple contrasts, and hence multiple images)
-    params["numTrainingImages"] = len(params["train"])
-    params["numValidationImages"] = len(params["validation"])
-    params["numTestImages"] = len(params["test"])
+    params["numTrainingImagesTotal"] = len(params["train"])
+    params["numValidationImagesTotal"] = len(params["validation"])
+    params["numTestImagesTotal"] = len(params["test"])
     params["seed"] = args.seed
 
     # update the number of train/val/test subjects
@@ -363,9 +361,9 @@ def main():
     params["numValidationSubjects"] = len(val_subs_all)
     params["numTestSubjects"] = len(test_subs_all)
 
-    logger.info(f"Number of training images (not subjects): {params['numTrainingImages']}")
-    logger.info(f"Number of validation images (not subjects): {params['numValidationImages']}")
-    logger.info(f"Number of testing images (not subjects): {params['numTestImages']}")
+    logger.info(f"Number of training images (not subjects): {params['numTrainingImagesTotal']}")
+    logger.info(f"Number of validation images (not subjects): {params['numValidationImagesTotal']}")
+    logger.info(f"Number of testing images (not subjects): {params['numTestImagesTotal']}")
 
     # update the dataframe to remove subjects whose labels don't exist
     df = df[~df['subjectID'].isin(subjects_to_remove)]
