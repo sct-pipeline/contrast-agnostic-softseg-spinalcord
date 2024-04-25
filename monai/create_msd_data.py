@@ -427,7 +427,13 @@ def main():
         yaml.dump({'train': sorted(train_subs_all), 'val': sorted(val_subs_all), 'test': sorted(test_subs_all)}, file, indent=2, sort_keys=True)
 
     # save the dataframe to a csv file
-    df.drop(columns=['filename'], inplace=True)     # drop the filename column
+    # df.drop(columns=['filename'], inplace=True)     # drop the filename column
+    for file in df['filename']:
+        # replace the filename with only the filename's basename (without the path)
+        df['filename'] = df['filename'].replace(file, os.path.basename(file))
+
+    # reorder the columns
+    df = df[['datasetName', 'subjectID', 'sessionID', 'orientationID', 'contrastID', 'pathologyID', 'split', 'filename']] #, 'filesegname']]
     df.to_csv(os.path.join(args.path_out, f"df_{dataset_name}_seed{args.seed}.csv"), index=False)
 
     final_json = json.dumps(params, indent=4, sort_keys=True)
