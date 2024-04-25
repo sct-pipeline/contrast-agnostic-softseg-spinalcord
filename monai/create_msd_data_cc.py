@@ -231,7 +231,7 @@ def create_df(dataset_path):
             df['pathologyID'] = 'n/a'
          
     # refactor to move filename and filesegname to the end of the dataframe
-    df = df[['datasetName', 'subjectID', 'sessionID', 'orientationID', 'contrastID', 'filename']] #, 'filesegname']]
+    df = df[['datasetName', 'subjectID', 'sessionID', 'orientationID', 'contrastID', 'pathologyID', 'filename']] #, 'filesegname']]
 
     return df
 
@@ -286,6 +286,12 @@ def main():
     
     # sort the subjects
     train_subjects, val_subjects, test_subjects = sorted(train_subjects), sorted(val_subjects), sorted(test_subjects)
+
+    # add a column specifying whether the subject is in train, val or test split
+    df['split'] = 'none'
+    df.loc[df['subjectID'].isin(train_subjects), 'split'] = 'train'
+    df.loc[df['subjectID'].isin(val_subjects), 'split'] = 'validation'
+    df.loc[df['subjectID'].isin(test_subjects), 'split'] = 'test'
 
     # get boilerplate json
     params = get_boilerplate_json(dataset_name, dataset_commits)
@@ -361,9 +367,39 @@ def main():
     logger.info(f"Number of validation images (not subjects): {params['numValidationImages']}")
     logger.info(f"Number of testing images (not subjects): {params['numTestImages']}")
 
-    # dump train/val/test splits into a yaml file
-    with open(f"datasplit_{dataset_name}_seed{args.seed}.yaml", 'w') as file:
-        yaml.dump({'train': sorted(train_subs_all), 'val': sorted(val_subs_all), 'test': sorted(test_subs_all)}, file, indent=2, sort_keys=True)
+    # update the dataframe to remove subjects whose labels don't exist
+    df = df[~df['subjectID'].isin(subjects_to_remove)]
+
+    # log the number of images per contrasts
+    params["numImagesPerContrast"] = {
+        "train": {},
+        "validation": {},
+        "test": {},
+    }
+    for contrast in params["contrasts"]:
+        params["numImagesPerContrast"]["train"][contrast] = len(df[(df['subjectID'].isin(train_subs_all)) & (df['contrastID'] == contrast)])
+        params["numImagesPerContrast"]["validation"][contrast] = len(df[(df['subjectID'].isin(val_subs_all)) & (df['contrastID'] == contrast)])
+        params["numImagesPerContrast"]["test"][contrast] = len(df[(df['contrastID'] == contrast) & (df['subjectID'].isin(test_subs_all))])
+
+    # ensure that the sum of training images per contrast is equal to the total number of training images
+    assert sum(params["numImagesPerContrast"]["train"].values()) == params["numTrainingImagesTotal"]
+    assert sum(params["numImagesPerContrast"]["validation"].values()) == params["numValidationImagesTotal"]
+    assert sum(params["numImagesPerContrast"]["test"].values()) == params["numTestImagesTotal"]
+
+    # # dump train/val/test splits into a yaml file
+    # with open(f"datasplit_{dataset_name}_seed{args.seed}.yaml", 'w') as file:
+    #     yaml.dump({'train': sorted(train_subs_all), 'val': sorted(val_subs_all), 'test': sorted(test_subs_all)}, file, indent=2, sort_keys=True)
+
+    # df.drop(columns=['filename'], inplace=True)     # drop the filename column
+    # replace the filename with only the filename (without the path)
+    for file in df['filename']:
+        df['filename'] = df['filename'].replace(file, os.path.basename(file))
+
+    # reorder the columns
+    df = df[['datasetName', 'subjectID', 'sessionID', 'orientationID', 'contrastID', 'pathologyID', 'split', 'filename']] #, 'filesegname']]
+    
+    # save the dataframe to a csv file
+    df.to_csv(os.path.join(args.path_out, f"df_{dataset_name}_seed{args.seed}.csv"), index=False)
 
     final_json = json.dumps(params, indent=4, sort_keys=True)
     if not os.path.exists(args.path_out):
