@@ -6,7 +6,6 @@ import yaml
 from tqdm import tqdm
 import argparse
 from loguru import logger
-from sklearn.model_selection import train_test_split
 from collections import OrderedDict
 import subprocess
 from utils import get_git_branch_and_commit
@@ -23,11 +22,17 @@ pd.set_option('display.max_colwidth', None)
 # This dict is used to store the names of the folders and corresponding suffixes for each dataset
 # convention --> "dataset_name (as per git-annex)": ["labels_folder", "labels_suffix"]
 FILESEG_SUFFIXES = {
-    "data-multi-subject": ["labels_softseg_bin", "desc-softseg_label-SC_seg"],
     "basel-mp2rage": ["labels_softseg_bin", "desc-softseg_label-SC_seg"],
-    "sct-testing-large": ["labels", "seg-manual"],
+    "canproco": ["labels", "seg-manual"],
+    "data-multi-subject": ["labels_softseg_bin", "desc-softseg_label-SC_seg"],
     "dcm-zurich": ["labels", "label-SC_mask-manual"],
+    "lumbar-epfl": ["labels", "seg-manual"],
+    "lumbar-vanderbilt": ["labels", "label-SC_seg"],
+    "sct-testing-large": ["labels", "seg-manual"],
 }
+
+# add abbreviations of pathologies in sct-testing-large dataset to be included in the dataset
+PATHOLOGIES = ["ALS", "DCM", "NMO", "MS"]
 
 
 def get_parser():
