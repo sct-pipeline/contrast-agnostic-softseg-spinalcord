@@ -166,6 +166,22 @@ def create_df(dataset_path):
     # get subjectID, sessionID and orientationID
     df['subjectID'], df['sessionID'], df['orientationID'], df['contrastID'] = zip(*df['filename'].map(fetch_subject_nifti_details))
 
+    # sub_files = [ df[df['subjectID'] == 'sub-sherbrookeBiospective006']['filename'].values[idx] for idx in range(len(df[df['subjectID'] == 'sub-sherbrookeBiospective006']))]
+    # print(len(sub_files))
+
+    if dataset_name == 'basel-mp2rage':
+        
+        # set the type of pathologyID as str
+        df['pathologyID'] = 'n/a'
+
+        # store the pathology info
+        for subject in df['subjectID'].unique():
+            if subject.startswith('sub-C'):
+                df.loc[df['subjectID'] == subject, 'pathologyID'] = 'HC'
+            else:
+                df.loc[df['subjectID'] == subject, 'pathologyID'] = 'MS'
+            
+
     elif dataset_name == 'sct-testing-large':
 
         df_participants = pd.read_csv(os.path.join(dataset_path, 'participants.tsv'), sep='\t')
@@ -200,6 +216,20 @@ def create_df(dataset_path):
         # rename the column to 'pathologyID'
         df.rename(columns={'pathology_M0': 'pathologyID'}, inplace=True)
     
+    else:
+        # load the participants.tsv file
+        df_participants = pd.read_csv(os.path.join(dataset_path, 'participants.tsv'), sep='\t')
+
+        if 'pathology' in df_participants.columns:
+            # store the pathology info by merging the "pathology" colume from df_participants to the df dataframe
+            df = pd.merge(df, df_participants[['participant_id', 'pathology']], left_on='subjectID', right_on='participant_id', how='left')
+
+            # rename the column to 'pathologyID'
+            df.rename(columns={'pathology': 'pathologyID'}, inplace=True)
+        
+        else: 
+            df['pathologyID'] = 'n/a'
+         
     # refactor to move filename and filesegname to the end of the dataframe
     df = df[['datasetName', 'subjectID', 'sessionID', 'orientationID', 'contrastID', 'filename']] #, 'filesegname']]
 
