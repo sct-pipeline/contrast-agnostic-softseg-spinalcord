@@ -65,7 +65,7 @@ if [[ ! -d $SLURM_TMPDIR/datalists ]]; then
 fi
 
 if [[ ! -d $SLURM_TMPDIR/results ]]; then
-mkdir $SLURM_TMPDIR/results
+    mkdir $SLURM_TMPDIR/results
 fi
 
 
