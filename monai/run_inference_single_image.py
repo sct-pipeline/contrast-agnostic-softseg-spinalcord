@@ -81,7 +81,7 @@ def get_parser():
     parser.add_argument('--pred-type', default="soft", type=str, choices=["soft", "hard"],
                         help='Type of prediction to output/save. `soft` outputs soft segmentation masks with a threshold of 0.1'
                         '`hard` outputs binarized masks thresholded at 0.5  Default: hard')
-    parser.add_argument('--pad-mode', default="edge", type=str, choices=["constant", "edge", "reflect"],
+    parser.add_argument('--pad-mode', default="constant", type=str, choices=["constant", "edge", "reflect"],
                         help='Padding mode for the input image. Default: constant')
     return parser
 
