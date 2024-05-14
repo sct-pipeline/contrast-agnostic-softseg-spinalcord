@@ -44,7 +44,7 @@ def get_args():
     parser = argparse.ArgumentParser(description='Script for training contrast-agnositc SC segmentation model.')
     
     # arguments for model
-    parser.add_argument('-m', '--model', choices=['nnunet', 'mednext', 'swinunetr'], 
+    parser.add_argument('-m', '--model', choices=['nnunet-plain', 'nnunet-resencM', 'mednext', 'swinunetr'], 
                         default='nnunet', type=str, 
                         help='Model type to be used. Options: nnunet, mednext, swinunetr.')
     # path to the config file
@@ -223,6 +223,7 @@ class Model(pl.LightningModule):
 
         if self.input_label_type == "bin":
             # binarize the labels with a threshold of 0.5
+            # NOTE: if "bin" is used, then it is not SoftSeg approach
             labels = (labels > 0.5).float()
 
         # check if any label image patch is empty in the batch
@@ -233,7 +234,7 @@ class Model(pl.LightningModule):
         output = self.forward(inputs)   # logits
         # print(f"labels.shape: {labels.shape} \t output.shape: {output.shape}")
         
-        if args.model in ["nnunet", "mednext"] and self.cfg['model'][args.model]["enable_deep_supervision"]:
+        if args.model in ["nnunet-plain", "nnunet-resencM", "mednext"] and self.cfg['model'][args.model]["enable_deep_supervision"]:
 
             # calculate dice loss for each output
             loss, train_soft_dice = 0.0, 0.0
@@ -332,7 +333,7 @@ class Model(pl.LightningModule):
         outputs = sliding_window_inference(inputs, self.inference_roi_size, mode="gaussian",
                                            sw_batch_size=4, predictor=self.forward, overlap=0.5,) 
         # outputs shape: (B, C, <original H x W x D>)
-        if args.model in ["nnunet", "mednext"] and self.cfg['model'][args.model]["enable_deep_supervision"]:
+        if args.model in ["nnunet-plain", "nnunet-resencM", "mednext"] and self.cfg['model'][args.model]["enable_deep_supervision"]:
             # we only need the output with the highest resolution
             outputs = outputs[0]
         
@@ -429,7 +430,7 @@ class Model(pl.LightningModule):
         batch["pred"] = sliding_window_inference(test_input, self.inference_roi_size, 
                                                  sw_batch_size=4, predictor=self.forward, overlap=0.5)
         
-        if args.model in ["nnunet", "mednext"] and self.cfg['model'][args.model]["enable_deep_supervision"]:
+        if args.model in ["nnunet-plain", "nnunet-resencM", "mednext"] and self.cfg['model'][args.model]["enable_deep_supervision"]:
             # we only need the output with the highest resolution
             batch["pred"] = batch["pred"][0]
 
@@ -585,37 +586,42 @@ def main(args):
                         # f"bs={config['opt']['batch_size']}_{patch_size}" \
         # save_exp_id = f"_CSAdiceL_nspv={args.num_samples_per_volume}_bs={args.batch_size}_{img_size}" \
 
-    elif args.model == "nnunet":
+    elif args.model in ["nnunet-plain", "nnunet-resencM"]:
 
-        if config["model"]["nnunet"]["enable_deep_supervision"]:
-            logger.info(f"Using nnUNet model WITH deep supervision ...")
-        else:
-            logger.info(f"Using nnUNet model WITHOUT deep supervision ...")
-
+        # enabling deep supervision by default
+        logger.info(f"Using nnUNet model WITH deep supervision ...")
+        
         logger.info("Defining plans for nnUNet model ...")
         # =========================================================================================
         #                   Define plans json taken from nnUNet_preprocessed folder
         # =========================================================================================
-        nnunet_plans = {
-            "UNet_class_name": "PlainConvUNet",
-            "UNet_base_num_features": config["model"]["nnunet"]["base_num_features"],
-            "n_conv_per_stage_encoder": config["model"]["nnunet"]["n_conv_per_stage_encoder"],
-            "n_conv_per_stage_decoder": config["model"]["nnunet"]["n_conv_per_stage_decoder"],
-            "pool_op_kernel_sizes": config["model"]["nnunet"]["pool_op_kernel_sizes"],
-            "conv_kernel_sizes": [
-                [3, 3, 3],
-                [3, 3, 3],
-                [3, 3, 3],
-                [3, 3, 3],
-                [3, 3, 3],
-                [3, 3, 3]
-            ],
-            "unet_max_num_features": config["model"]["nnunet"]["max_num_features"],
-        }
+        if args.model == "nnunet-plain":
+            nnunet_plans = {
+                "arch_class_name": "dynamic_network_architectures.architectures.unet.PlainConvUNet",
+                "arch_kwargs": {
+                    "n_stages": config["model"]["nnunet-plain"]["n_stages"],
+                    "features_per_stage": config["model"]["nnunet-plain"]["features_per_stage"],
+                    "strides": config["model"]["nnunet-plain"]["strides"],
+                    "n_conv_per_stage": config["model"]["nnunet-plain"]["n_conv_per_stage"],
+                    "n_conv_per_stage_decoder": config["model"]["nnunet-plain"]["n_conv_per_stage_decoder"]
+                },
+                "arch_kwargs_requires_import": ["conv_op", "norm_op", "dropout_op", "nonlin"],
+            }
+        elif args.model == "nnunet-resencM":
+            nnunet_plans = {
+                "arch_class_name": "dynamic_network_architectures.architectures.unet.ResidualEncoderUNet",
+                "arch_kwargs": {
+                    "n_stages": config["model"]["nnunet-resencM"]["n_stages"],
+                    "features_per_stage": config["model"]["nnunet-resencM"]["features_per_stage"],
+                    "strides": config["model"]["nnunet-resencM"]["strides"],
+                    "n_blocks_per_stage": config["model"]["nnunet-resencM"]["n_blocks_per_stage"],
+                    "n_conv_per_stage_decoder": config["model"]["nnunet-resencM"]["n_conv_per_stage_decoder"]
+                },
+                "arch_kwargs_requires_import": ["conv_op", "norm_op", "dropout_op", "nonlin"],
+            }
 
         # define model
-        net = create_nnunet_from_plans(plans=nnunet_plans, num_input_channels=1, num_classes=1, 
-                                       deep_supervision=config["model"]["nnunet"]["enable_deep_supervision"])
+        net = create_nnunet_from_plans(plans=nnunet_plans, input_channels=1, output_channels=1, deep_supervision=True)
         # variable for saving patch size in the experiment id (same as crop_pad_size)
         patch_size = f"{config['preprocessing']['crop_pad_size'][0]}x" \
                         f"{config['preprocessing']['crop_pad_size'][1]}x" \
@@ -623,7 +629,7 @@ def main(args):
         # save experiment id
         save_exp_id = f"{args.model}_seed={config['seed']}_" \
                         f"ndata={n_datasets}_ncont={n_contrasts}_" \
-                        f"nf={config['model']['nnunet']['base_num_features']}_" \
+                        f"nf={config['model']['nnunet-plain']['features_per_stage'][0]}_" \
                         f"opt={config['opt']['name']}_lr={config['opt']['lr']}_AdapW_" \
                         f"bs={config['opt']['batch_size']}" \
 
