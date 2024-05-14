@@ -7,6 +7,10 @@ import os
 import json
 import pandas as pd
 import re
+import importlib
+import pkgutil
+from batchgenerators.utilities.file_and_folder_operations import *
+
 
 CONTRASTS = {
     "t1w": ["T1w", "space-other_T1w"],
@@ -80,6 +84,27 @@ def get_datasets_stats(datalists_root, contrasts_dict, path_save):
 
     # save as csv
     unified_df.to_csv(os.path.join(path_save, 'dataset_contrast_agnostic.csv'), index=False)
+
+
+# Taken from: https://github.com/MIC-DKFZ/nnUNet/blob/master/nnunetv2/utilities/find_class_by_name.py
+def recursive_find_python_class(folder: str, class_name: str, current_module: str):
+    tr = None
+    for importer, modname, ispkg in pkgutil.iter_modules([folder]):
+        # print(modname, ispkg)
+        if not ispkg:
+            m = importlib.import_module(current_module + "." + modname)
+            if hasattr(m, class_name):
+                tr = getattr(m, class_name)
+                break
+
+    if tr is None:
+        for importer, modname, ispkg in pkgutil.iter_modules([folder]):
+            if ispkg:
+                next_current_module = current_module + "." + modname
+                tr = recursive_find_python_class(join(folder, modname), class_name, current_module=next_current_module)
+            if tr is not None:
+                break
+    return tr
 
 
 def count_parameters(model):
