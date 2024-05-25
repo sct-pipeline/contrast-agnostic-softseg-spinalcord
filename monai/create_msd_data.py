@@ -30,11 +30,14 @@ FILESEG_SUFFIXES = {
     "dcm-zurich": ["labels", "label-SC_mask-manual"],
     "lumbar-epfl": ["labels", "seg-manual"],
     "lumbar-vanderbilt": ["labels", "label-SC_seg"],
+    "sci-colorado": ["labels", "seg-manual"],
+    "sci-paris": ["labels", "seg-manual"],
+    "sci-zurich": ["labels", "seg-manual"],
     "sct-testing-large": ["labels", "seg-manual"],
 }
 
-# add abbreviations of pathologies in sct-testing-large dataset to be included in the dataset
-PATHOLOGIES = ["ALS", "DCM", "NMO", "MS"]
+# add abbreviations of pathologies in sct-testing-large and other datasets to be included in the aggregated dataset
+PATHOLOGIES = ["ALS", "DCM", "NMO", "MS", "SCI"]
 
 
 def get_parser():
@@ -276,7 +279,8 @@ def main():
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
 
     # output logger to a file
-    logger.add(os.path.join(args.path_out, f"log_{os.path.basename(data_root)}_seed{args.seed}_{timestamp}.txt"))
+    os.makedirs(os.path.join(args.path_out, "logs"), exist_ok=True)
+    logger.add(os.path.join(args.path_out, "logs", f"log_{os.path.basename(data_root)}_seed{args.seed}_{timestamp}.txt"))
 
     # Check if dataset path exists
     if not os.path.exists(data_root):
