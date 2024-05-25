@@ -30,6 +30,7 @@ FILESEG_SUFFIXES = {
     "dcm-zurich": ["labels", "label-SC_mask-manual"],
     "lumbar-epfl": ["labels", "seg-manual"],
     "lumbar-vanderbilt": ["labels", "label-SC_seg"],
+    "nih-ms-mp2rage": ["labels", "label-SC_seg"],
     "sci-colorado": ["labels", "seg-manual"],
     "sci-paris": ["labels", "seg-manual"],
     "sci-zurich": ["labels", "seg-manual"],
@@ -105,7 +106,7 @@ def fetch_subject_nifti_details(filename_path):
     else:
         # TODO: add more contrasts as needed
         # contrast_pattern =  r'.*_(T1w|T2w|T2star|PSIR|STIR|UNIT1|acq-MTon_MTR|acq-dwiMean_dwi|acq-b0Mean_dwi|acq-T1w_MTR).*'
-        contrast_pattern =  r'.*_(T1w|T2w|T2star|PSIR|STIR|UNIT1|acq-MTon_MTR|acq-dwiMean_dwi|acq-T1w_MTR).*'
+        contrast_pattern =  r'.*_(T1w|T2w|T2star|PSIR|STIR|UNIT1|T1map|inv-1_part-mag_MP2RAGE|inv-2_part-mag_MP2RAGE|acq-MTon_MTR|acq-dwiMean_dwi|acq-T1w_MTR).*'
     contrast = re.search(contrast_pattern, filename_path)
     contrastID = contrast.group(1) if contrast else ""
 
@@ -131,6 +132,10 @@ def create_df(dataset_path):
         # get only the (preprocessed) subject files, which are in the `derivatives` folder
         path_files = os.path.join(dataset_path, 'derivatives', 'data_preprocessed', 'sub-*', '**', f'*.nii.gz')
     
+    elif dataset_name == "nih-ms-mp2rage":
+        # NOTE: exception for this dataset, we're taking the files from the root folder of the dataset
+        path_files = os.path.join(dataset_path, 'sub-*', '**', f'*.nii.gz')
+
     elif dataset_name == 'sct-testing-large':
         path_files = os.path.join(dataset_path, 'derivatives', labels_folder, 'sub-*', '**', f'*_{labels_suffix}.nii.gz')
 
@@ -180,7 +185,40 @@ def create_df(dataset_path):
                 df.loc[df['subjectID'] == subject, 'pathologyID'] = 'HC'
             else:
                 df.loc[df['subjectID'] == subject, 'pathologyID'] = 'MS'
-            
+
+    elif dataset_name == 'nih-ms-mp2rage':
+        exclude_subs_nih_ms = ["sub-nih002", "sub-nih003", "sub-nih004", "sub-nih005", "sub-nih012", "sub-nih013", "sub-nih014", 
+                               "sub-nih016", "sub-nih018", "sub-nih020", "sub-nih021", "sub-nih022", "sub-nih024", "sub-nih025", 
+                               "sub-nih028", "sub-nih029", "sub-nih031", "sub-nih032", "sub-nih034", "sub-nih037", "sub-nih039", 
+                               "sub-nih040", "sub-nih041", "sub-nih043", "sub-nih045", "sub-nih047", "sub-nih048", "sub-nih049", 
+                               "sub-nih050", "sub-nih052", "sub-nih054", "sub-nih058", "sub-nih062", "sub-nih065", "sub-nih067", 
+                               "sub-nih069", "sub-nih071", "sub-nih077", "sub-nih080", "sub-nih083", "sub-nih084", "sub-nih087", 
+                               "sub-nih088", "sub-nih089", "sub-nih091", "sub-nih092", "sub-nih094", "sub-nih095", "sub-nih097", 
+                               "sub-nih098", "sub-nih101", "sub-nih102", "sub-nih103", "sub-nih105", "sub-nih106", "sub-nih107", 
+                               "sub-nih109", "sub-nih111", "sub-nih112", "sub-nih113", "sub-nih115", "sub-nih118", "sub-nih119", 
+                               "sub-nih121", "sub-nih123", "sub-nih124", "sub-nih125", "sub-nih127", "sub-nih133", "sub-nih134", 
+                               "sub-nih136", "sub-nih137", "sub-nih140", "sub-nih141", "sub-nih142", "sub-nih143", "sub-nih144", 
+                               "sub-nih145", "sub-nih146", "sub-nih147", "sub-nih149", "sub-nih151", "sub-nih153", "sub-nih155",
+                               "sub-nih156", "sub-nih159", "sub-nih161", "sub-nih162", "sub-nih163", "sub-nih164", "sub-nih165", 
+                               "sub-nih166", "sub-nih167", "sub-nih169", "sub-nih173", "sub-nih174", "sub-nih177", "sub-nih178", 
+                               "sub-nih179", "sub-nih181", "sub-nih182", "sub-nih183", "sub-nih184", "sub-nih186", "sub-nih187", 
+                               "sub-nih190", "sub-nih192", "sub-nih194", "sub-nih196", "sub-nih197"]
+        
+        # remove files where 'desc-denoised_UNIT1' is present in the filename
+        # removing because it's 'very' similar to UNIT1 and we don't want unnecessary duplicates
+        df = df[~df['filename'].str.contains('desc-denoised_UNIT1')]
+
+        # remove subjects from the exclude list
+        df = df[~df['subjectID'].isin(exclude_subs_nih_ms)]
+
+        # load the participants.tsv file
+        df_participants = pd.read_csv(os.path.join(dataset_path, 'participants.tsv'), sep='\t')
+
+        # store the pathology info by merging the "pathology" colume from df_participants to the df dataframe
+        df = pd.merge(df, df_participants[['participant_id', 'pathology']], left_on='subjectID', right_on='participant_id', how='left')
+
+        # rename the column to 'pathologyID'
+        df.rename(columns={'pathology': 'pathologyID'}, inplace=True)        
 
     elif dataset_name == 'sct-testing-large':
 
@@ -367,6 +405,14 @@ def main():
                         fname_image = df[df['subjectID'] == subject]['filename'].values[idx]
                         fname_label = fname_image.replace('data_preprocessed', labels_folder).replace('.nii.gz', f'_{labels_suffix}.nii.gz')
                     
+                    elif df['datasetName'].values[0] == 'nih-ms-mp2rage':
+                        # NOTE: the SC mask only exists for UNIT1 contrast, but since all other contrasts are in the
+                        # same space, we're reusing the common GT for all contrasts
+                        fname_image = df[df['subjectID'] == subject]['filename'].values[idx]
+                        contrast = df[df['subjectID'] == subject]['contrastID'].values[idx]
+                        fname_label = fname_image.replace(f'_{contrast}.nii.gz', f'_UNIT1_{labels_suffix}.nii.gz')
+                        fname_label = fname_label.replace(os.path.join(data_root, subject), os.path.join(data_root, 'derivatives', labels_folder, subject))
+
                     else: 
                         # NOTE: but for other datasets, we are getting them from the lesion filenames
                         fname_label = df[df['subjectID'] == subject]['filename'].values[idx]
