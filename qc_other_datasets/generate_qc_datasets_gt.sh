@@ -61,6 +61,10 @@ elif [[ $QC_DATASET == "lumbar-vanderbilt" ]]; then
     contrasts=("acq-axial_T2star")
     label_suffix="label-SC_seg"
 
+elif [[ $QC_DATASET == "nih-ms-mp2rage" ]]; then
+    contrasts=("UNIT1")
+    label_suffix="label-SC_seg"
+
 elif [[ $QC_DATASET == "sct-testing-large" ]]; then
     contrasts="T1w T2star T2w acq-MTon_MTR"
     label_suffix="seg-manual"
@@ -94,7 +98,7 @@ for contrast in ${contrasts}; do
         rsync -Ravzh ${PATH_IMAGES}/${file}.nii.gz .
 
         # Generate QC report the GT spinal cord segmentation
-        if [[ $QC_DATASET == "canproco"]]; then
+        if [[ $QC_DATASET == "canproco" ]]; then
             # do sagittal qc
             sct_qc -i ${PATH_DATA_PROCESSED}/${SUBJECT}/anat/${file}.nii.gz -s ${PATH_DATA_PROCESSED}/${SUBJECT}/anat/${file}_${label_suffix}.nii.gz -d ${PATH_DATA_PROCESSED}/${SUBJECT}/anat/${file}_${label_suffix}.nii.gz -p sct_deepseg_lesion -plane sagittal -qc ${PATH_QC} -qc-subject ${SUBJECT}
         else 
