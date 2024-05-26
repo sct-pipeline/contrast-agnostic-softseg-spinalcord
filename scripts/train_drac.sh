@@ -37,16 +37,17 @@ source /home/$(whoami)/envs/venv_monai/bin/activate
 # Set the following variables to the desired values
 PATH_REPO="/home/$(whoami)/code/contrast-agnostic/contrast-agnostic-softseg-spinalcord"
 
+datalist_out_dir="model_v25_11datasets"
 DATASETS_ROOT="/home/$(whoami)/projects/rrg-bengioy-ad/$(whoami)/datasets"
 PATH_DATASPLITS="/home/$(whoami)/code/contrast-agnostic/datasplits"
-PATH_DATALIST_ROOT="/home/$(whoami)/code/contrast-agnostic/datalists/model_v3_7datasets"
+PATH_DATALIST_ROOT="/home/$(whoami)/code/contrast-agnostic/datalists/${datalist_out_dir}"
 if [[ ! -d $PATH_DATALIST_ROOT ]]; then
     mkdir $PATH_DATALIST_ROOT
     mkdir $PATH_DATALIST_ROOT/logs
 fi
 
 # List of datasets to train on
-DATASETS=("basel-mp2rage" "canproco" "data-multi-subject" "dcm-zurich" "lumbar-epfl" "lumbar-vanderbilt" "sct-testing-large" )
+DATASETS=("basel-mp2rage" "canproco" "data-multi-subject" "dcm-zurich" "lumbar-epfl" "lumbar-vanderbilt" "nih-ms-mp2rage" "sci-colorado" "sci-paris" "sci-zurich" "sct-testing-large")
 
 PATH_RESULTS="/home/$(whoami)/code/contrast-agnostic/results"
 PATH_CONFIG="${PATH_REPO}/configs/train_all.yaml"
@@ -68,6 +69,8 @@ if [[ ! -d $SLURM_TMPDIR/results ]]; then
     mkdir $SLURM_TMPDIR/results
 fi
 
+# get starting time:
+data_start=`date +%s`
 
 for dataset in ${DATASETS[@]}; do
     if [[ ! -d $SLURM_TMPDIR/datasets/$dataset ]]; then
@@ -104,8 +107,16 @@ echo "-------------------------------------------------------"
 echo "Datalist creation done! Starting model training ..."
 echo "-------------------------------------------------------"
 
+data_end=`date +%s`
+runtime=$((data_end-data_start))
+echo "-------------------------------------------------------"
+echo "Moving datasets to SLURM_TMPDIR took: $(($runtime / 3600))hrs $((($runtime / 60) % 60))min $(($runtime % 60))sec"
+echo "-------------------------------------------------------"
+
 # enable wandb offline mode
 wandb offline
+
+train_start=`date +%s`
 
 # Train the model
 # srun python ${PATH_REPO}/monai/main.py \
@@ -118,10 +129,16 @@ srun torchrun --standalone --nnodes=$SLURM_JOB_NUM_NODES --nproc-per-node=$SLURM
     --config $PATH_CONFIG \
     --pad-mode zero \
     --input-label 'soft' \
-    # --enable-pbar \
+    --enable-pbar \
 
 echo "-------------------------------------------------------"
 echo "Model training done! Copying the results back to home ..."
+echo "-------------------------------------------------------"
+
+train_end=`date +%s`
+train_runtime=$((train_end-train_start))
+echo "-------------------------------------------------------"
+echo "Total Training Time: $(($train_runtime / 3600))hrs $((($train_runtime / 60) % 60))min $(($train_runtime % 60))sec"
 echo "-------------------------------------------------------"
 
 # copy the results back to the respective directories on home
