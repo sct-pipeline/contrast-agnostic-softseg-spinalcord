@@ -30,6 +30,8 @@ torch.multiprocessing.set_sharing_strategy('file_system')
 
 # list of contrasts and their possible various names in the datasets
 CONTRASTS = {
+    "t1map": ["T1map"],
+    "mp2rage": ["inv-1_part-mag_MP2RAGE", "inv-2_part-mag_MP2RAGE"],
     "t1w": ["T1w", "space-other_T1w"],
     "t2w": ["T2w", "space-other_T2w"],
     "t2star": ["T2star", "space-other_T2star"],
@@ -100,7 +102,7 @@ class Model(pl.LightningModule):
         self.voxel_cropping_size = self.inference_roi_size = config["preprocessing"]["crop_pad_size"]
 
         # define post-processing transforms for validation, nothing fancy just making sure that it's a tensor (default)
-        self.val_post_pred = self.val_post_label = Compose([EnsureType()])
+        self.val_post_pred = self.val_post_label = Compose([EnsureType(track_meta=False)])
 
         # define evaluation metric
         self.soft_dice_metric = dice_score
@@ -199,11 +201,11 @@ class Model(pl.LightningModule):
     def configure_optimizers(self):
         if self.cfg["opt"]["name"] == "sgd":
             optimizer = self.optimizer_class(self.parameters(), lr=self.lr, momentum=0.99, weight_decay=3e-5, nesterov=True)
+            scheduler = PolyLRScheduler(optimizer, self.lr, max_steps=self.cfg["opt"]["max_epochs"])
         else:
             optimizer = self.optimizer_class(self.parameters(), lr=self.lr, fused=True)
-        # scheduler = PolyLRScheduler(optimizer, self.lr, max_steps=self.args.max_epochs)
-        # NOTE: ivadomed using CosineAnnealingLR with T_max = 200
-        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=self.cfg["opt"]["max_epochs"])
+            # NOTE: ivadomed using CosineAnnealingLR with T_max = 200
+            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=self.cfg["opt"]["max_epochs"])
         return [optimizer], [scheduler]
 
 
