@@ -618,6 +618,7 @@ def main(args):
             check_val_every_n_epoch=config["opt"]["check_val_every_n_epochs"],
             max_epochs=config["opt"]["max_epochs"], 
             precision="bf16-mixed",
+            limit_train_batches=0.75,
             enable_progress_bar=True if args.enable_pbar else False,) 
             # profiler="simple",)     # to profile the training time taken for each step
 
