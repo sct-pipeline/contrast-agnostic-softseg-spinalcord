@@ -61,7 +61,8 @@ def extract_contrast_and_details(filename, across="Method"):
     if across == "Method":
         # pattern = r'.*_(DWI|MTon|MToff|T1w|T2star|T2w).*_(softseg_bin|deepseg_2d|soft_input|bin_input).*'
         # pattern = r'.*_(DWI|MTon|MToff|T1w|T2star|T2w).*_(softseg_bin|deepseg_2d|nnunet|monai|mednext|swinunetr|swinpretrained|ensemble).*'
-        pattern = r'.*_(DWI|MTon|MToff|T1w|T2star|T2w).*_(softseg_bin|deepseg_2d|monai_single|monai_2datasets|monai_4datasets).*'
+        # pattern = r'.*_(DWI|MTon|MToff|T1w|T2star|T2w).*_(softseg_bin|deepseg_2d|monai_single|monai_7datasets|swinunetr_7datasets).*'
+        pattern = r'.*_(DWI|MTon|MToff|T1w|T2star|T2w).*_(softseg_bin|monai_v21|monai_v23|monai_v2x).*'
         match = re.search(pattern, filename)
         if match:
             return match.group(1), match.group(2)
