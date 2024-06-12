@@ -29,6 +29,8 @@ from nnunet_mednext import MedNeXt
 
 # list of contrasts and their possible various names in the datasets
 CONTRASTS = {
+    "t1map": ["T1map"],
+    "mp2rage": ["inv-1_part-mag_MP2RAGE", "inv-2_part-mag_MP2RAGE"],
     "t1w": ["T1w", "space-other_T1w"],
     "t2w": ["T2w", "space-other_T2w"],
     "t2star": ["T2star", "space-other_T2star"],
@@ -757,7 +759,11 @@ def main(args):
             check_val_every_n_epoch=config["opt"]["check_val_every_n_epochs"],
             max_epochs=config["opt"]["max_epochs"], 
             precision="bf16-mixed",
-            enable_progress_bar=True) 
+            # NOTE: Each epoch takes a looot of time with the aggregated dataset, so limiting the number of training batches
+            # per epoch. Turns out that we don't need to go through all the training samples within an epoch for good performance.
+            # nnunet hardcodes 250 training steps per epoch and we all know how it performs :)
+            limit_train_batches=0.5,  # use 1.0 for full training
+            enable_progress_bar=True)
             # profiler="simple",)     # to profile the training time taken for each step
 
         # Train!
