@@ -44,20 +44,20 @@ CONTRASTS = {
 
 def get_args():
     parser = argparse.ArgumentParser(description='Script for training contrast-agnositc SC segmentation model.')
-    
+
     # arguments for model
-    parser.add_argument('-m', '--model', choices=['nnunet-plain', 'nnunet-resencM', 'mednext', 'swinunetr'], 
-                        default='nnunet', type=str, 
+    parser.add_argument('-m', '--model', choices=['nnunet-plain', 'nnunet-resencM', 'mednext', 'swinunetr'],
+                        default='nnunet', type=str,
                         help='Model type to be used. Options: nnunet, mednext, swinunetr.')
     # path to the config file
     parser.add_argument("--config", type=str, default="./config.json",
                         help="Path to the config file containing all training details.")
     # saving
     parser.add_argument('--debug', default=False, action='store_true', help='if true, results are not logged to wandb')
-    parser.add_argument('-c', '--continue_from_checkpoint', default=False, action='store_true', 
+    parser.add_argument('-c', '--continue_from_checkpoint', default=False, action='store_true',
                             help='Load model from checkpoint and continue training')
     # temporaray arg
-    parser.add_argument('--pad-mode', type=str, default="edge", help="Padding mode for the images.")
+    parser.add_argument('--pad-mode', type=str, default="zero", help="Padding mode for the images.")
     parser.add_argument('--input-label', type=str, default="soft", choices=["soft", "bin"],
                         help="Type of label input to the model.")
 
@@ -88,14 +88,14 @@ class Model(pl.LightningModule):
         # define cropping and padding dimensions
         # NOTE about patch sizes: nnUNet defines patches using the median size of the dataset as the reference
         # BUT, for SC images, this means a lot of context outside the spinal cord is included in the patches
-        # which could be sub-optimal. 
-        # On the other hand, ivadomed used a patch-size that's heavily padded along the R-L direction so that 
-        # only the SC is in context. 
+        # which could be sub-optimal.
+        # On the other hand, ivadomed used a patch-size that's heavily padded along the R-L direction so that
+        # only the SC is in context.
         self.spacing = config["preprocessing"]["spacing"]
         self.voxel_cropping_size = self.inference_roi_size = config["preprocessing"]["crop_pad_size"]
 
         # define post-processing transforms for validation, nothing fancy just making sure that it's a tensor (default)
-        self.val_post_pred = self.val_post_label = Compose([EnsureType()])
+        self.val_post_pred = self.val_post_label = Compose([EnsureType(track_meta=False)])
 
         # define evaluation metric
         self.soft_dice_metric = dice_score
@@ -110,11 +110,11 @@ class Model(pl.LightningModule):
     # FORWARD PASS
     # --------------------------------
     def forward(self, x):
-        
-        out = self.net(x)  
+
+        out = self.net(x)
         # # NOTE: MONAI's models only output the logits, not the output after the final activation function
-        # # https://docs.monai.io/en/0.9.0/_modules/monai/networks/nets/unetr.html#UNETR.forward refers to the 
-        # # UnetOutBlock (https://docs.monai.io/en/0.9.0/_modules/monai/networks/blocks/dynunet_block.html#UnetOutBlock) 
+        # # https://docs.monai.io/en/0.9.0/_modules/monai/networks/nets/unetr.html#UNETR.forward refers to the
+        # # UnetOutBlock (https://docs.monai.io/en/0.9.0/_modules/monai/networks/blocks/dynunet_block.html#UnetOutBlock)
         # # as the final block applied to the input, which is just a convolutional layer with no activation function
         # # Hence, we are used Normalized ReLU to normalize the logits to the final output
         # normalized_out = F.relu(out) / F.relu(out).max() if bool(F.relu(out).max()) else F.relu(out)
@@ -124,14 +124,14 @@ class Model(pl.LightningModule):
 
     # --------------------------------
     # DATA PREPARATION
-    # --------------------------------   
+    # --------------------------------
     def prepare_data(self):
         # set deterministic training for reproducibility
         set_determinism(seed=self.cfg["seed"])
-        
+
         # define training and validation transforms
         transforms_train = train_transforms(
-            crop_size=self.voxel_cropping_size, 
+            crop_size=self.voxel_cropping_size,
             lbl_key='label',
             pad_mode=args.pad_mode,
             device=self.device,
@@ -144,7 +144,7 @@ class Model(pl.LightningModule):
         logger.info(f"Dataset statistics saved to {save_path} ...")
 
         # get all datalists
-        datalists_list = [f for f in os.listdir(self.root) if f.endswith("_seed50.json")]        
+        datalists_list = [f for f in os.listdir(self.root) if f.endswith("_seed50.json")]
         # load the dataset
         train_files, val_files, test_files = [], [], []
         for datalist in datalists_list:
@@ -159,25 +159,25 @@ class Model(pl.LightningModule):
         logger.info(f"Number of testing samples (i.e. images, not subjects): {len(test_files)}")
 
         if args.debug:
-            train_files = train_files[:15]
+            train_files = train_files[:50]
             val_files = val_files[:15]
             test_files = test_files[:6]
-        
+
         train_cache_rate = 0.5 # 0.25 if args.model == 'swinunetr' else 0.5
-        self.train_ds = CacheDataset(data=train_files, transform=transforms_train, cache_rate=train_cache_rate, num_workers=4, 
+        self.train_ds = CacheDataset(data=train_files, transform=transforms_train, cache_rate=train_cache_rate, num_workers=4,
                                      copy_cache=False)
         self.val_ds = CacheDataset(data=val_files, transform=transforms_val, cache_rate=0.25, num_workers=4,
                                    copy_cache=False)
 
         # define test transforms
         transforms_test = val_transforms(crop_size=self.inference_roi_size, lbl_key='label', pad_mode=args.pad_mode,)
-        
-        # define post-processing transforms for testing; taken (with explanations) from 
+
+        # define post-processing transforms for testing; taken (with explanations) from
         # https://github.com/Project-MONAI/tutorials/blob/main/3d_segmentation/torch/unet_inference_dict.py#L66
         self.test_post_pred = Compose([
             EnsureTyped(keys=["pred", "label"]),
-            Invertd(keys=["pred", "label"], transform=transforms_test, 
-                    orig_keys=["image", "label"], 
+            Invertd(keys=["pred", "label"], transform=transforms_test,
+                    orig_keys=["image", "label"],
                     meta_keys=["pred_meta_dict", "label_meta_dict"],
                     nearest_interp=False, to_tensor=True),
             ])
@@ -191,28 +191,28 @@ class Model(pl.LightningModule):
     # DATA LOADERS
     # --------------------------------
     def train_dataloader(self):
-        return ThreadDataLoader(self.train_ds, batch_size=self.cfg["opt"]["batch_size"], shuffle=True, num_workers=16, 
-                            pin_memory=True, persistent_workers=True) 
+        return ThreadDataLoader(self.train_ds, batch_size=self.cfg["opt"]["batch_size"], shuffle=True, num_workers=16,
+                            pin_memory=True, persistent_workers=True)
 
     def val_dataloader(self):
-        return ThreadDataLoader(self.val_ds, batch_size=1, shuffle=False, num_workers=16, pin_memory=True, 
+        return ThreadDataLoader(self.val_ds, batch_size=1, shuffle=False, num_workers=16, pin_memory=True,
                           persistent_workers=True)
-    
+
     def test_dataloader(self):
         return ThreadDataLoader(self.test_ds, batch_size=1, shuffle=False, num_workers=8, pin_memory=True)
 
-    
+
     # --------------------------------
     # OPTIMIZATION
     # --------------------------------
     def configure_optimizers(self):
         if self.cfg["opt"]["name"] == "sgd":
             optimizer = self.optimizer_class(self.parameters(), lr=self.lr, momentum=0.99, weight_decay=3e-5, nesterov=True)
+            scheduler = PolyLRScheduler(optimizer, self.lr, max_steps=self.cfg["opt"]["max_epochs"])
         else:
             optimizer = self.optimizer_class(self.parameters(), lr=self.lr, fused=True)
-        # scheduler = PolyLRScheduler(optimizer, self.lr, max_steps=self.args.max_epochs)
-        # NOTE: ivadomed using CosineAnnealingLR with T_max = 200
-        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=self.cfg["opt"]["max_epochs"])
+            # NOTE: ivadomed using CosineAnnealingLR with T_max = 200
+            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=self.cfg["opt"]["max_epochs"])
         return [optimizer], [scheduler]
 
 
@@ -235,7 +235,7 @@ class Model(pl.LightningModule):
 
         output = self.forward(inputs)   # logits
         # print(f"labels.shape: {labels.shape} \t output.shape: {output.shape}")
-        
+
         if args.model in ["nnunet-plain", "nnunet-resencM", "mednext"] and self.cfg['model'][args.model]["enable_deep_supervision"]:
 
             # calculate dice loss for each output
@@ -244,7 +244,7 @@ class Model(pl.LightningModule):
                 # give each output a weight which decreases exponentially (division by 2) as the resolution decreases
                 # this gives higher resolution outputs more weight in the loss
                 # NOTE: outputs[0] is the final pred, outputs[-1] is the lowest resolution pred (at the bottleneck)
-                # we're downsampling the GT to the resolution of each deepsupervision feature map output 
+                # we're downsampling the GT to the resolution of each deepsupervision feature map output
                 # (instead of upsampling each deepsupervision feature map output to the final resolution)
                 downsampled_gt = F.interpolate(labels, size=output[i].shape[-3:], mode='trilinear', align_corners=False)
                 # print(f"downsampled_gt.shape: {downsampled_gt.shape} \t output[i].shape: {output[i].shape}")
@@ -256,14 +256,14 @@ class Model(pl.LightningModule):
                 # calculate train dice
                 # NOTE: this is done on patches (and not entire 3D volume) because SlidingWindowInference is not used here
                 # So, take this dice score with a lot of salt
-                train_soft_dice += self.soft_dice_metric(out, downsampled_gt) 
-            
+                train_soft_dice += self.soft_dice_metric(out, downsampled_gt)
+
             # average dice loss across the outputs
             loss /= len(output)
             train_soft_dice /= len(output)
 
         else:
-            # calculate training loss   
+            # calculate training loss
             loss = self.loss_function(output, labels)
 
             # get probabilities from logits
@@ -272,7 +272,7 @@ class Model(pl.LightningModule):
             # calculate train dice
             # NOTE: this is done on patches (and not entire 3D volume) because SlidingWindowInference is not used here
             # So, take this dice score with a lot of salt
-            train_soft_dice = self.soft_dice_metric(output, labels) 
+            train_soft_dice = self.soft_dice_metric(output, labels)
 
         metrics_dict = {
             "loss": loss.cpu(),
@@ -297,12 +297,12 @@ class Model(pl.LightningModule):
             for output in self.train_step_outputs:
                 train_loss += output["loss"].item()
                 train_soft_dice += output["train_soft_dice"].item()
-            
+
             mean_train_loss = (train_loss / num_items)
             mean_train_soft_dice = (train_soft_dice / num_items)
 
             wandb_logs = {
-                "train_soft_dice": mean_train_soft_dice, 
+                "train_soft_dice": mean_train_soft_dice,
                 "train_loss": mean_train_loss,
             }
             self.log_dict(wandb_logs)
@@ -322,9 +322,9 @@ class Model(pl.LightningModule):
 
     # --------------------------------
     # VALIDATION
-    # --------------------------------    
+    # --------------------------------
     def validation_step(self, batch, batch_idx):
-        
+
         inputs, labels = batch["image"], batch["label"]
 
         if self.input_label_type == "bin":
@@ -333,18 +333,18 @@ class Model(pl.LightningModule):
 
         # NOTE: this calculates the loss on the entire image after sliding window
         outputs = sliding_window_inference(inputs, self.inference_roi_size, mode="gaussian",
-                                           sw_batch_size=4, predictor=self.forward, overlap=0.5,) 
+                                           sw_batch_size=4, predictor=self.forward, overlap=0.5,)
         # outputs shape: (B, C, <original H x W x D>)
         if args.model in ["nnunet-plain", "nnunet-resencM", "mednext"] and self.cfg['model'][args.model]["enable_deep_supervision"]:
             # we only need the output with the highest resolution
             outputs = outputs[0]
-        
+
         # calculate validation loss
         loss = self.loss_function(outputs, labels)
 
         # get probabilities from logits
         outputs = F.relu(outputs) / F.relu(outputs).max() if bool(F.relu(outputs).max()) else F.relu(outputs)
-        
+
         # post-process for calculating the evaluation metric
         post_outputs = [self.val_post_pred(i) for i in decollate_batch(outputs)]
         post_labels = [self.val_post_label(i) for i in decollate_batch(labels)]
@@ -366,7 +366,7 @@ class Model(pl.LightningModule):
             # "val_pred": post_outputs[0].detach().cpu().squeeze(),
         }
         self.val_step_outputs.append(metrics_dict)
-        
+
         return metrics_dict
 
     def on_validation_epoch_end(self):
@@ -377,11 +377,11 @@ class Model(pl.LightningModule):
             val_soft_dice += output["val_soft_dice"].sum().item()
             val_hard_dice += output["val_hard_dice"].sum().item()
             num_items += output["val_number"]
-        
+
         mean_val_loss = (val_loss / num_items)
         mean_val_soft_dice = (val_soft_dice / num_items)
         mean_val_hard_dice = (val_hard_dice / num_items)
-                
+
         wandb_logs = {
             "val_soft_dice": mean_val_soft_dice,
             "val_hard_dice": mean_val_hard_dice,
@@ -391,9 +391,9 @@ class Model(pl.LightningModule):
         if mean_val_soft_dice > self.best_val_dice:
             self.best_val_dice = mean_val_soft_dice
             self.best_val_epoch = self.current_epoch
-        
+
         # save the best model based on validation CSA loss
-        if mean_val_loss < self.best_val_loss:    
+        if mean_val_loss < self.best_val_loss:
             self.best_val_loss = mean_val_loss
             self.best_val_epoch = self.current_epoch
 
@@ -404,7 +404,7 @@ class Model(pl.LightningModule):
             f"\nAverage AdapWing Loss (VAL): {mean_val_loss:.4f}"
             f"\nBest Average AdapWing Loss: {self.best_val_loss:.4f} at Epoch: {self.best_val_epoch}"
             f"\n----------------------------------------------------")
-        
+
 
         # log on to wandb
         self.log_dict(wandb_logs)
@@ -419,19 +419,19 @@ class Model(pl.LightningModule):
         self.val_step_outputs.clear()
         wandb_logs.clear()
         # plt.close(fig)
-        
+
         # return {"log": wandb_logs}
 
     # --------------------------------
     # TESTING
     # --------------------------------
     def test_step(self, batch, batch_idx):
-        
+
         test_input = batch["image"]
         # print(batch["label_meta_dict"]["filename_or_obj"][0])
-        batch["pred"] = sliding_window_inference(test_input, self.inference_roi_size, 
+        batch["pred"] = sliding_window_inference(test_input, self.inference_roi_size,
                                                  sw_batch_size=4, predictor=self.forward, overlap=0.5)
-        
+
         if args.model in ["nnunet-plain", "nnunet-resencM", "mednext"] and self.cfg['model'][args.model]["enable_deep_supervision"]:
             # we only need the output with the highest resolution
             batch["pred"] = batch["pred"][0]
@@ -444,7 +444,7 @@ class Model(pl.LightningModule):
         # make sure that the shapes of prediction and GT label are the same
         # print(f"pred shape: {post_test_out[0]['pred'].shape}, label shape: {post_test_out[0]['label'].shape}")
         assert post_test_out[0]['pred'].shape == post_test_out[0]['label'].shape
-        
+
         pred, label = post_test_out[0]['pred'].cpu(), post_test_out[0]['label'].cpu()
 
         # save the prediction and label
@@ -456,25 +456,25 @@ class Model(pl.LightningModule):
             # image saver class
             save_folder = os.path.join(self.results_path, subject_name.split("_")[0])
             pred_saver = SaveImage(
-                output_dir=save_folder, output_postfix="pred", output_ext=".nii.gz", 
+                output_dir=save_folder, output_postfix="pred", output_ext=".nii.gz",
                 separate_folder=False, print_log=False, resample=True)
             # save the prediction
             pred_saver(pred)
 
             # label_saver = SaveImage(
-            #     output_dir=save_folder, output_postfix="gt", output_ext=".nii.gz", 
+            #     output_dir=save_folder, output_postfix="gt", output_ext=".nii.gz",
             #     separate_folder=False, print_log=False, resample=True)
             # # save the label
             # label_saver(label)
-            
+
 
         # NOTE: Important point from the SoftSeg paper - binarize predictions before computing metrics
-        # calculate soft and hard dice here (for quick overview), other metrics can be computed from 
+        # calculate soft and hard dice here (for quick overview), other metrics can be computed from
         # the saved predictions using ANIMA
         # 1. Dice Score
         test_soft_dice = self.soft_dice_metric(pred, label)
 
-        # binarizing the predictions 
+        # binarizing the predictions
         pred = (post_test_out[0]['pred'].detach().cpu() > 0.5).float()
         label = (post_test_out[0]['label'].detach().cpu() > 0.5).float()
 
@@ -490,18 +490,18 @@ class Model(pl.LightningModule):
         return metrics_dict
 
     def on_test_epoch_end(self):
-        
+
         avg_hard_dice_test, std_hard_dice_test = np.stack([x["test_hard_dice"] for x in self.test_step_outputs]).mean(), \
                                                     np.stack([x["test_hard_dice"] for x in self.test_step_outputs]).std()
         avg_soft_dice_test, std_soft_dice_test = np.stack([x["test_soft_dice"] for x in self.test_step_outputs]).mean(), \
                                                     np.stack([x["test_soft_dice"] for x in self.test_step_outputs]).std()
-        
+
         logger.info(f"Test (Soft) Dice: {avg_soft_dice_test}")
         logger.info(f"Test (Hard) Dice: {avg_hard_dice_test}")
-        
+
         self.avg_test_dice, self.std_test_dice = avg_soft_dice_test, std_soft_dice_test
         self.avg_test_dice_hard, self.std_test_dice_hard = avg_hard_dice_test, std_hard_dice_test
-        
+
         # free up memory
         self.test_step_outputs.clear()
 
@@ -537,7 +537,7 @@ def main(args):
                 break
 
     n_contrasts, n_datasets = len(contrasts_final), len(datasets)
-    
+
     # define optimizer
     if config["opt"]["name"] == "adam":
         optimizer_class = torch.optim.Adam
@@ -553,12 +553,12 @@ def main(args):
 
         # define model
         net = SwinUNETR(spatial_dims=config["model"]["swinunetr"]["spatial_dims"],
-                        in_channels=1, out_channels=1, 
+                        in_channels=1, out_channels=1,
                         img_size=config["preprocessing"]["crop_pad_size"],
                         depths=config["model"]["swinunetr"]["depths"],
-                        feature_size=config["model"]["swinunetr"]["feature_size"], 
+                        feature_size=config["model"]["swinunetr"]["feature_size"],
                         num_heads=config["model"]["swinunetr"]["num_heads"],
-                    )    
+                    )
 
         if config["model"]["swinunetr"]["use_pretrained"]:
             logger.info(f"Using SwinUNETR model with pre-trained weights ...")
@@ -575,8 +575,8 @@ def main(args):
 
             net = load_pretrained_swinunetr(net, path_pretrained_weights=pretrained_path)
 
-        else: 
-            logger.info(f"Using SwinUNETR model initialized from scratch ...")            
+        else:
+            logger.info(f"Using SwinUNETR model initialized from scratch ...")
 
         save_exp_id = f"{args.model}_seed={config['seed']}_" \
                         f"ndata={n_datasets}_ncont={n_contrasts}_" \
@@ -591,8 +591,8 @@ def main(args):
     elif args.model in ["nnunet-plain", "nnunet-resencM"]:
 
         # enabling deep supervision by default
-        logger.info(f"Using nnUNet model WITH deep supervision ...")
-        
+        logger.info(f"Using {args.model} model WITH deep supervision ...")
+
         logger.info("Defining plans for nnUNet model ...")
         # =========================================================================================
         #                   Define plans json taken from nnUNet_preprocessed folder
@@ -637,7 +637,7 @@ def main(args):
 
         if args.debug:
             save_exp_id = f"DEBUG_{save_exp_id}"
-    
+
     elif args.model == "mednext":
         # NOTE: the S, B models in the paper don't fit as-is for this data, gpu
         # hence tweaking the models
@@ -695,8 +695,8 @@ def main(args):
 
     # define callbacks
     early_stopping = pl.callbacks.EarlyStopping(
-        monitor="val_loss", min_delta=0.00, 
-        patience=config["opt"]["early_stopping_patience"], 
+        monitor="val_loss", min_delta=0.00,
+        patience=config["opt"]["early_stopping_patience"],
         verbose=False, mode="min")
 
     lr_monitor = pl.callbacks.LearningRateMonitor(logging_interval='epoch')
@@ -708,25 +708,30 @@ def main(args):
         if not os.path.exists(save_path):
             os.makedirs(save_path, exist_ok=True)
 
-        # to save the results/model predictions 
+        # to save the results/model predictions
         results_path = os.path.join(config["directories"]["results_dir"], f"{save_exp_id}")
         if not os.path.exists(results_path):
             os.makedirs(results_path, exist_ok=True)
 
         # i.e. train by loading weights from scratch
         pl_model = Model(config, data_root=dataset_root,
-                            optimizer_class=optimizer_class, loss_function=loss_func, net=net, 
+                            optimizer_class=optimizer_class, loss_function=loss_func, net=net,
                             exp_id=save_exp_id, results_path=results_path)
-                
+
+        # # model compilation results in considerable speedup, so compiling the model
+        # # more info: https://lightning.ai/blog/training-compiled-pytorch-2.0-with-pytorch-lightning/
+        # logger.info(f"Compiling the model with torch.compile ...")
+        # pl_model = torch.compile(pl_model) #, mode='reduce-overhead')
+
         # saving the best model based on validation loss
         logger.info(f"Saving best model to {save_path}!")
         checkpoint_callback_loss = pl.callbacks.ModelCheckpoint(
-            dirpath=save_path, filename='best_model', monitor='val_loss', 
+            dirpath=save_path, filename='best_model', monitor='val_loss',
             save_top_k=1, mode="min", save_last=True, save_weights_only=False)
-        
+
         # # saving the best model based on soft validation dice score
         # checkpoint_callback_dice = pl.callbacks.ModelCheckpoint(
-        #     dirpath=save_path, filename='best_model_dice', monitor='val_soft_dice', 
+        #     dirpath=save_path, filename='best_model_dice', monitor='val_soft_dice',
         #     save_top_k=1, mode="max", save_last=False, save_weights_only=True)
 
         num_model_params = count_parameters(model=net)
@@ -748,6 +753,7 @@ def main(args):
         wandb.save("transforms.py")
 
         # Enable TF32 on matmul and on cuDNN
+        # torch._dynamo.config.verbose = True
         torch.backends.cuda.matmul.allow_tf32 = True    # same as setting torch.set_float32_matmul_precision("high"/"medium")
         torch.backends.cudnn.allow_tf32 = True
 
@@ -757,7 +763,7 @@ def main(args):
             logger=exp_logger,
             callbacks=[checkpoint_callback_loss, lr_monitor, early_stopping],
             check_val_every_n_epoch=config["opt"]["check_val_every_n_epochs"],
-            max_epochs=config["opt"]["max_epochs"], 
+            max_epochs=config["opt"]["max_epochs"],
             precision="bf16-mixed",
             # NOTE: Each epoch takes a looot of time with the aggregated dataset, so limiting the number of training batches
             # per epoch. Turns out that we don't need to go through all the training samples within an epoch for good performance.
@@ -767,7 +773,7 @@ def main(args):
             # profiler="simple",)     # to profile the training time taken for each step
 
         # Train!
-        trainer.fit(pl_model)        
+        trainer.fit(pl_model)
         logger.info(f" Training Done!")
 
     else:
@@ -787,17 +793,17 @@ def main(args):
 
         # i.e. train by loading existing weights
         pl_model = Model(config, data_root=dataset_root,
-                            optimizer_class=optimizer_class, loss_function=loss_func, net=net, 
+                            optimizer_class=optimizer_class, loss_function=loss_func, net=net,
                             exp_id=save_exp_id, results_path=results_path)
-                
+
         # saving the best model based on validation CSA loss
         checkpoint_callback_loss = pl.callbacks.ModelCheckpoint(
-            dirpath=save_exp_id, filename='best_model', monitor='val_loss', 
+            dirpath=save_exp_id, filename='best_model', monitor='val_loss',
             save_top_k=1, mode="min", save_last=True, save_weights_only=True)
-        
+
         # # saving the best model based on soft validation dice score
         # checkpoint_callback_dice = pl.callbacks.ModelCheckpoint(
-        #     dirpath=save_exp_id, filename='best_model_dice', monitor='val_soft_dice', 
+        #     dirpath=save_exp_id, filename='best_model_dice', monitor='val_soft_dice',
         #     save_top_k=1, mode="max", save_last=False, save_weights_only=True)
 
         # wandb logger
@@ -807,7 +813,7 @@ def main(args):
                             log_model=True, # save best model using checkpoint callback
                             project='contrast-agnostic',
                             entity='naga-karthik',
-                            config=args, 
+                            config=args,
                             id=wandb_run_id, resume='must')
 
         # initialise Lightning's trainer.
@@ -816,13 +822,13 @@ def main(args):
             logger=exp_logger,
             callbacks=[checkpoint_callback_loss, lr_monitor, early_stopping],
             check_val_every_n_epoch=config["opt"]["check_val_every_n_epochs"],
-            max_epochs=config["opt"]["max_epochs"], 
+            max_epochs=config["opt"]["max_epochs"],
             precision="bf16-mixed",
-            enable_progress_bar=True) 
+            enable_progress_bar=True)
             # profiler="simple",)     # to profile the training time taken for each step
 
         # Train!
-        trainer.fit(pl_model, ckpt_path=os.path.join(save_exp_id, "last.ckpt"),) 
+        trainer.fit(pl_model, ckpt_path=os.path.join(save_exp_id, "last.ckpt"),)
         logger.info(f" Training Done!")
 
     # Test!
@@ -831,7 +837,7 @@ def main(args):
 
     # closing the current wandb instance so that a new one is created for the next fold
     wandb.finish()
-    
+
     # TODO: Figure out saving test metrics to a file
     with open(os.path.join(results_path, 'test_metrics.txt'), 'a') as f:
         print('\n-------------- Test Metrics ----------------', file=f)
@@ -841,7 +847,7 @@ def main(args):
                         f"opt={config['opt']['name']}_lr={config['opt']['lr']}_AdapW_" \
                         f"bs={config['opt']['batch_size']}_{patch_size}" \
                         f"_{timestamp}", file=f)
-        
+
         print('\n-------------- Test Hard Dice Scores ----------------', file=f)
         print("Hard Dice --> Mean: %0.3f, Std: %0.3f" % (pl_model.avg_test_dice_hard, pl_model.std_test_dice_hard), file=f)
 
