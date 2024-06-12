@@ -2,6 +2,115 @@ import numpy as np
 import matplotlib.pyplot as plt
 from torch.optim.lr_scheduler import _LRScheduler
 import torch
+import subprocess
+import os
+import json
+import pandas as pd
+import re
+import importlib
+import pkgutil
+from batchgenerators.utilities.file_and_folder_operations import *
+
+
+CONTRASTS = {
+    "t1map": ["T1map"],
+    "mp2rage": ["inv-1_part-mag_MP2RAGE", "inv-2_part-mag_MP2RAGE"],
+    "t1w": ["T1w", "space-other_T1w"],
+    "t2w": ["T2w", "space-other_T2w"],
+    "t2star": ["T2star", "space-other_T2star"],
+    "dwi": ["rec-average_dwi", "acq-dwiMean_dwi"],
+    "mt-on": ["flip-1_mt-on_space-other_MTS", "acq-MTon_MTR"],
+    "mt-off": ["flip-2_mt-off_space-other_MTS"],
+    "unit1": ["UNIT1"],
+    "psir": ["PSIR"],
+    "stir": ["STIR"]
+}
+
+def get_datasets_stats(datalists_root, contrasts_dict, path_save):
+
+    datalists = [file for file in os.listdir(datalists_root) if file.endswith('_seed50.json')]
+
+    df = pd.DataFrame(columns=['train', 'validation', 'test'])
+    # collect all the contrasts from the datalists
+    for datalist in datalists:
+        json_path = os.path.join(datalists_root, datalist)
+        with open(json_path, 'r') as f:
+            data = json.load(f)
+            data = data['numImagesPerContrast'].items()
+
+        for split, contrast_info in data:
+            for contrast, num_images in contrast_info.items():
+                # add the contrast and the number of images to the dataframe
+                if contrast not in df.index:
+                    df.loc[contrast] = [0, 0, 0]
+                df.loc[contrast, split] += num_images
+
+    # reshape dataframe and add a column for contrast
+    df = df.reset_index()
+    df = df.rename(columns={'index': 'contrast'})
+
+    contrasts_final = list(contrasts_dict.keys())
+
+    # rename the contrasts column as per contrasts_final
+    for c in df['contrast'].unique():
+        for cf in contrasts_final:
+            if re.search(cf, c.lower()):
+                df.loc[df['contrast'] == c, 'contrast'] = cf
+                break
+    
+    # NOTE: MTon-MTR is same as flip-1_mt-on_space-other_MTS, but the naming is not mt-on
+    # so doing the renaming manually
+    df.loc[df['contrast'] == 'acq-MTon_MTR', 'contrast'] = 'mt-on'
+
+    # sum the duplicate contrasts 
+    df = df.groupby('contrast').sum().reset_index()
+    
+    # rename columns
+    df = df.rename(columns={'contrast': 'Contrast', 'train': '#train_images', 'validation': '#validation_images', 'test': '#test_images'})
+    # add a row for the total number of images
+    df.loc[len(df)] = ['TOTAL', df['#train_images'].sum(), df['#validation_images'].sum(), df['#test_images'].sum()]
+    # print(df.to_markdown(index=False))
+    df.to_markdown(os.path.join(path_save, 'dataset_split.md'), index=False)
+
+    # # total number of images for each split
+    # print(f"Total number of training images: {df['#train_images'].sum()}")
+    # print(f"Total number of validation images: {df['#validation_images'].sum()}")
+    # print(f"Total number of test images: {df['#test_images'].sum()}")
+
+    # create a unified dataframe combining all datasets
+    csvs = [os.path.join(datalists_root, file) for file in os.listdir(datalists_root) if file.endswith('.csv')]
+    unified_df = pd.concat([pd.read_csv(csv) for csv in csvs], ignore_index=True)
+    
+    # sort the dataframe by the dataset column
+    unified_df = unified_df.sort_values(by='datasetName', ascending=True)
+
+    # save as csv
+    unified_df.to_csv(os.path.join(path_save, 'dataset_contrast_agnostic.csv'), index=False)
+
+
+# Taken from: https://github.com/MIC-DKFZ/nnUNet/blob/master/nnunetv2/utilities/find_class_by_name.py
+def recursive_find_python_class(folder: str, class_name: str, current_module: str):
+    tr = None
+    for importer, modname, ispkg in pkgutil.iter_modules([folder]):
+        # print(modname, ispkg)
+        if not ispkg:
+            m = importlib.import_module(current_module + "." + modname)
+            if hasattr(m, class_name):
+                tr = getattr(m, class_name)
+                break
+
+    if tr is None:
+        for importer, modname, ispkg in pkgutil.iter_modules([folder]):
+            if ispkg:
+                next_current_module = current_module + "." + modname
+                tr = recursive_find_python_class(join(folder, modname), class_name, current_module=next_current_module)
+            if tr is not None:
+                break
+    return tr
+
+
+def count_parameters(model):
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 
 # Check if any label image patch is empty in the batch
@@ -13,90 +122,49 @@ def check_empty_patch(labels):
     return labels  # If no empty patch is found, return the labels
 
 
-class FoldGenerator:
+def get_git_branch_and_commit(dataset_path=None):
     """
-    Adapted from https://github.com/MIC-DKFZ/medicaldetectiontoolkit/blob/master/utils/dataloader_utils.py#L59 
-    Generates splits of indices for a given length of a dataset to perform n-fold cross-validation.
-    splits each fold into 3 subsets for training, validation and testing.
-    This form of cross validation uses an inner loop test set, which is useful if test scores shall be reported on a
-    statistically reliable amount of patients, despite limited size of a dataset.
-    If hold out test set is provided and hence no inner loop test set needed, just add test_idxs to the training data in the dataloader.
-    This creates straight-forward train-val splits.
-    :returns names list: list of len n_splits. each element is a list of len 3 for train_ix, val_ix, test_ix.
+    :return: git branch and commit ID, with trailing '*' if modified
+    Taken from: https://github.com/spinalcordtoolbox/spinalcordtoolbox/blob/master/spinalcordtoolbox/utils/sys.py#L476 
+    and https://github.com/spinalcordtoolbox/spinalcordtoolbox/blob/master/spinalcordtoolbox/utils/sys.py#L461
     """
-    def __init__(self, seed, n_splits, len_data):
-        """
-        :param seed: Random seed for splits.
-        :param n_splits: number of splits, e.g. 5 splits for 5-fold cross-validation
-        :param len_data: number of elements in the dataset.
-        """
-        self.tr_ix = []
-        self.val_ix = []
-        self.te_ix = []
-        self.slicer = None
-        self.missing = 0
-        self.fold = 0
-        self.len_data = len_data
-        self.n_splits = n_splits
-        self.myseed = seed
-        self.boost_val = 0
 
-    def init_indices(self):
+    # branch info
+    b = subprocess.Popen(["git", "rev-parse", "--abbrev-ref", "HEAD"], stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE, cwd=dataset_path)
+    b_output, _ = b.communicate()
+    b_status = b.returncode
 
-        t = list(np.arange(self.len_cv_names))
-        # round up to next splittable data amount.
-        if self.n_splits == 5:
-            split_length = int(np.ceil(len(t) / float(self.n_splits)) // 1.5)
+    if b_status == 0:
+        branch = b_output.decode().strip()
+    else:
+        branch = "!?!"
+
+    # commit info
+    p = subprocess.Popen(["git", "rev-parse", "HEAD"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=dataset_path)
+    output, _ = p.communicate()
+    status = p.returncode
+    if status == 0:
+        commit = output.decode().strip()
+    else:
+        commit = "?!?"
+
+    p = subprocess.Popen(["git", "status", "--porcelain"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=dataset_path)
+    output, _ = p.communicate()
+    status = p.returncode
+    if status == 0:
+        unclean = True
+        for line in output.decode().strip().splitlines():
+            line = line.rstrip()
+            if line.startswith("??"):  # ignore ignored files, they can't hurt
+                continue
+            break
         else:
-            split_length = int(np.ceil(len(t) / float(self.n_splits)))
-        self.slicer = split_length
-        print(self.slicer)
-        self.mod = len(t) % self.n_splits
-        if self.mod > 0:
-            # missing is the number of folds, in which the new splits are reduced to account for missing data.
-            self.missing = self.n_splits - self.mod
+            unclean = False
+        if unclean:
+            commit += "*"
 
-        # for 100 subjects, performs a 60-20-20 split with n_splits
-        self.te_ix = t[:self.slicer]
-        self.tr_ix = t[self.slicer:]
-        self.val_ix = self.tr_ix[:self.slicer]
-        self.tr_ix = self.tr_ix[self.slicer:]
-
-    def new_fold(self):
-
-        slicer = self.slicer
-        if self.fold < self.missing:
-            slicer = self.slicer - 1
-
-        temp = self.te_ix
-
-        # catch exception mod == 1: test set collects 1+ data since walk through both roudned up splits.
-        # account for by reducing last fold split by 1.
-        if self.fold == self.n_splits-2 and self.mod ==1:
-            temp += self.val_ix[-1:]
-            self.val_ix = self.val_ix[:-1]
-
-        self.te_ix = self.val_ix
-        self.val_ix = self.tr_ix[:slicer]
-        self.tr_ix = self.tr_ix[slicer:] + temp
-
-
-    def get_fold_names(self):
-        names_list = []
-        rgen = np.random.RandomState(self.myseed)
-        cv_names = np.arange(self.len_data)
-
-        rgen.shuffle(cv_names)
-        self.len_cv_names = len(cv_names)
-        self.init_indices()
-
-        for split in range(self.n_splits):
-            train_names, val_names, test_names = cv_names[self.tr_ix], cv_names[self.val_ix], cv_names[self.te_ix]
-            names_list.append([train_names, val_names, test_names, self.fold])
-            self.new_fold()
-            self.fold += 1
-
-        return names_list
+    return branch, commit
 
 
 def numeric_score(prediction, groundtruth):
@@ -264,8 +332,12 @@ class PolyLRScheduler(_LRScheduler):
 
 if __name__ == "__main__":
 
-    seed = 54
-    num_cv_folds = 10
-    names_list = FoldGenerator(seed, num_cv_folds, 100).get_fold_names()
-    tr_ix, val_tx, te_ix, fold = names_list[0]
-    print(len(tr_ix), len(val_tx), len(te_ix))
+    # seed = 54
+    # num_cv_folds = 10
+    # names_list = FoldGenerator(seed, num_cv_folds, 100).get_fold_names()
+    # tr_ix, val_tx, te_ix, fold = names_list[0]
+    # print(len(tr_ix), len(val_tx), len(te_ix))
+
+    # datalists_root = "/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/datalists/lifelong-contrast-agnostic"
+    datalists_root = "/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/datalists/aggregation-20240517"
+    get_datasets_stats(datalists_root, contrasts_dict=CONTRASTS, path_save=datalists_root)

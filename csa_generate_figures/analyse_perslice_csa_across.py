@@ -16,18 +16,17 @@ import matplotlib.pyplot as plt
 # HUE_ORDER = ["softseg_bin", "deepseg_2d", "nnunet", "monai", "mednext", "swinunetr", "swinpretrained", "ensemble"]
 # HUE_ORDER = ["softseg_bin", "deepseg_2d", "monai_single", "monai_7datasets", "swinunetr_7datasets"]
 HUE_ORDER = ["softseg_bin", "monai_v21", "monai_v23", "monai_v2x"]
-HUE_ORDER_THR = ["GT", "15", "1", "05", "01", "005"]
 HUE_ORDER_RES = ["1mm", "05mm", "15mm", "3mm", "2mm"]
 CONTRAST_ORDER = ["DWI", "MTon", "MToff", "T1w", "T2star", "T2w"]
 
 FONTSIZE = 12
-# XTICKS = ["GT", "DeepSeg2D", "C-A\nv2.1", "C-A\nv2.3", "C-A\nv2.x"] 
+# XTICKS = ["GT", "DeepSeg2D", "C-A\nOriginal", "C-A\n7-datasets", "SwinUNETR\n7-datasets"]
 XTICKS = ["GT", "contrast-agnostic\nv2.1", "contrast-agnostic\nv2.3", "contrast-agnostic\nv2.x"] 
 
 
 def save_figure(file_path, save_fname):
     plt.tight_layout()
-    save_path = os.path.join(os.path.dirname(file_path), save_fname)
+    save_path = os.path.join(file_path, save_fname)
     plt.savefig(save_path, dpi=300)
     print(f'Figure saved to {save_path}')
 
@@ -69,14 +68,6 @@ def extract_contrast_and_details(filename, across="Method"):
         else:
             return 'Unknown', 'Unknown'
 
-    elif across == "Threshold":
-        pattern = r'.*_(DWI|MTon|MToff|T1w|T2star|T2w).*_(softseg|monai)_thr_(\d+).*'
-        match = re.search(pattern, filename)
-        if match:
-            return match.group(1), match.group(2), match.group(3)
-        else:
-            return 'Unknown', 'Unknown', 'Unknown'
-
     elif across == "Resolution":
         pattern = r'.*_(DWI|MTon|MToff|T1w|T2star|T2w)_res_(\d+mm).*_(deepseg_2d|nnunet|monai|swinunetr|mednext).*'
         match = re.search(pattern, filename)
@@ -88,44 +79,6 @@ def extract_contrast_and_details(filename, across="Method"):
     else:
         raise ValueError(f'Unknown analysis type: {across}. Choices: [Method, Resolution, Threshold].')
     
-
-
-def generate_figure(data, contrast, file_path):
-    """
-    Generate violinplot across resolutions and methods
-    :param data: Pandas DataFrame with the data
-    :param contrast: Contrast (e.g., T1w, T2w, T2star)
-    :param file_path: Path to the CSV file (will be used to save the figure)
-    """
-
-    # Correct labels for the x-axis based on the actual data
-    # resolution_labels = ['1mm', '125mm', '15mm', '175mm', '2mm']
-    resolution_labels = ['1mm', '05mm', '15mm', '3mm', '2mm']
-
-    # Creating the violin plot
-    plt.figure(figsize=(12, 6))
-    sns.violinplot(x='Resolution', y='MEAN(area)', hue='Method', data=data, order=resolution_labels,
-                   hue_order=HUE_ORDER)
-    plt.xticks(rotation=45)
-    plt.xlabel('Resolution')
-    plt.ylabel('CSA [mm^2]')
-    plt.title(f'{contrast}: C2-C3 CSA across Resolutions and Methods')
-    plt.legend(title='Method', loc='lower left')
-    plt.tight_layout()
-
-    # Add horizontal dashed grid
-    plt.grid(axis='y', alpha=0.5, linestyle='dashed')
-
-    # Update x-axis labels
-    # plt.gca().set_xticklabels(['1mm', '1.25mm', '1.5mm', '1.75mm', '2mm'])
-    plt.gca().set_xticklabels(['1x1x1mm', '0.5x0.5x0.5mm', '1.5mm', '3x0.5x0.5mm', '2mm'])
-
-    # Save the figure in 300 DPI as a PNG file
-    plt.savefig(file_path.replace('.csv', '.png'), dpi=300)
-    print(f'Figure saved to {file_path.replace(".csv", ".png")}')
-
-    # Display the plot
-    plt.show()
 
 
 def generate_figure_std(data, file_path, across="Method", metric="csa", hue_order=HUE_ORDER):
@@ -140,125 +93,26 @@ def generate_figure_std(data, file_path, across="Method", metric="csa", hue_orde
         model = "monai"
         data = data[data['Method'] == model]
 
-    plt.figure(figsize=(12, 6))
-    
     if metric == "csa":
         # Compute mean and std across contrasts for each method
         df = data.groupby([across, 'Participant'])['MEAN(area)'].agg(['mean', 'std']).reset_index()
-
-        sns.violinplot(x=across, y='std', data=df, order=hue_order)
-        # overlay swarm plot on the violin plot to show individual data points
-        sns.swarmplot(x=across, y='std', data=df, color='k', order=hue_order, size=3)
-
-        # Draw vertical line between 1st and 2nd violin
-        plt.axvline(x=0.5, color='k', linestyle='--')
-
-        plt.xlabel(None)    # plt.xlabel(across)
-        plt.ylabel('STD [mm^2]', fontweight='bold' ,fontsize=FONTSIZE)
-        plt.title(f'STD of C2-C3 CSA for each {across}', fontweight='bold' ,fontsize=FONTSIZE)
-
-        plt.xticks(range(len(hue_order)), XTICKS, fontsize=FONTSIZE)        
-        
-        # Get y-axis limits
-        ymin, ymax = plt.gca().get_ylim()
-
-        if across == "Method":
-            # Compute the mean +- std across resolutions for each method and place it above the corresponding violin
-            for method in df['Method'].unique():
-                mean = df[df['Method'] == method]['std'].mean()
-                std = df[df['Method'] == method]['std'].std()
-                plt.text(hue_order.index(method), ymax-1, f'{mean:.2f} +- {std:.2f}', ha='center', va='bottom', color='k')
-
-
     elif metric == "swdice":
         # Compute mean and std across contrasts for each method
         df = data.groupby([across, 'Participant'])['average_slicewise_dice'].agg(['mean', 'std']).reset_index()
-        hue_order = HUE_ORDER[1:]      # skip the first method (i.e., softseg_bin)
-        df = df[df['Method'].isin(hue_order)]
-
-        plot_values = 'std'
-        sns.violinplot(x=across, y=plot_values, data=df, order=hue_order)
-        # overlay swarm plot on the violin plot to show individual data points
-        sns.swarmplot(x=across, y=plot_values, data=df, color='k', order=hue_order, size=3)
-        
-        plt.xlabel(None)    # plt.xlabel(across)
-        plt.ylabel(f"{plot_values.upper()} Dice", fontweight='bold' ,fontsize=FONTSIZE)
-        plt.title(f"{plot_values.upper()} of average slicewise Dice scores across contrasts for each {across}", 
-                  fontweight='bold' ,fontsize=FONTSIZE)
-
-        plt.xticks(range(len(hue_order)), XTICKS[1:], fontsize=FONTSIZE)        
-
-        # Get y-axis limits
-        ymin, ymax = plt.gca().get_ylim()
-
-        if across == "Method":
-            # Compute the mean +- std across resolutions for each method and place it above the corresponding violin
-            for method in df['Method'].unique():
-                mean = df[df['Method'] == method][plot_values].mean()
-                std = df[df['Method'] == method][plot_values].std()
-                plt.text(hue_order.index(method), ymax-(0.1*ymax), f'{mean:.2f} +- {std:.2f}', ha='center', va='bottom', color='k')
-
-
-    # Add horizontal dashed grid
-    plt.grid(axis='y', alpha=0.5, linestyle='dashed')
-
-    # Save the figure in 300 DPI as a PNG file
-    if across == "Resolution":
-        save_figure(file_path, f"std_csa_{across.lower()}_{model}.png")
-    else:
-        if metric == "csa":
-            save_figure(file_path, f"std_c2c3_{metric}.png")
-        elif metric == "swdice":
-            save_figure(file_path, f"{plot_values}_perslice_{metric}.png")
-
-
-def generate_figure_abs_csa_error(file_path, data, hue_order=None):
-    """
-    Generate violinplot showing absolute CSA error across participants for each method
-    """
-
-    # Remove "softseg_soft" from the list of methods, if it exists
-    if 'softseg_soft' in data['Method'].unique():
-        data = data[data['Method'] != 'softseg_soft']
-
-    df = pd.DataFrame()
-    for method in hue_order[1:]:
-        df_error_contrast = pd.DataFrame()
-        for contrast in CONTRAST_ORDER:
-            df1 = data[(data['Method'] == "softseg_bin") & (data['Contrast'] == contrast)]
-            df2 = data[(data['Method'] == method) & (data['Contrast'] == contrast)]
-
-            # group by participant and get the mean area for each participant
-            df1 = df1.groupby('Participant')['MEAN(area)'].mean().reset_index()
-            df2 = df2.groupby('Participant')['MEAN(area)'].mean().reset_index()
-
-            # compute the absolute error between the two dataframes
-            df_temp = pd.merge(df1, df2, on='Participant', suffixes=('_gt', '_contrast'))
-            df_error_contrast[contrast] = abs(df_temp['MEAN(area)_gt'] - df_temp['MEAN(area)_contrast'])
-        
-        df_error_contrast['abs_error_mean'] = df_error_contrast.mean(axis=1)
-        df_error_contrast['abs_error_std'] = df_error_contrast.std(axis=1)
-        df_error_contrast['Method'] = method
-        df_error_contrast['Participant'] = df_temp['Participant']
-
-        df = pd.concat([df, df_error_contrast])
-    
-    # remove the contrasts from the dataframe
-    df = df.drop(columns=CONTRAST_ORDER)
-    # # compute the mean and std across contrasts for each method
-    # df_agg = df.groupby('Method')[['mean_error', 'std_error']].mean().reset_index()
-    # print(df_agg)
 
     plt.figure(figsize=(12, 6))
-    # skip the first method (i.e., softseg_bin)
-    sns.violinplot(x='Method', y='abs_error_mean', data=df, order=hue_order)
+    sns.violinplot(x=across, y='std', data=df, order=hue_order)
     # overlay swarm plot on the violin plot to show individual data points
-    sns.swarmplot(x='Method', y='abs_error_mean', data=df, color='k', order=hue_order, size=3)
-
+    sns.swarmplot(x=across, y='std', data=df, color='k', order=hue_order, size=3)
     # plt.xticks(rotation=45)
-    plt.xlabel('Method')
-    plt.ylabel('Absolute CSA error [mm^2]')
-    plt.title(f'Absolute CSA error between softseg_bin and other methods')
+    plt.xlabel(across)
+    if metric == "csa":
+        plt.ylabel('STD [mm^2]')
+        plt.title(f'STD of C2-C3 CSA for each {across}')
+    elif metric == "swdice":
+        plt.ylabel('STD Dice')
+        plt.title(f'STD of average slicewise Dice scores for each {across}')
+
     # Add horizontal dashed grid
     plt.grid(axis='y', alpha=0.5, linestyle='dashed')
 
@@ -268,14 +122,93 @@ def generate_figure_abs_csa_error(file_path, data, hue_order=None):
     # Draw vertical line between 1st and 2nd violin
     plt.axvline(x=0.5, color='k', linestyle='--')
 
+    if across == "Method":
+        # Compute the mean +- std across resolutions for each method and place it above the corresponding violin
+        for method in df['Method'].unique():
+            mean = df[df['Method'] == method]['std'].mean()
+            std = df[df['Method'] == method]['std'].std()
+            plt.text(hue_order.index(method), ymax-1, f'{mean:.2f} +- {std:.2f}', ha='center', va='bottom', color='k')
+    elif across == "Resolution":
+        # Compute the mean +- std across resolutions for each method and place it above the corresponding violin
+        for res in df['Resolution'].unique():
+            mean = df[df['Resolution'] == res]['std'].mean()
+            std = df[df['Resolution'] == res]['std'].std()
+            plt.text(hue_order.index(res), ymax-0.5, f'{mean:.2f} +- {std:.2f}', ha='center', va='bottom', color='k')
+    else:
+        raise ValueError(f'Unknown analysis type: {across}. Choices: [Method, Resolution, Threshold].')
+
+    # Save the figure in 300 DPI as a PNG file
+    if across == "Resolution":
+        save_figure(file_path, f"std_csa_{across.lower()}_{model}.png")
+    else:
+        save_figure(file_path, f"std_csa_{across.lower()}.png")
+
+
+def generate_figure_abs_csa_error(folder_path, data, hue_order=None):
+    """
+    Generate violinplot showing absolute CSA error across participants for each method
+    """
+
+    df = pd.DataFrame()
+    for method in hue_order[1:]:
+        df_error_contrast = pd.DataFrame()
+        for contrast in CONTRAST_ORDER:
+            df1 = data[(data['Method'] == "softseg_bin") & (data['Contrast'] == contrast)]
+            df2 = data[(data['Method'] == method) & (data['Contrast'] == contrast)]
+
+            # compute the slice-wise absolute error between the two dataframes
+            df_temp = pd.merge(df1, df2, on=['Participant', 'Contrast', 'Slice (I->S)'], suffixes=('_gt', '_model'))
+
+            # subtract the mean CSA of the ground truth from the mean CSA of the model based on Slice (I->S)
+            df_temp['abs_error_per_slice'] = abs(df_temp['MEAN(area)_gt'] - df_temp['MEAN(area)_model'])
+
+            # compute mean of the absolute error per slice for each participant
+            df_error_contrast[contrast] = df_temp.groupby('Participant')['abs_error_per_slice'].mean()
+        
+        df_error_contrast['abs_error_mean'] = df_error_contrast.mean(axis=1)
+        df_error_contrast['abs_error_std'] = df_error_contrast.std(axis=1)
+        df_error_contrast['Method'] = method
+        # df_error_contrast['Participant'] = df_temp['Participant']
+
+        df = pd.concat([df, df_error_contrast])
+        
+    # remove the contrasts from the dataframe
+    df = df.drop(columns=CONTRAST_ORDER)
+    # # compute the mean and std across contrasts for each method
+    # df_agg = df.groupby('Method')[['mean_error', 'std_error']].mean().reset_index()
+    # print(df_agg)
+
+    # remove softseg_bin from the list of methods for plotting
+    hue_new = hue_order[1:]
+    df = df[df['Method'].isin(hue_new)]
+
+    plt.figure(figsize=(12, 6))
+    # skip the first method (i.e., softseg_bin)
+    sns.violinplot(x='Method', y='abs_error_mean', data=df, order=hue_new)
+    # overlay swarm plot on the violin plot to show individual data points
+    sns.swarmplot(x='Method', y='abs_error_mean', data=df, color='k', order=hue_new, size=3)
+
+    plt.xlabel(None)    # plt.xlabel(across, fontsize=FONTSIZE)
+    plt.ylabel('Absolute CSA error [mm^2]', fontweight='bold' ,fontsize=FONTSIZE)
+    plt.title(f'Per-Slice Absolute CSA error between softseg_bin and other methods', 
+              fontweight='bold' ,fontsize=FONTSIZE)
+    # Add horizontal dashed grid
+    plt.grid(axis='y', alpha=0.5, linestyle='dashed')
+
+    # rename the x-axis ticks as per XTICKS
+    plt.xticks(range(len(hue_new)), XTICKS[1:], fontsize=FONTSIZE)
+
+    # Get y-axis limits
+    ymin, ymax = plt.gca().get_ylim()
+
     # Compute the mean +- std across resolutions for each method and place it above the corresponding violin
     for method in df['Method'].unique():
         mean = df[df['Method'] == method]['abs_error_mean'].mean()
         std = df[df['Method'] == method]['abs_error_std'].mean()
-        plt.text(hue_order.index(method), ymax-1, f'{mean:.2f} +- {std:.2f}', ha='center', va='bottom', color='k')
+        plt.text(hue_new.index(method), ymax-1, f'{mean:.2f} +- {std:.2f}', ha='center', va='bottom', color='k')
     
     # Save the figure in 300 DPI as a PNG file
-    save_figure(file_path, "abs_csa_error.png")
+    save_figure(folder_path, "abs_csa_error_perslice.png")
 
 
 def generate_figure_abs_csa_error_per_contrast(file_path, data, method=None, threshold=None):
@@ -379,45 +312,43 @@ def compute_cov(data, file_path):
 
 
 def main(args, analysis_type="methods"):
-    # Load the CSV file containing averaged (across slices) C2-C3 CSA 
-    data_avg_csa = pd.read_csv(args.i)
-    # Load the CSV file containing averaged slicewise Dice scores
-    data_swdice = pd.read_csv(args.i_dice)
-    # add the column titles
-    data_swdice.columns = ['Filename', 'average_slicewise_dice']
 
-    # Apply the function to extract participant ID
-    data_avg_csa['Participant'] = data_avg_csa['Filename'].apply(fetch_participant_id)
-    data_swdice['Participant'] = data_swdice['Filename'].apply(fetch_participant_id)
+    csvs_list = [f for f in os.listdir(args.i_folder) if f.endswith('_perslice.csv')]
+    # initialize a new dataframe
+    df_final = pd.DataFrame()
+    for csv in csvs_list:
+        # load the CSV file containing per slice CSAs for each method (separately)
+        data = pd.read_csv(os.path.join(args.i_folder, csv))
 
+        # apply the function to extract participant ID
+        data['Participant'] = data['Filename'].apply(fetch_participant_id)
+
+        data['Contrast'], data['Method'] = zip(
+            *data['Filename'].apply(extract_contrast_and_details, across="Method"))
+
+        # create a new dataframe with columns only Participant, Contrast, Method
+        data_new = data[['Participant', 'Contrast', 'Method', 'Slice (I->S)', 'MEAN(area)']]
+        data_new = data_new.drop_duplicates().reset_index(drop=True)
+        # replace nans with 0
+        data_new = data_new.fillna(0.0)
+
+        # concatenate the dataframes
+        df_final = pd.concat([df_final, data_new])
+            
     # Apply the function to extract method and the corresponding analysis details
     if analysis_type == "methods":
-        data_avg_csa['Contrast'], data_avg_csa['Method'] = zip(
-            *data_avg_csa['Filename'].apply(extract_contrast_and_details, across="Method"))
-        
-        # Generate violinplot showing STD across participants for each method
-        generate_figure_std(data_avg_csa, file_path=args.i, metric="csa")
-
-        data_swdice['Contrast'], data_swdice['Method'] = zip(
-            *data_swdice['Filename'].apply(extract_contrast_and_details, across="Method"))
-
-        # Generate violinplot showing average slicewise Dice scores across participants for each method
-        generate_figure_std(data_swdice, file_path=args.i_dice, metric="swdice")
-
-        # # Generate violinplot showing absolute CSA error across participants for each method
-        # generate_figure_abs_csa_error(file_path, data, hue_order=HUE_ORDER)
+        # Generate violinplot showing absolute CSA error across participants for each method
+        generate_figure_abs_csa_error(args.i_folder, df_final, hue_order=HUE_ORDER)
 
         # # Generate violinplot showing absolute CSA error for each contrast for a given method
         # for method in HUE_ORDER[1:]:
         #     generate_figure_abs_csa_error_per_contrast(file_path, data, method=method, threshold=None)
 
     elif analysis_type == "resolutions":
-        data_avg_csa['Contrast'], data_avg_csa['Method'], data_avg_csa['Resolution'] = zip(
-            *data_avg_csa['Filename'].apply(extract_contrast_and_details, across="Resolution"))
         
         # Generate violinplot showing STD across participants for each resolution
         # generate_figure_std(data, file_path, across="Resolution", hue_order=HUE_ORDER_RES)
-        generate_figure_std(data_avg_csa, file_path=args.i, across="Method", hue_order=HUE_ORDER[1:])
+        generate_figure_std(df_final, args.i_folder, across="Method", hue_order=HUE_ORDER[1:])
     
     else:
         raise ValueError(f'Unknown analysis type: {analysis_type}. Choices: [methods, resolutions, thresholds].')
@@ -428,10 +359,8 @@ def main(args, analysis_type="methods"):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Generate violin plot from CSV data.')
-    parser.add_argument('-i', type=str, 
-                        help='Path to the CSV file containing average C2-C3 CSA (to compute STD CSA across contrast)')
-    parser.add_argument('-i-dice', type=str,
-                        help="Path to the CSV file containing averaged slice-wise Dice scores for each contrast, method, and subjects")
+    parser.add_argument('-i-folder', type=str, 
+                        help='Path to the folder containing CSV files with per slice CSA')
     parser.add_argument('-a', type=str, default="methods", 
                         help='Options to analyse CSA across. Choices: [methods, resolutions]')
     args = parser.parse_args()

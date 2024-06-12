@@ -48,24 +48,22 @@ QC_DATASET=$2           # dataset name to generate QC for
 PATH_NNUNET_SCRIPT=$3   # path to the nnUNet contrast-agnostic run_inference_single_subject.py
 PATH_NNUNET_MODEL=$4    # path to the nnUNet contrast-agnostic model
 PATH_MONAI_SCRIPT=$5    # path to the MONAI contrast-agnostic run_inference_single_subject.py
-PATH_MONAI_MODEL=$6     # path to the MONAI contrast-agnostic model trained on soft bin labels
-PATH_SWIN_MODEL=$7
-PATH_MEDNEXT_MODEL=$8
-# PATH_MONAI_SCRIPT=$3    # path to the MONAI contrast-agnostic run_inference_single_subject.py
-# PATH_MONAI_MODEL_SOFT=$4     # path to the MONAI contrast-agnostic model trained on soft labels
-# PATH_MONAI_MODEL_SOFTBIN=$5     # path to the MONAI contrast-agnostic model trained on soft_bin labels
+# PATH_SWIN_MODEL=$7
+# PATH_MEDNEXT_MODEL=$8
+PATH_MONAI_MODEL_1=$6     
+PATH_MONAI_MODEL_2=$7     
+PATH_MONAI_MODEL_3=$8     
 
 echo "SUBJECT: ${SUBJECT}"
 echo "QC_DATASET: ${QC_DATASET}"
 echo "PATH_NNUNET_SCRIPT: ${PATH_NNUNET_SCRIPT}"
 echo "PATH_NNUNET_MODEL: ${PATH_NNUNET_MODEL}"
 echo "PATH_MONAI_SCRIPT: ${PATH_MONAI_SCRIPT}"
-echo "PATH_MONAI_MODEL: ${PATH_MONAI_MODEL}"
-echo "PATH_SWIN_MODEL: ${PATH_SWIN_MODEL}"
-echo "PATH_MEDNEXT_MODEL: ${PATH_MEDNEXT_MODEL}"
-# echo "PATH_MONAI_SCRIPT: ${PATH_MONAI_SCRIPT}"
-# echo "PATH_MONAI_MODEL_SOFT: ${PATH_MONAI_MODEL_SOFT}"
-# echo "PATH_MONAI_MODEL_SOFTBIN: ${PATH_MONAI_MODEL_SOFTBIN}"
+echo "PATH_MONAI_MODEL_1: ${PATH_MONAI_MODEL_1}"
+echo "PATH_MONAI_MODEL_2: ${PATH_MONAI_MODEL_2}"
+echo "PATH_MONAI_MODEL_3: ${PATH_MONAI_MODEL_3}"
+# echo "PATH_SWIN_MODEL: ${PATH_SWIN_MODEL}"
+# echo "PATH_MEDNEXT_MODEL: ${PATH_MEDNEXT_MODEL}"
 
 # ------------------------------------------------------------------------------
 # CONVENIENCE FUNCTIONS
@@ -107,6 +105,7 @@ copy_gt_seg(){
   if [[ -e $FILESEG ]]; then
       echo "Found! Copying ..."
       rsync -avzh $FILESEG ${file}_seg-manual.nii.gz
+      # rsync -avzh ${FILESEG/.nii.gz/.json} ${file}_seg-manual.json
   else
       echo "File ${FILESEG}.nii.gz does not exist" >> ${PATH_LOG}/missing_files.log
       echo "ERROR: Manual Segmentation ${FILESEG} does not exist. Exiting."
@@ -192,32 +191,37 @@ segment_sc_MONAI(){
   local model="$2"     # monai, swinunetr, mednext
 
 	# if [[ $label_type == 'soft' ]]; then
-	# 	FILEPRED="${file}_seg_monai_soft"
-	# 	PATH_MONAI_MODEL=${PATH_MONAI_MODEL_SOFT}
+	# 	FILEPRED="${file}_seg_monai_soft_input"
+	# 	PATH_MODEL=${PATH_MONAI_MODEL_SOFT}
 	
-	# elif [[ $label_type == 'soft_bin' ]]; then
-  #   FILEPRED="${file}_seg_monai_bin"
-	# 	PATH_MONAI_MODEL=${PATH_MONAI_MODEL_SOFTBIN}
+	# elif [[ $label_type == 'bin' ]]; then
+  #   FILEPRED="${file}_seg_monai_bin_input"
+	# 	PATH_MODEL=${PATH_MONAI_MODEL_BIN}
 	
 	# fi
-	if [[ $model == 'monai' ]]; then
-		FILEPRED="${file}_seg_monai"
-		PATH_MODEL=${PATH_MONAI_MODEL}
-	
-	elif [[ $model == 'swinunetr' ]]; then
-    FILEPRED="${file}_seg_swinunetr"
-    PATH_MODEL=${PATH_SWIN_MODEL}
+	if [[ $model == 'soft_monai_single' ]]; then
+		FILEPRED="${file}_seg_${model}"
+		PATH_MODEL=${PATH_MONAI_MODEL_1}
   
-  elif [[ $model == 'mednext' ]]; then
-    FILEPRED="${file}_seg_mednext"
-    PATH_MODEL=${PATH_MEDNEXT_MODEL}
+  elif [[ $model == 'soft_monai_2datasets' ]]; then
+    FILEPRED="${file}_seg_${model}"
+    PATH_MODEL=${PATH_MONAI_MODEL_2}
+  
+  elif [[ $model == 'soft_monai_7datasets' ]]; then
+    FILEPRED="${file}_seg_${model}"
+    PATH_MODEL=${PATH_MONAI_MODEL_3}
 	
+	# elif [[ $model == 'swinunetr' ]]; then
+  #   FILEPRED="${file}_seg_swinunetr"
+  #   PATH_MODEL=${PATH_SWIN_MODEL}
+  	
 	fi
 
   # Get the start time
   start_time=$(date +%s)
   # Run SC segmentation
-  python ${PATH_MONAI_SCRIPT} --path-img ${file}.nii.gz --path-out . --chkp-path ${PATH_MODEL} --device gpu --model ${model}
+  # python ${PATH_MONAI_SCRIPT} --path-img ${file}.nii.gz --path-out . --chkp-path ${PATH_MODEL} --device gpu --model ${model}
+  python ${PATH_MONAI_SCRIPT} --path-img ${file}.nii.gz --path-out . --chkp-path ${PATH_MODEL} --device gpu --model monai --pred-type soft --pad-mode edge
   # Rename MONAI output
   mv ${file}_pred.nii.gz ${FILEPRED}.nii.gz
   # Get the end time
@@ -225,6 +229,9 @@ segment_sc_MONAI(){
   # Calculate the time difference
   execution_time=$(python3 -c "print($end_time - $start_time)")
   echo "${FILEPRED},${execution_time}" >> ${PATH_RESULTS}/execution_time.csv
+
+  # Generate QC report on soft predictions
+  sct_qc -i ${file}.nii.gz -s ${FILEPRED}.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
 
   # Binarize MONAI output (which is soft by default); output is overwritten
   sct_maths -i ${FILEPRED}.nii.gz -bin 0.5 -o ${FILEPRED}.nii.gz
@@ -267,12 +274,33 @@ elif [[ $QC_DATASET == "dcm-zurich" ]]; then
   label_suffix="label-SC_mask-manual"
   deepseg_input_c="t2"
 
+elif [[ $QC_DATASET == "lumbar-epfl" ]]; then
+  contrast="T2w"
+  label_suffix="seg-manual"
+  deepseg_input_c="t2"
+
+elif [[ $QC_DATASET == "canproco" ]]; then
+  contrast="PSIR"
+  label_suffix="seg-manual"
+  deepseg_input_c="t2"
+
+else
+  echo "ERROR: Dataset ${QC_DATASET} not recognized. Exiting."
+  exit 1
+
 fi
 
 echo "Contrast: ${contrast}"
 
 # Copy source images
-rsync -Ravzh ${PATH_DATA}/./${SUBJECT}/anat/${SUBJECT//[\/]/_}*${contrast}.* .
+# check if the file exists
+if [[ ! -e ${PATH_DATA}/./${SUBJECT}/anat/${SUBJECT//[\/]/_}*${contrast}.* ]]; then
+    echo "File ${PATH_DATA}/./${SUBJECT}/anat/${SUBJECT//[\/]/_}*${contrast}.* does not exist" >> ${PATH_LOG}/missing_files.log
+    echo "ERROR: File ${PATH_DATA}/./${SUBJECT}/anat/${SUBJECT//[\/]/_}*${contrast}.* does not exist. Exiting."
+    exit 1
+else 
+    rsync -Ravzh ${PATH_DATA}/./${SUBJECT}/anat/${SUBJECT//[\/]/_}*${contrast}.* .
+fi
 
 # Go to the folder where the data is
 cd ${PATH_DATA_PROCESSED}/${SUBJECT}/anat
@@ -290,16 +318,47 @@ fi
 # Copy GT spinal cord segmentation
 copy_gt_seg "${file}" "${label_suffix}"
 
+# Generate QC report the GT spinal cord segmentation
+sct_qc -i ${file}.nii.gz -s ${file}_seg-manual.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
+
 # Segment SC using different methods, binarize at 0.5 and compute QC
-# segment_sc_MONAI ${file} 'soft'
-# segment_sc_MONAI ${file} 'soft_bin'
-segment_sc_MONAI ${file} 'monai'
+# CUDA_VISIBLE_DEVICES=1 segment_sc_MONAI ${file} 'soft_monai_single'
+# CUDA_VISIBLE_DEVICES=2 segment_sc_MONAI ${file} 'soft_monai_2datasets'
+CUDA_VISIBLE_DEVICES=0 segment_sc_MONAI ${file} 'soft_monai_7datasets'
+# segment_sc_MONAI ${file} 'monai'
 # segment_sc_MONAI ${file} 'swinunetr'
-# segment_sc_MONAI ${file} 'mednext'
 
-# segment_sc_nnUNet ${file} '3d_fullres'
-# segment_sc ${file} 'deepseg' ${deepseg_input_c}
+# CUDA_VISIBLE_DEVICES=2 segment_sc_nnUNet ${file} '3d_fullres'
+segment_sc ${file} 'deepseg' ${deepseg_input_c}
 
+# Create new "_clean" folder with BIDS-updated derivatives filenames
+date_time=$(date +"%Y-%m-%d %H:%M:%S")
+json_dict='{
+  "GeneratedBy": [
+    {
+      "Name": "contrast-agnostic-softseg-spinalcord",
+      "Version": "2.3",
+      "Date": "'$date_time'"
+    }
+  ]
+}'
+
+PATH_DATA_PROCESSED_CLEAN="${PATH_DATA_PROCESSED}_clean"
+# create new folder and copy only the predictions
+mkdir -p ${PATH_DATA_PROCESSED_CLEAN}/derivatives/labels_softseg_bin/${SUBJECT}/anat
+
+rsync -avzh ${file}_seg_soft_monai_4datasets.nii.gz ${PATH_DATA_PROCESSED_CLEAN}/derivatives/labels_softseg_bin/${SUBJECT}/anat/${file%%_*}_space-other_${contrast}_desc-softseg_label-SC_seg.nii.gz
+rsync -avzh ${file}_seg-manual.json ${PATH_DATA_PROCESSED_CLEAN}/derivatives/labels_softseg_bin/${SUBJECT}/anat/${file%%_*}_space-other_${contrast}_desc-softseg_label-SC_seg.json
+
+# create json file
+echo $json_dict > ${PATH_DATA_PROCESSED_CLEAN}/derivatives/labels_softseg_bin/${SUBJECT}/anat/${file%%_*}_space-other_${contrast}_desc-softseg_label-SC_seg.json
+# re-save json files with indentation
+python -c "import json;
+json_file = '${PATH_DATA_PROCESSED_CLEAN}/derivatives/labels_softseg_bin/${SUBJECT}/anat/${file%%_*}_space-other_${contrast}_desc-softseg_label-SC_seg.json'
+with open(json_file, 'r') as f:
+    data = json.load(f)
+    json.dump(data, open(json_file, 'w'), indent=4)
+"
 
 # ------------------------------------------------------------------------------
 # End

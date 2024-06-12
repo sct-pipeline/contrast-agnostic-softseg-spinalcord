@@ -1,23 +1,24 @@
-seed: 15
+seed: 50
 save_test_preds: True
 
 directories:
   # Path to the saved models directory
-  models_dir: /home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/saved_models/followup
+  models_dir: /home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/saved_models/lifelong
   # Path to the saved results directory
-  results_dir: /home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/results/models_followup
+  results_dir: /home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/results/models_lifelong
   # Path to the saved wandb logs directory
   # if None, starts training from scratch. Otherwise, resumes training from the specified wandb run folder
-  wandb_run_folder: None  
+  wandb_run_folder: None
 
 dataset:
   # Dataset name (will be used as "group_name" for wandb logging)
-  name: spine-generic
+  name: lifelong-contrast-agnostic
   # Path to the dataset directory containing all datalists (.json files)
-  root_dir: /home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/datalists/spine-generic/seed15
+  # root_dir: /home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/datalists/lifelong-contrast-agnostic
+  root_dir: /home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/datalists/aggregation-20240517
   # Type of contrast to be used for training. "all" corresponds to training on all contrasts
   contrast: all   # choices: ["t1w", "t2w", "t2star", "mton", "mtoff", "dwi", "all"]
-  # Type of label to be used for training. 
+  # Type of label to be used for training.
   label_type: soft_bin  # choices: ["hard", "soft", "soft_bin"]
 
 preprocessing:
@@ -25,34 +26,50 @@ preprocessing:
   spacing: [1.0, 1.0, 1.0]
   # Center crop/pad images to the specified size. (NOTE: done after resampling)
   # values correspond to R-L, A-P, I-S axes of the image after 1mm isotropic resampling.
-  crop_pad_size: [64, 192, 320]   
+  crop_pad_size: [64, 192, 320]
 
 opt:
   name: adam
-  lr: 0.001
-  max_epochs: 200
+  lr: 0.001    # 0.001
+  max_epochs: 250
   batch_size: 2
   # Interval between validation checks in epochs
-  check_val_every_n_epochs: 5
+  check_val_every_n_epochs: 1
   # Early stopping patience (this is until patience * check_val_every_n_epochs)
-  early_stopping_patience: 20     
+  early_stopping_patience: 20
 
 
 model:
   # Model architecture to be used for training (also to be specified as args in the command line)
-  nnunet:
+  nnunet-plain:
     # NOTE: these info are typically taken from nnUNetPlans.json (if an nnUNet model is trained)
-    base_num_features: 32
-    max_num_features: 320
-    n_conv_per_stage_encoder: [2, 2, 2, 2, 2, 2]
+    n_stages: 6
+    features_per_stage: [32, 64, 128, 256, 384, 384]
+    n_conv_per_stage: [2, 2, 2, 2, 2, 2]
     n_conv_per_stage_decoder: [2, 2, 2, 2, 2]
-    pool_op_kernel_sizes: [
+    strides: [
       [1, 1, 1],
       [2, 2, 2],
       [2, 2, 2],
       [2, 2, 2],
       [2, 2, 2],
-      [1, 2, 2] 
+      [1, 2, 2]
+    ]
+    enable_deep_supervision: True
+
+  nnunet-resencM:
+    # NOTE: this uses the new Residual Encoder UNets introduced in nnUNet v2.4.1
+    n_stages: 6
+    features_per_stage: [32, 64, 128, 256, 384, 384]
+    n_blocks_per_stage: [1, 3, 4, 6, 6, 6]
+    n_conv_per_stage_decoder: [1, 1, 1, 1, 1]
+    strides: [
+      [1, 1, 1],
+      [2, 2, 2],
+      [2, 2, 2],
+      [2, 2, 2],
+      [2, 2, 2],
+      [1, 2, 2],
     ]
     enable_deep_supervision: True
 
@@ -62,10 +79,12 @@ model:
     num_classes: 1
     kernel_size: 3            # 3x3x3 and 5x5x5 were tested in publication
     block_counts: [2,2,2,2,1,1,1,1,1] # number of blocks in each layer
-    enable_deep_supervision: True 
+    norm_type: 'layer'
+    enable_deep_supervision: True
 
   swinunetr:
     spatial_dims: 3
     depths: [2, 2, 2, 2]
     num_heads: [3, 6, 12, 24]   # number of heads in multi-head Attention
     feature_size: 36
+    use_pretrained: False
