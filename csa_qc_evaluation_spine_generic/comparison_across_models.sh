@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # Compare the CSA of different models on the spine-generic test dataset
-# 
+#
 # Adapted from: https://github.com/ivadomed/model_seg_sci/blob/main/baselines/comparison_with_other_methods_sc.sh
 #
 # Usage:
@@ -47,9 +47,9 @@ SUBJECT=$1
 # PATH_NNUNET_SCRIPT=$2   # path to the nnUNet contrast-agnostic run_inference_single_subject.py
 # PATH_NNUNET_MODEL=$3    # path to the nnUNet contrast-agnostic model
 PATH_MONAI_SCRIPT=$2    # path to the MONAI contrast-agnostic run_inference_single_subject.py
-PATH_MONAI_MODEL_1=$3     
-PATH_MONAI_MODEL_2=$4     
-PATH_MONAI_MODEL_3=$5     
+PATH_MONAI_MODEL_1=$3
+PATH_MONAI_MODEL_2=$4
+PATH_MONAI_MODEL_3=$5
 # PATH_SWIN_MODEL=$5
 PATH_SWDICE_SCRIPT="/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/contrast-agnostic-softseg-spinalcord/monai/compute_slicewise_dice.py"
 
@@ -71,7 +71,7 @@ echo "PATH_MONAI_MODEL_3: ${PATH_MONAI_MODEL_3}"
 label_vertebrae(){
   local file="$1"
   local contrast="$2"
-  
+
   # Update global variable with segmentation file name
   FILESEG="${file}_seg-manual"
   FILELABEL="${file}_discs"
@@ -182,7 +182,7 @@ segment_sc() {
       # Compute slicewise Dice
       slicewise_dice=$(python ${PATH_SWDICE_SCRIPT} --path-pred ${FILESEG}.nii.gz --path-gt ${FILEGT}.nii.gz)
       echo "${FILESEG},${slicewise_dice}" >> ${PATH_RESULTS}/slicewise_dice.csv
-  
+
   elif [[ $method == 'propseg' ]]; then
       FILESEG="${file}_seg_${method}"
 
@@ -249,20 +249,23 @@ segment_sc_MONAI(){
 		# FILESEG="${file%%_*}_${contrast}_seg_monai_orig"
     FILESEG="${file%%_*}_${contrast}_seg_${model}"
 		PATH_MODEL=${PATH_MONAI_MODEL_1}
+    model_name='monai'
 
-	elif [[ $model == 'monai_2datasets' ]]; then
+	elif [[ $model == 'monai_v23' ]]; then
 		# FILESEG="${file%%_*}_${contrast}_seg_monai_ll"
     FILESEG="${file%%_*}_${contrast}_seg_${model}"
 		PATH_MODEL=${PATH_MONAI_MODEL_2}
-  
-  elif [[ $model == 'monai_4datasets' ]]; then
+    model_name='monai'
+
+  elif [[ $model == 'monai_v2x' ]]; then
     FILESEG="${file%%_*}_${contrast}_seg_${model}"
     PATH_MODEL=${PATH_MONAI_MODEL_3}
+    model_name='monai'
 
 	elif [[ $model == 'swinunetr' ]]; then
     FILESEG="${file%%_*}_${contrast}_seg_swinunetr"
     PATH_MODEL=${PATH_SWIN_MODEL}
-	
+
 	fi
 
   FILEGT="${file%%_*}_${contrast}_softseg_bin"
@@ -270,9 +273,10 @@ segment_sc_MONAI(){
   # Get the start time
   start_time=$(date +%s)
   echo "Running inference from model at ${PATH_MODEL}"
+  # NOTE: surprisingly, the `edge` padding is resulting in higher abs. csa error compared to `constant` (zero) padded inputs.
   # Run SC segmentation
-  # python ${PATH_MONAI_SCRIPT} --path-img ${file}.nii.gz --path-out . --chkp-path ${PATH_MODEL} --device gpu --model ${model} --pred-type soft
-  python ${PATH_MONAI_SCRIPT} --path-img ${file}.nii.gz --path-out . --chkp-path ${PATH_MODEL} --device gpu --model monai --pred-type soft --pad-mode edge
+  python ${PATH_MONAI_SCRIPT} --path-img ${file}.nii.gz --path-out . --chkp-path ${PATH_MODEL} --device gpu --model ${model_name} --pred-type soft --pad-mode constant
+  # python ${PATH_MONAI_SCRIPT} --path-img ${file}.nii.gz --path-out . --chkp-path ${PATH_MODEL} --device gpu --model monai --pred-type soft --pad-mode constant
   # Rename MONAI output
   mv ${file}_pred.nii.gz ${FILESEG}.nii.gz
   # Get the end time
@@ -307,9 +311,9 @@ segment_sc_ensemble(){
   local file_gt_vert_label="$2"
   local contrast="$3"   # used only for saving output file name
   local csv_fname="$4"   # used for saving output file name
-  
+
   FILETEMP="${file%%_*}_${contrast}"
-  
+
   FILESEG=${FILETEMP}_seg_ensemble
 
   # Get the start time
@@ -359,8 +363,8 @@ rsync -Ravzh ${PATH_DATA}/derivatives/data_preprocessed/./${SUBJECT}/dwi/* .
 contrasts="space-other_T1w space-other_T2w space-other_T2star flip-1_mt-on_space-other_MTS flip-2_mt-off_space-other_MTS rec-average_dwi"
 # contrasts="space-other_T1w rec-average_dwi"
 
-# output csv filename 
-csv_fname="csa_softIn_CL"   # "csa_label_inputs"
+# output csv filename
+csv_fname="csa_softIn_CL_deploy"   # "csa_label_inputs"
 
 # Loop across contrasts
 for contrast in ${contrasts}; do
@@ -384,7 +388,7 @@ for contrast in ${contrasts}; do
       exit 1
   fi
 
-  # rename contrasts 
+  # rename contrasts
   if [[ $contrast == "flip-1_mt-on_space-other_MTS" ]]; then
     contrast="MTon"
     deepseg_input_c="t2s"
@@ -422,7 +426,7 @@ for contrast in ${contrasts}; do
   mv ${file}_softseg_bin.nii.gz ${FILEBIN}.nii.gz
   # sct_maths -i ${file}_softseg.nii.gz -bin 0.5 -o ${FILETHRESH}.nii.gz
 
-  # 2. Compute CSA of the binarized soft GT 
+  # 2. Compute CSA of the binarized soft GT
   # 2.1 Compute CSA averaged across all slices C2-C3 vertebral levels for plotting the STD across contrasts
   # NOTE: this is per-level because not all contrasts have thes same FoV (C2-C3 is what all contrasts have in common)
   sct_process_segmentation -i ${FILEBIN}.nii.gz -vert 2:3 -vertfile ${file}_seg-manual_labeled.nii.gz -o $PATH_RESULTS/${csv_fname}_c2c3.csv -append 1
@@ -431,12 +435,12 @@ for contrast in ${contrasts}; do
   sct_process_segmentation -i ${FILEBIN}.nii.gz -perslice 1 -vertfile ${file}_seg-manual_labeled.nii.gz -o $PATH_RESULTS/${csv_fname}_softseg_bin_perslice.csv -append 1
 
   # 3. Segment SC using different methods, binarize at 0.5 and compute CSA
-	CUDA_VISIBLE_DEVICES=3 segment_sc_MONAI ${file} "${file}_seg-manual" 'monai_single' ${contrast} ${csv_fname}
-  CUDA_VISIBLE_DEVICES=1 segment_sc_MONAI ${file} "${file}_seg-manual" 'monai_2datasets' ${contrast} ${csv_fname}
-  CUDA_VISIBLE_DEVICES=2 segment_sc_MONAI ${file} "${file}_seg-manual" 'monai_4datasets' ${contrast} ${csv_fname}
+	CUDA_VISIBLE_DEVICES=1 segment_sc_MONAI ${file} "${file}_seg-manual" 'monai_v21' ${contrast} ${csv_fname}
+  CUDA_VISIBLE_DEVICES=1 segment_sc_MONAI ${file} "${file}_seg-manual" 'monai_v23' ${contrast} ${csv_fname}
+  CUDA_VISIBLE_DEVICES=2 segment_sc_MONAI ${file} "${file}_seg-manual" 'monai_v2x' ${contrast} ${csv_fname}
   # CUDA_VISIBLE_DEVICES=2 segment_sc_MONAI ${file} "${file}_seg-manual" 'swinunetr' ${contrast} ${csv_fname}
   # CUDA_VISIBLE_DEVICES=3 segment_sc_nnUNet ${file} "${file}_seg-manual" '3d_fullres' ${contrast} ${csv_fname}
-  segment_sc ${file} "${file}_seg-manual" 'deepseg' ${deepseg_input_c} ${contrast} ${csv_fname}
+  # segment_sc ${file} "${file}_seg-manual" 'deepseg' ${deepseg_input_c} ${contrast} ${csv_fname}
   # TODO: run on deep/progseg after fixing the contrasts for those
   # segment_sc ${file_res} 't2' 'propseg' '' "${file}_seg-manual" ${native_res}
 
