@@ -24,17 +24,21 @@ FNAME_LOG = 'log_stats.txt'
 
 
 color_palette = {
-        'nnUNet': '#fc8d62',
         'GT_soft': '#b3b3b3',
+        'GT_hard': '#b3b3b3',
         'deepseg2d': '#e78ac3',
         'deepseg3d': '#e31a1c',
         'propseg': '#ffd92f',
+        'nnUNet2d': '#0094b3',
+        'nnUNet3d': '#fc8d62',
         'hard_all': '#8da0cb',
+        'hard_all\ndiceCE_loss': '#694f4f',
         'soft_all_AdapWing': '#66c2a5',
         'soft_all': '#66c2a5',
         'soft_per\ncontrast': '#386cb0',
-        'GT_hard': '#b3b3b3',
-        'soft_all\ndice_loss': '#a6d854'
+        'soft_all\ndiceCE_loss': '#f9aaaa',
+        'soft_all\ndice_loss': '#a6d854',
+        'softSeg': '#82c6d6'
     }
 
 
@@ -82,7 +86,7 @@ def get_csa(csa_filename):
     return csa
 
 
-def get_pairwise_csa(df, df_deepseg, path_out, filename):
+def get_pairwise_csa(df, df_deepseg, df_nnunet, df_softseg, path_out, filename):
     """
     Creates pairwise CSA agreement and between T1w and T2w.
     Args:
@@ -94,13 +98,13 @@ def get_pairwise_csa(df, df_deepseg, path_out, filename):
 
     """
     
-    fig, axs = plt.subplots(figsize=(7, 7))
+    fig, axs = plt.subplots(figsize=(9, 9))
     # Function to add linear equation and r^2
     def r2(x, y, ax=None, xy=(.95, .05), edgecolor='#66c2a5', **kws):
         ax = ax or plt.gca()
         slope, intercept, r_value, p_value, std_err = stats.linregress(x=x, y=y)
         ax.annotate(f'$r^2 = {r_value ** 2:.2f}$\nEq: ${slope:.2f}x{intercept:+.2f}$',
-                    xy=xy, xycoords=ax.transAxes, fontsize=12,
+                    xy=xy, xycoords=ax.transAxes, fontsize=11,
                     color='black', backgroundcolor='#FFFFFF99', ha='right', va='bottom',
                     bbox=dict(facecolor='#FFFFFF99', alpha=0.8, edgecolor=edgecolor, boxstyle="round"))
 
@@ -110,7 +114,7 @@ def get_pairwise_csa(df, df_deepseg, path_out, filename):
         ax.plot([50, 100], [50, 100], ls="--", c=".3")
     # Create pairwise plot
     sns.set_context("paper", rc={"axes.labelsize":16,"xtick.labelsize":16, "ytick.labelsize":16})
-    g = sns.pairplot(df, kind="reg", diag_kind="kde", diag_kws={"linewidth": 0, "shade": False}, corner=True, plot_kws={'line_kws': {'color': 'red'}})
+    g = sns.pairplot(df, kind="reg", diag_kind="kde", diag_kws={"linewidth": 0, "fill": False}, corner=True, plot_kws={'line_kws': {'color': 'red'}})
     g.map_lower(r2)
     # Remove diagonal
     for i, y_var in enumerate(g.y_vars):
@@ -131,9 +135,16 @@ def get_pairwise_csa(df, df_deepseg, path_out, filename):
     plt.title('T1w CSA vs T2w CSA', fontsize=14, fontweight="bold")
     sns.regplot(x=df['T1w'], y=df['T2w'], label='soft_all', scatter_kws={"color": "#66c2a5"}, line_kws={"color": "#66c2a5"})
     sns.regplot(x=df_deepseg['T1w'], y=df_deepseg['T2w'], label='deepseg2D', scatter_kws={"color": "#e78ac3"}, line_kws={"color": "#e78ac3"})
+    sns.regplot(x=df_nnunet['T1w'], y=df_nnunet['T2w'], label='nnUNet2D', scatter_kws={"color": "#fc8d62"}, line_kws={"color": "#fc8d62"})
+    sns.regplot(x=df_softseg['T1w'], y=df_softseg['T2w'], label='softSeg', scatter_kws={"color": "#82c6d6"}, line_kws={"color": "#82c6d6"})
+    
     plt.plot([50, 100], [50, 100], ls="--", c=".3")  # add diagonal line
-    r2(x=df['T1w'], y=df['T2w'], ax=ax,  xy=(.95, .2))
-    r2(x=df_deepseg['T1w'], y=df_deepseg['T2w'], ax=ax, edgecolor='#e78ac3')
+    
+    r2(x=df['T1w'], y=df['T2w'], ax=ax,  xy=(.95, .4))
+    r2(x=df_deepseg['T1w'], y=df_deepseg['T2w'], ax=ax, edgecolor='#e78ac3', xy=(.95, .3))
+    r2(x=df_nnunet['T1w'], y=df_nnunet['T2w'], ax=ax, edgecolor='#fc8d62', xy=(.95, .2))
+    r2(x=df_softseg['T1w'], y=df_softseg['T2w'], ax=ax, edgecolor='#82c6d6',)
+    
     plt.gca().set_aspect("equal", adjustable="box")
     plt.xlim(55, 95)
     plt.ylim(55, 95)
@@ -171,7 +182,8 @@ def violin_plot(df, y_label, title, path_out, filename, set_ylim=False, annonate
     """
     sns.set_style('whitegrid', rc={'xtick.bottom': True,
                                    'ytick.left': True})
-    fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(10.5, 7))
+    # fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(10.5, 7))
+    fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(14.5, 7))
     plt.rcParams['legend.title_fontsize'] = 16
     if "violin_plot_all" in filename :
         # NOTE: we're adding cut=0 because the STD CSA violin plot extends beyond zero
@@ -383,16 +395,22 @@ def main():
 
     # To compare only monai model and the GT
     rename = {
-        'csa_nnunet_2023-08-24': 'nnUNet',
         'csa_gt_2023-08-08': 'GT_soft',
+        'csa_gt_hard_2023-08-08': 'GT_hard',
+        # models
+        'csa_other_methods_2023-09-21-all/results/propseg': 'propseg',
         'csa_other_methods_2023-09-21-all/results/deepseg2d': 'deepseg2d',
         'csa_other_methods_2023-09-21-all/results/deepseg3d': 'deepseg3d',
-        'csa_other_methods_2023-09-21-all/results/propseg': 'propseg',
+        'csa_nnunet_2023-08-24': 'nnUNet3d',
+        'csa_nnunet2d_20240626': 'nnUNet2d',
         'csa_monai_nnunet_2023-09-18': 'soft_all',
         'csa_monai_nnunet_2023-09-18_hard': 'hard_all',
         'csa_monai_nnunet_per_contrast': 'soft_per\ncontrast',
-        'csa_gt_hard_2023-08-08': 'GT_hard',
-        'csa_monai_nnunet_diceL': 'soft_all\ndice_loss'
+        'csa_monai_soft_bin_SoftSeg_20240625': 'softSeg',
+        # loss
+        'csa_monai_nnunet_diceL': 'soft_all\ndice_loss',
+        'csa_monai_hard_diceCE_20240625': 'hard_all\ndiceCE_loss',
+        'csa_monai_soft_diceCE_20240625': 'soft_all\ndiceCE_loss',
     }
 
     print(dfs.keys())
@@ -411,14 +429,14 @@ def main():
         logger.info(f'{method} STD CSA: \n{dfs[method].std()}')
         logger.info(std.sort_values(ascending=False))
         stds[method] = std
-        print(dfs[method].columns)
-        violin_plot(dfs[method].rename(columns={"mt-off": "GRE-T1w", "T2star": "T2*w", "mt-on": "MT-on", "dwi":"DWI"}),
-                    y_label=r'CSA ($\bf{mm^2}$)',
-                    title="CSA across MRI contrasts " + method,
-                    path_out=exp_folder,
-                    filename='violin_plot_csa_percontrast_'+method+'.png',
-                    set_ylim=True,
-                    annonate=annonate)
+        # print(dfs[method].columns)
+        # violin_plot(dfs[method].rename(columns={"mt-off": "GRE-T1w", "T2star": "T2*w", "mt-on": "MT-on", "dwi":"DWI"}),
+        #             y_label=r'CSA ($\bf{mm^2}$)',
+        #             title="CSA across MRI contrasts " + method,
+        #             path_out=exp_folder,
+        #             filename='violin_plot_csa_percontrast_'+method+'.png',
+        #             set_ylim=True,
+        #             annonate=annonate)
 
         # Compute CSA error
         if method != 'GT_soft':
@@ -433,13 +451,13 @@ def main():
                 oneCol.append(error[column])
             error_csa_prediction[method] = pd.concat(oneCol, ignore_index=True)
             # Plot error per contrast
-            violin_plot(error.rename(columns={"mt-off": "GRE-T1w", "T2star": "T2*w", "mt-on": "MT-on", "dwi":"DWI"}),
-                        y_label=r'Absolute CSA Error ($\bf{mm^2}$)',
-                        title="Absolute CSA Error across MRI contrasts " + method,
-                        path_out=exp_folder,
-                        filename='violin_plot_csa_percontrast_error_'+method+'.png',
-                        set_ylim=True,
-                        annonate=annonate)
+            # violin_plot(error.rename(columns={"mt-off": "GRE-T1w", "T2star": "T2*w", "mt-on": "MT-on", "dwi":"DWI"}),
+            #             y_label=r'Absolute CSA Error ($\bf{mm^2}$)',
+            #             title="Absolute CSA Error across MRI contrasts " + method,
+            #             path_out=exp_folder,
+            #             filename='violin_plot_csa_percontrast_error_'+method+'.png',
+            #             set_ylim=True,
+            #             annonate=annonate)
 
     logger.info(f'Number of subject in test set: {len(stds.index)}')
     # Compute statistical test for soft_all CSA
@@ -499,7 +517,11 @@ def main():
 
     # Compare one model per contrast vs one for all
     ################################################
-    include_one_vs_all = ['hard_all', 'soft_all\ndice_loss', 'soft_per\ncontrast', 'soft_all']
+    include_one_vs_all = [
+        'hard_all', 'hard_all\ndiceCE_loss', 
+        'soft_all\ndice_loss', 'soft_all\ndiceCE_loss', 
+        'soft_per\ncontrast', 'soft_all'
+    ]
     gt = ['GT_hard', 'GT_soft']
     logger.info('\nComparing one model vs one for all')
     # Plot STD
@@ -524,7 +546,10 @@ def main():
     # Compare MONAI_nnunet vs nnUnet vs deepseg_sc
     ##############################################
     logger.info('\nComparing with other methods.')
-    include_other_methods = ['deepseg3d', 'propseg','deepseg2d','nnUNet','soft_all']
+    include_other_methods = [
+        'deepseg3d', 'propseg','deepseg2d', 'hard_all\ndiceCE_loss', 
+        'nnUNet3d', 'nnUNet2d', 'softSeg', 'soft_all'
+    ]
     gt = ['GT_soft']
 
     # Plot STD
@@ -547,7 +572,7 @@ def main():
 
 
     # Zoomed version
-    include_other_methods = ['deepseg2d', 'nnUNet', 'soft_all']
+    include_other_methods = ['deepseg2d', 'hard_all\ndiceCE_loss', 'nnUNet3d', 'nnUNet2d', 'softSeg', 'soft_all']
 
     # Plot STD
     violin_plot(stds[gt+include_other_methods],
@@ -566,7 +591,10 @@ def main():
 
     # Do T1w CSA vs T2w CSA plots
     #################################
-    get_pairwise_csa(dfs['soft_all'].rename(columns={"mt-off": "GRE-T1w", "T2star": "T2*w", "mt-on": "MT-on", "dwi":"DWI"}), dfs['deepseg2d'], path_out=exp_folder, filename='pairwise_soft_all.png')
+    get_pairwise_csa(
+        dfs['soft_all'].rename(columns={"mt-off": "GRE-T1w", "T2star": "T2*w", "mt-on": "MT-on", "dwi":"DWI"}), 
+        dfs['deepseg2d'], dfs['nnUNet2d'], dfs['softSeg'], # dfs['nnUNet3d'], 
+        path_out=exp_folder, filename='pairwise_soft_all.png')
 
 
 
