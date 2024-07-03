@@ -16,8 +16,10 @@ parser.add_argument('-pd', '--path-data', required=True, type=str, help='Path to
 parser.add_argument('-pj', '--path-joblib', help='Path to joblib file from ivadomed containing the dataset splits.',
                     default=None, type=str)
 parser.add_argument('-po', '--path-out', type=str, help='Path to the output directory where dataset json is saved')
-parser.add_argument("--contrast", default="t2w", type=str, help="Contrast to use for training", 
-                    choices=["t1w", "t2w", "t2star", "mton", "mtoff", "dwi", "all"])
+parser.add_argument("--contrast", default="t2w", type=str, nargs='+',
+                    help="Contrast to use for training. If a list is provided, thne a datalist consisting of only those " 
+                    "contrasts is created. Exception: 'all' -- where a datalist with all contrasts is created.",
+                    choices=["t1w", "t2w", "t2star", "mton", "mtoff", "dwi", "all", "temp"])
 parser.add_argument('--label-type', default='soft', type=str, help="Type of labels to use for training",
                     choices=['hard', 'soft'])
 parser.add_argument('--seed', default=42, type=int, help="Seed for reproducibility")
@@ -26,7 +28,11 @@ args = parser.parse_args()
 
 root = args.path_data
 seed = args.seed
-contrast = args.contrast
+contrast = args.contrast[0] if len(args.contrast) == 1 else args.contrast
+
+# log into a file
+logger.add(os.path.join(args.path_out, f'dataset_{("_").join(contrast)}_{args.label_type}_seed{seed}.txt'))
+
 if args.label_type == 'soft':
     logger.info("Using SOFT LABELS ...")
     PATH_DERIVATIVES = os.path.join(root, "derivatives", "labels_softseg")
@@ -204,6 +210,67 @@ for subjects_dict in tqdm(all_subjects_list, desc="Iterating through train/val/t
                 else:
                     logger.info(f"Subject {subject} does not have DWI image or label.")
 
+            # NOTE: reserved for contrast ablations experiments
+            elif len(contrast) > 1:
+                
+                temp_data = {}
+                # we need the test sets across these ablations to be the same for fair comparison 
+                if subject in test_subjects:
+                    test_contrasts = ['t1w', 't2w', 't2star', 'mton', 'mtoff', 'dwi']
+                    for ctrast in test_contrasts:
+                        temp_data[ctrast] = {}
+                        if ctrast == 't1w':
+                            temp_data[ctrast]["image"] = os.path.join(root, subject, 'anat', f"{subject}_T1w.nii.gz")
+                            temp_data[ctrast]["label"] = os.path.join(PATH_DERIVATIVES, subject, 'anat', f"{subject}_T1w_{SUFFIX}.nii.gz")
+                        elif ctrast == 't2w':
+                            temp_data[ctrast]["image"] = os.path.join(root, subject, 'anat', f"{subject}_T2w.nii.gz")
+                            temp_data[ctrast]["label"] = os.path.join(PATH_DERIVATIVES, subject, 'anat', f"{subject}_T2w_{SUFFIX}.nii.gz")
+                        elif ctrast == 't2star':
+                            temp_data[ctrast]["image"] = os.path.join(root, subject, 'anat', f"{subject}_T2star.nii.gz")
+                            temp_data[ctrast]["label"] = os.path.join(PATH_DERIVATIVES, subject, 'anat', f"{subject}_T2star_{SUFFIX}.nii.gz")
+                        elif ctrast == 'mton':
+                            temp_data[ctrast]["image"] = os.path.join(root, subject, 'anat', f"{subject}_flip-1_mt-on_MTS.nii.gz")
+                            temp_data[ctrast]["label"] = os.path.join(PATH_DERIVATIVES, subject, 'anat', f"{subject}_flip-1_mt-on_MTS_{SUFFIX}.nii.gz")
+                        elif ctrast == 'mtoff':
+                            temp_data[ctrast]["image"] = os.path.join(root, subject, 'anat', f"{subject}_flip-2_mt-off_MTS.nii.gz")
+                            temp_data[ctrast]["label"] = os.path.join(PATH_DERIVATIVES, subject, 'anat', f"{subject}_flip-2_mt-off_MTS_{SUFFIX}.nii.gz")
+                        elif ctrast == 'dwi':
+                            temp_data[ctrast]["image"] = os.path.join(root, subject, 'dwi', f"{subject}_rec-average_dwi.nii.gz")
+                            temp_data[ctrast]["label"] = os.path.join(PATH_DERIVATIVES, subject, 'dwi', f"{subject}_rec-average_dwi_{SUFFIX}.nii.gz")
+                        
+                        if os.path.exists(temp_data[ctrast]["label"]) and os.path.exists(temp_data[ctrast]["image"]):
+                            temp_list.append(temp_data[ctrast])
+                        else:
+                            logger.info(f"Subject {subject} does not have {ctrast} image or label.")
+                else:
+                    for ctrast in contrast:
+                        temp_data[ctrast] = {}
+                        if ctrast == 't1w':
+                            temp_data[ctrast]["image"] = os.path.join(root, subject, 'anat', f"{subject}_T1w.nii.gz")
+                            temp_data[ctrast]["label"] = os.path.join(PATH_DERIVATIVES, subject, 'anat', f"{subject}_T1w_{SUFFIX}.nii.gz")
+                        elif ctrast == 't2w':
+                            temp_data[ctrast]["image"] = os.path.join(root, subject, 'anat', f"{subject}_T2w.nii.gz")
+                            temp_data[ctrast]["label"] = os.path.join(PATH_DERIVATIVES, subject, 'anat', f"{subject}_T2w_{SUFFIX}.nii.gz")
+                        elif ctrast == 't2star':
+                            temp_data[ctrast]["image"] = os.path.join(root, subject, 'anat', f"{subject}_T2star.nii.gz")
+                            temp_data[ctrast]["label"] = os.path.join(PATH_DERIVATIVES, subject, 'anat', f"{subject}_T2star_{SUFFIX}.nii.gz")
+                        elif ctrast == 'mton':
+                            temp_data[ctrast]["image"] = os.path.join(root, subject, 'anat', f"{subject}_flip-1_mt-on_MTS.nii.gz")
+                            temp_data[ctrast]["label"] = os.path.join(PATH_DERIVATIVES, subject, 'anat', f"{subject}_flip-1_mt-on_MTS_{SUFFIX}.nii.gz")
+                        elif ctrast == 'mtoff':
+                            temp_data[ctrast]["image"] = os.path.join(root, subject, 'anat', f"{subject}_flip-2_mt-off_MTS.nii.gz")
+                            temp_data[ctrast]["label"] = os.path.join(PATH_DERIVATIVES, subject, 'anat', f"{subject}_flip-2_mt-off_MTS_{SUFFIX}.nii.gz")
+                        elif ctrast == 'dwi':
+                            temp_data[ctrast]["image"] = os.path.join(root, subject, 'dwi', f"{subject}_rec-average_dwi.nii.gz")
+                            temp_data[ctrast]["label"] = os.path.join(PATH_DERIVATIVES, subject, 'dwi', f"{subject}_rec-average_dwi_{SUFFIX}.nii.gz")
+                        elif ctrast == 'temp':
+                            continue
+
+                        if os.path.exists(temp_data[ctrast]["label"]) and os.path.exists(temp_data[ctrast]["image"]):
+                            temp_list.append(temp_data[ctrast])
+                        else:
+                            logger.info(f"Subject {subject} does not have {ctrast} image or label.")
+
             else:
                 raise ValueError(f"Contrast {contrast} not recognized.")
             
@@ -214,6 +281,9 @@ for subjects_dict in tqdm(all_subjects_list, desc="Iterating through train/val/t
 final_json = json.dumps(params, indent=4, sort_keys=True)
 if not os.path.exists(args.path_out):
     os.makedirs(args.path_out, exist_ok=True)
+
+if len(contrast) > 1:
+    contrast = ("_").join(contrast)
 
 jsonFile = open(args.path_out + "/" + f"dataset_{contrast}_{args.label_type}_seed{seed}.json", "w")
 jsonFile.write(final_json)
