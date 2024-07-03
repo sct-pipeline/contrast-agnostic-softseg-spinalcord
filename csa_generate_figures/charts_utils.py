@@ -8,8 +8,8 @@ import matplotlib.patches as mpatches
 import seaborn as sns
 
 #plt.style.use('seaborn')
-plt.style.use('seaborn-ticks')
-
+# plt.style.use('seaborn-ticks')
+plt.style.use('seaborn-v0_8-ticks')
 
 
 def create_perf_df_pwd(dataframe, methods, contrasts, ref_contrast="t2w", perf_suffix="_perf_pwd"):
@@ -228,6 +228,6 @@ def macro_sd_violin(df, methods, outfile=None):  # HERE
         plt.savefig(outfile, dpi=400, bbox_inches="tight")
 
 def create_experiment_folder():
-    folder = "charts_" + str(datetime.now())
+    folder = "charts_" + str(datetime.now().strftime("%Y%m%d-%H%M%S"))
     Path(folder).mkdir(parents=True, exist_ok=True)
     return folder
