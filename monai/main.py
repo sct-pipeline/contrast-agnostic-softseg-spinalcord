@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 
 from utils import precision_score, recall_score, dice_score, \
                     PolyLRScheduler, plot_slices, check_empty_patch
-from losses import SoftDiceLoss, AdapWingLoss
+from losses import SoftDiceLoss, AdapWingLoss, DiceCrossEntropyLoss
 from transforms import train_transforms, val_transforms
 from models import create_nnunet_from_plans
 
@@ -331,9 +331,9 @@ class Model(pl.LightningModule):
             f"\nCurrent epoch: {self.current_epoch}"
             f"\nAverage Soft Dice (VAL): {mean_val_soft_dice:.4f}"
             f"\nAverage Hard Dice (VAL): {mean_val_hard_dice:.4f}"
-            f"\nAverage AdapWing Loss (VAL): {mean_val_loss:.4f}"
+            f"\nAverage {self.args.loss} Loss (VAL): {mean_val_loss:.4f}"
             # f"\nBest Average Soft Dice: {self.best_val_dice:.4f} at Epoch: {self.best_val_epoch}"
-            f"\nBest Average AdapWing Loss: {self.best_val_loss:.4f} at Epoch: {self.best_val_epoch}"
+            f"\nBest Average {self.args.loss} Loss: {self.best_val_loss:.4f} at Epoch: {self.best_val_epoch}"
             f"\n----------------------------------------------------")
         
 
@@ -485,7 +485,8 @@ def main(args):
     }
 
     # define root path for finding datalists
-    dataset_root = "/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/datalists/spine-generic/seed15"
+    # dataset_root = "/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/datalists/spine-generic/seed15"
+    dataset_root = args.root
 
     # define optimizer
     if args.optimizer in ["adam", "Adam"]:
@@ -527,7 +528,7 @@ def main(args):
         patch_size = "64x192x320"   
         save_exp_id =f"{args.model}_{args.contrast}_{args.label_type}_nf={args.init_filters}" \
                         f"_opt={args.optimizer}_lr={args.learning_rate}" \
-                        f"_AdapW" \
+                        f"_{args.loss}" \
                         f"_bs={args.batch_size}_{patch_size}"
         # save_exp_id =f"{args.model}_{args.contrast}_{args.label_type}_nf={args.init_filters}" \
         #                 f"_opt={args.optimizer}_lr={args.learning_rate}" \
@@ -548,10 +549,14 @@ def main(args):
     # define loss function
     # loss_func = SoftDiceLoss(p=1, smooth=1.0)
     # logger.info(f"Using SoftDiceLoss with p={loss_func.p}, smooth={loss_func.smooth}!")
-    loss_func = AdapWingLoss(theta=0.5, omega=8, alpha=2.1, epsilon=1, reduction="sum")
-    # NOTE: tried increasing omega and decreasing epsilon but results marginally worse than the above
-    # loss_func = AdapWingLoss(theta=0.5, omega=12, alpha=2.1, epsilon=0.5, reduction="sum")
-    logger.info(f"Using AdapWingLoss with theta={loss_func.theta}, omega={loss_func.omega}, alpha={loss_func.alpha}, epsilon={loss_func.epsilon}!")
+    if args.loss == "DiceCE":
+        loss_func = DiceCrossEntropyLoss(weight_ce=1.0, weight_dice=1.0)
+        logger.info(f"Using DiceCrossEntropyLoss with weight_ce={loss_func.ce_weight}, weight_dice={loss_func.dice_weight}!")
+    elif args.loss == "AdapW":
+        loss_func = AdapWingLoss(theta=0.5, omega=8, alpha=2.1, epsilon=1, reduction="sum")
+        # NOTE: tried increasing omega and decreasing epsilon but results marginally worse than the above
+        # loss_func = AdapWingLoss(theta=0.5, omega=12, alpha=2.1, epsilon=0.5, reduction="sum")
+        logger.info(f"Using AdapWingLoss with theta={loss_func.theta}, omega={loss_func.omega}, alpha={loss_func.alpha}, epsilon={loss_func.epsilon}!")
 
     # define callbacks
     # early_stopping = pl.callbacks.EarlyStopping(monitor="val_soft_dice", min_delta=0.00, patience=args.patience, 
@@ -710,6 +715,8 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='Script for training custom models for SCI Lesion Segmentation.')
     # Arguments for model, data, and training and saving
+    parser.add_argument('-r', '--root', default="/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/datalists/spine-generic/seed15",
+                        type=str, help='Root directory for the dataset')
     parser.add_argument('-m', '--model', choices=['unetr', 'nnunet'], 
                         default='unet', type=str, help='Model type to be used')
     parser.add_argument('--enable_DS', default=False, action='store_true', help='Enable Deep Supervision')
@@ -719,9 +726,12 @@ if __name__ == "__main__":
                         help='Center crop size for training/validation. Values correspond to R-L, A-P, I-S axes'
                         'of the image after 1mm isotropic resampling.  Default: 64x192x320')
     parser.add_argument("--contrast", default="t2w", type=str, help="Contrast to use for training", 
-                    choices=["t1w", "t2w", "t2star", "mton", "mtoff", "dwi", "all"])
+                    choices=["t1w", "t2w", "t2star", "mton", "mtoff", "dwi", "all", 
+                             "t2w_t1w", "t2w_t1w_dwi", "t2w_t1w_dwi_mtoff", "t2w_t1w_dwi_mtoff_t2star"])
     parser.add_argument('--label-type', default='soft', type=str, help="Type of labels to use for training",
-                    choices=['hard', 'soft'])
+                    choices=['hard', 'soft', 'soft_bin'])
+    parser.add_argument('--loss', default='AdapW', type=str, help="Loss function to use for training",
+                        choices=['AdapW', 'Dice', 'DiceCE'])
 
     # unet model 
     parser.add_argument('-initf', '--init_filters', default=16, type=int, help="Number of Filters in Init Layer")
@@ -747,7 +757,7 @@ if __name__ == "__main__":
     parser.add_argument('-cve', '--check_val_every_n_epochs', default=1, type=int, help='num of epochs to wait before validation')
     # saving
     parser.add_argument('-sp', '--save_path', 
-                        default=f"/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/saved_models", 
+                        default=f"/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/r1_revision_exps/saved_models", 
                         type=str, help='Path to the saved models directory')
     parser.add_argument('-se', '--seed', default=42, type=int, help='Set seeds for reproducibility')
     parser.add_argument('-debug', default=False, action='store_true', help='if true, results are not logged to wandb')
@@ -757,8 +767,8 @@ if __name__ == "__main__":
                             help='Load model from checkpoint and continue training')
     parser.add_argument('-wdb-run', '--wandb-run-folder', default=None, type=str, help='Path to the wandb run folder')
     # testing
-    parser.add_argument('-rd', '--results_dir', 
-                    default=f"/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/results", 
+    parser.add_argument('-rd', '--results_dir',
+                    default=f"/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/r1_revision_exps/results",
                     type=str, help='Path to the model prediction results directory')
 
 
