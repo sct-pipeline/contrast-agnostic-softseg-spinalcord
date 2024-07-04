@@ -5,6 +5,7 @@ from monai.transforms import (Compose, CropForegroundd, LoadImaged, RandFlipd,
             DivisiblePadd, RandAdjustContrastd, EnsureChannelFirstd, RandGaussianNoised, 
             RandGaussianSmoothd, Orientationd, Rand3DElasticd, RandBiasFieldd, 
             RandSimulateLowResolutiond, ResizeWithPadOrCropd)
+import monai.transforms as mt
 
 
 def train_transforms(crop_size, lbl_key="label"):
@@ -35,6 +36,57 @@ def train_transforms(crop_size, lbl_key="label"):
     ]
 
     return Compose(monai_transforms) 
+
+
+def big_aug_train_transforms(crop_size, lbl_key="label"):
+    """
+    Transforms described in BigAug domain generalization paper.
+    https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7393676/
+    """
+
+    monai_transforms = [    
+            # pre-processing
+            mt.LoadImaged(keys=["image", lbl_key]),
+            mt.EnsureChannelFirstd(keys=["image", lbl_key]),
+            mt.Orientationd(keys=["image", lbl_key], axcodes="RPI"),
+            # NOTE: spine interpolation with order=2 is spline, order=1 is linear
+            mt.Spacingd(keys=["image", "label"], pixdim=(1.0, 1.0, 1.0), mode=(2, 1)),
+            mt.SpatialPadd(keys=["image", lbl_key], spatial_size=(128, 192, 160)),
+            mt.RandCropByPosNegLabeld(keys=["image", lbl_key], label_key=lbl_key, 
+                                      spatial_size=crop_size, pos=1, neg=1, num_samples=2),
+            mt.NormalizeIntensityd(keys=["image"], nonzero=False, channel_wise=False),
+            # image quality
+            mt.RandGaussianSmoothd(keys=["image"], sigma_x=(0.25, 1.5), sigma_y=(0.25, 1.5), sigma_z=(0.25, 1.5), prob=0.5),
+            mt.RandGaussianNoised(keys=["image"], mean=0.0, std=1.0, prob=0.5),
+            mt.RandGaussianSharpend(keys=["image"], alpha=(10.0, 30.0), prob=0.5),
+            # image appearance
+            mt.RandShiftIntensityd(keys=["image"], offsets=(-0.1, 0.1), prob=0.5),
+            mt.RandScaleIntensityd(keys=["image"], factors=(-0.1, 0.1), prob=0.5),
+            mt.RandAdjustContrastd(keys=["image"], gamma=(0.5, 3.), prob=0.5),
+            # spatial
+            mt.RandAffined(keys=["image", lbl_key], mode=(2, 1), prob=0.5,
+                        rotate_range=(-20. / 360 * 2. * np.pi, 20. / 360 * 2. * np.pi),    # monai expects in radians 
+                        scale_range=(0.4, 1.6),   
+                        translate_range=(-0.1, 0.1)),
+            mt.Rand3DElasticd(keys=["image", lbl_key], prob=0.5,
+                              sigma_range=(10, 13), 
+                              magnitude_range=(25., 35.)),
+    ]
+
+    return Compose(monai_transforms)
+
+def big_aug_val_transforms(crop_size, lbl_key="label"):
+    return Compose([
+            mt.LoadImaged(keys=["image", lbl_key]),
+            mt.EnsureChannelFirstd(keys=["image", lbl_key]),
+            mt.Orientationd(keys=["image", lbl_key], axcodes="RPI"),
+            # NOTE: spine interpolation with order=2 is spline, order=1 is linear
+            mt.Spacingd(keys=["image", "label"], pixdim=(1.0, 1.0, 1.0), mode=(2, 1)),
+            mt.SpatialPadd(keys=["image", lbl_key], spatial_size=(128, 192, 160)),
+            mt.RandCropByPosNegLabeld(keys=["image", lbl_key], label_key=lbl_key,
+                                        spatial_size=crop_size, pos=1, neg=1, num_samples=2),
+            NormalizeIntensityd(keys=["image"], nonzero=False, channel_wise=False),
+        ])
 
 def inference_transforms(crop_size, lbl_key="label"):
     return Compose([
