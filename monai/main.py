@@ -589,10 +589,10 @@ def main(args):
             dirpath=save_path, filename='best_model_loss', monitor='val_loss', 
             save_top_k=1, mode="min", save_last=True, save_weights_only=False)
         
-        # saving the best model based on soft validation dice score
-        checkpoint_callback_dice = pl.callbacks.ModelCheckpoint(
-            dirpath=save_path, filename='best_model_dice', monitor='val_soft_dice', 
-            save_top_k=1, mode="max", save_last=False, save_weights_only=True)
+        # # saving the best model based on soft validation dice score
+        # checkpoint_callback_dice = pl.callbacks.ModelCheckpoint(
+        #     dirpath=save_path, filename='best_model_dice', monitor='val_soft_dice', 
+        #     save_top_k=1, mode="max", save_last=False, save_weights_only=True)
         
         logger.info(f" Starting training from scratch! ")
         # wandb logger
@@ -614,7 +614,7 @@ def main(args):
         trainer = pl.Trainer(
             devices=1, accelerator="gpu", # strategy="ddp",
             logger=exp_logger,
-            callbacks=[checkpoint_callback_loss, checkpoint_callback_dice, lr_monitor, early_stopping],
+            callbacks=[checkpoint_callback_loss, lr_monitor, early_stopping],
             check_val_every_n_epoch=args.check_val_every_n_epochs,
             max_epochs=args.max_epochs, 
             precision=32,   # TODO: see if 16-bit precision is stable
