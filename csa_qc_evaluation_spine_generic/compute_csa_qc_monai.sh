@@ -65,6 +65,8 @@ label_if_does_not_exist(){
   if [[ -e $FILELABELMANUAL ]]; then
     echo "Found! Using manual labels."
     rsync -avzh $FILELABELMANUAL ${FILELABEL}.nii.gz
+    # Threshold the discs file (overwrite) to remove the disc label 1 if there is no seg at disc level
+    sct_maths -i ${FILELABEL}.nii.gz -thr 2 -o ${FILELABEL}.nii.gz
     # Generate labeled segmentation from manual disc labels
     sct_label_vertebrae -i ${file}.nii.gz -s ${file_seg}.nii.gz -discfile ${FILELABEL}.nii.gz -c t2 -ofolder $ofolder
   else
