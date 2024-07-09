@@ -38,7 +38,6 @@ color_palette = {
         'soft_per\ncontrast': '#386cb0',
         'soft_all\ndiceCE_loss': '#f9aaaa',
         'soft_all\ndice_loss': '#a6d854',
-        'softSeg': '#82c6d6'
     }
 
 
@@ -136,14 +135,12 @@ def get_pairwise_csa(df, df_deepseg, df_nnunet, df_softseg, path_out, filename):
     sns.regplot(x=df['T1w'], y=df['T2w'], label='soft_all', scatter_kws={"color": "#66c2a5"}, line_kws={"color": "#66c2a5"})
     sns.regplot(x=df_deepseg['T1w'], y=df_deepseg['T2w'], label='deepseg2D', scatter_kws={"color": "#e78ac3"}, line_kws={"color": "#e78ac3"})
     sns.regplot(x=df_nnunet['T1w'], y=df_nnunet['T2w'], label='nnUNet2D', scatter_kws={"color": "#fc8d62"}, line_kws={"color": "#fc8d62"})
-    sns.regplot(x=df_softseg['T1w'], y=df_softseg['T2w'], label='softSeg', scatter_kws={"color": "#82c6d6"}, line_kws={"color": "#82c6d6"})
     
     plt.plot([50, 100], [50, 100], ls="--", c=".3")  # add diagonal line
     
     r2(x=df['T1w'], y=df['T2w'], ax=ax,  xy=(.95, .4))
     r2(x=df_deepseg['T1w'], y=df_deepseg['T2w'], ax=ax, edgecolor='#e78ac3', xy=(.95, .3))
     r2(x=df_nnunet['T1w'], y=df_nnunet['T2w'], ax=ax, edgecolor='#fc8d62', xy=(.95, .2))
-    r2(x=df_softseg['T1w'], y=df_softseg['T2w'], ax=ax, edgecolor='#82c6d6',)
     
     plt.gca().set_aspect("equal", adjustable="box")
     plt.xlim(55, 95)
@@ -406,7 +403,6 @@ def main():
         'csa_monai_nnunet_2023-09-18': 'soft_all',
         'csa_monai_nnunet_2023-09-18_hard': 'hard_all',
         'csa_monai_nnunet_per_contrast': 'soft_per\ncontrast',
-        'csa_monai_soft_bin_SoftSeg_20240625': 'softSeg',
         # loss
         'csa_monai_nnunet_diceL': 'soft_all\ndice_loss',
         'csa_monai_hard_diceCE_20240625': 'hard_all\ndiceCE_loss',
@@ -548,7 +544,8 @@ def main():
     logger.info('\nComparing with other methods.')
     include_other_methods = [
         'deepseg3d', 'propseg','deepseg2d', 'hard_all\ndiceCE_loss', 
-        'nnUNet3d', 'nnUNet2d', 'softSeg', 'soft_all'
+        'nnUNet3d', 'nnUNet2d',
+        'soft_all'
     ]
     gt = ['GT_soft']
 
@@ -572,7 +569,8 @@ def main():
 
 
     # Zoomed version
-    include_other_methods = ['deepseg2d', 'hard_all\ndiceCE_loss', 'nnUNet3d', 'nnUNet2d', 'softSeg', 'soft_all']
+    include_other_methods = ['deepseg2d', 'hard_all\ndiceCE_loss', 'nnUNet3d', 'nnUNet2d',
+                             'soft_all']
 
     # Plot STD
     violin_plot(stds[gt+include_other_methods],
