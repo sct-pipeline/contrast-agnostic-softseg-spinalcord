@@ -8,8 +8,8 @@ import matplotlib.patches as mpatches
 import seaborn as sns
 
 #plt.style.use('seaborn')
-# plt.style.use('seaborn-ticks')
-plt.style.use('seaborn-v0_8-ticks')
+plt.style.use('seaborn-ticks')
+#plt.style.use('seaborn-v0_8-ticks')
 
 
 def create_perf_df_pwd(dataframe, methods, contrasts, ref_contrast="t2w", perf_suffix="_perf_pwd"):

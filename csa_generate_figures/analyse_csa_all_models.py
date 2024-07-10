@@ -38,7 +38,7 @@ color_palette = {
         'soft_per\ncontrast': '#386cb0',
         'soft_all\ndiceCE_loss': '#f9aaaa',
         'soft_all\ndice_loss': '#a6d854',
-        'softSeg': '#82c6d6'
+        'SoftSeg': '#82c6d6'
     }
 
 
@@ -136,7 +136,7 @@ def get_pairwise_csa(df, df_deepseg, df_nnunet, df_softseg, path_out, filename):
     sns.regplot(x=df['T1w'], y=df['T2w'], label='soft_all', scatter_kws={"color": "#66c2a5"}, line_kws={"color": "#66c2a5"})
     sns.regplot(x=df_deepseg['T1w'], y=df_deepseg['T2w'], label='deepseg2D', scatter_kws={"color": "#e78ac3"}, line_kws={"color": "#e78ac3"})
     sns.regplot(x=df_nnunet['T1w'], y=df_nnunet['T2w'], label='nnUNet2D', scatter_kws={"color": "#fc8d62"}, line_kws={"color": "#fc8d62"})
-    sns.regplot(x=df_softseg['T1w'], y=df_softseg['T2w'], label='softSeg', scatter_kws={"color": "#82c6d6"}, line_kws={"color": "#82c6d6"})
+    sns.regplot(x=df_softseg['T1w'], y=df_softseg['T2w'], label='SoftSeg', scatter_kws={"color": "#82c6d6"}, line_kws={"color": "#82c6d6"})
     
     plt.plot([50, 100], [50, 100], ls="--", c=".3")  # add diagonal line
     
@@ -359,6 +359,7 @@ def main():
         elif 'csa_monai' in folder:
             df = pd.DataFrame()
             path_csa = os.path.join(path_in, folder, 'results')
+            print(path_csa)
             for file in os.listdir(path_csa):
                 if '_soft_bin.csv' in file:     # NOTE: using binarized soft preds for plots
                     contrast = file.split('_')
@@ -366,6 +367,8 @@ def main():
                         contrast = contrast[-3]     # using _soft_bin.csv
                     else:
                         contrast = contrast[-4] # for mt-on and mt-off
+                    print(contrast)
+                    print(file)
                     df[contrast] = get_csa(os.path.join(path_csa, file))
         else:  # For ivado
             df = pd.DataFrame()
@@ -398,18 +401,19 @@ def main():
         'csa_gt_2023-08-08': 'GT_soft',
         'csa_gt_hard_2023-08-08': 'GT_hard',
         # models
-        'csa_other_methods_2023-09-21-all/results/propseg': 'propseg',
-        'csa_other_methods_2023-09-21-all/results/deepseg2d': 'deepseg2d',
-        'csa_other_methods_2023-09-21-all/results/deepseg3d': 'deepseg3d',
-        'csa_nnunet_2023-08-24': 'nnUNet3d',
-        'csa_nnunet2d_20240626': 'nnUNet2d',
-        'csa_monai_nnunet_2023-09-18': 'soft_all',
-        'csa_monai_nnunet_2023-09-18_hard': 'hard_all',
-        'csa_monai_nnunet_per_contrast': 'soft_per\ncontrast',
-        'csa_monai_soft_bin_SoftSeg_20240625': 'softSeg',
+        'other_methods_csa_2024-07-09/results/propseg': 'propseg',
+        'other_methods_csa_2024-07-09/results/deepseg2d': 'deepseg2d',
+        'other_methods_csa_2024-07-09/results/deepseg3d': 'deepseg3d',
+        'nnunet_3d_csa_2024-07-09': 'nnUNet3d',
+        'nnunet_2d_csa_2024-07-09': 'nnUNet2d',
+        'soft_all_csa_monai_2024-07-09': 'soft_all',
+        'hard_all_csa_monai_2024-07-09': 'hard_all',
+        'soft_per_contrast_csa_monai_2024-07-09': 'soft_per\ncontrast',
+        'hard_per_contrast_csa_monai_2024-07-09': 'SoftSeg',
+        #'hard_per_contrast_csa_monai_2024-07-09': 'hard_per_contrast',
         # loss
         'csa_monai_nnunet_diceL': 'soft_all\ndice_loss',
-        'csa_monai_hard_diceCE_20240625': 'hard_all\ndiceCE_loss',
+        'hard_all_diceCE_loss_csa_monai_2024-07-09': 'hard_all\ndiceCE_loss',
         'csa_monai_soft_diceCE_20240625': 'soft_all\ndiceCE_loss',
     }
 
@@ -548,7 +552,7 @@ def main():
     logger.info('\nComparing with other methods.')
     include_other_methods = [
         'deepseg3d', 'propseg','deepseg2d', 'hard_all\ndiceCE_loss', 
-        'nnUNet3d', 'nnUNet2d', 'softSeg', 'soft_all'
+        'nnUNet3d', 'nnUNet2d', 'SoftSeg', 'soft_all'
     ]
     gt = ['GT_soft']
 
@@ -572,7 +576,7 @@ def main():
 
 
     # Zoomed version
-    include_other_methods = ['deepseg2d', 'hard_all\ndiceCE_loss', 'nnUNet3d', 'nnUNet2d', 'softSeg', 'soft_all']
+    include_other_methods = ['deepseg2d', 'hard_all\ndiceCE_loss', 'nnUNet3d', 'nnUNet2d', 'SoftSeg', 'soft_all']
 
     # Plot STD
     violin_plot(stds[gt+include_other_methods],
@@ -593,7 +597,7 @@ def main():
     #################################
     get_pairwise_csa(
         dfs['soft_all'].rename(columns={"mt-off": "GRE-T1w", "T2star": "T2*w", "mt-on": "MT-on", "dwi":"DWI"}), 
-        dfs['deepseg2d'], dfs['nnUNet2d'], dfs['softSeg'], # dfs['nnUNet3d'], 
+        dfs['deepseg2d'], dfs['nnUNet2d'], dfs['SoftSeg'], # dfs['nnUNet3d'], 
         path_out=exp_folder, filename='pairwise_soft_all.png')
 
 
