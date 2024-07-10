@@ -100,7 +100,7 @@ def get_pairwise_csa(df, df_deepseg, df_nnunet, df_softseg, path_out, filename):
     
     fig, axs = plt.subplots(figsize=(9, 9))
     # Function to add linear equation and r^2
-    def r2(x, y, ax=None, xy=(.95, .05), edgecolor='#66c2a5', **kws):
+    def r2(x, y, ax=None, xy=(.95, .0), edgecolor='#66c2a5', **kws):
         ax = ax or plt.gca()
         slope, intercept, r_value, p_value, std_err = stats.linregress(x=x, y=y)
         ax.annotate(f'$r^2 = {r_value ** 2:.2f}$\nEq: ${slope:.2f}x{intercept:+.2f}$',
@@ -140,10 +140,10 @@ def get_pairwise_csa(df, df_deepseg, df_nnunet, df_softseg, path_out, filename):
     
     plt.plot([50, 100], [50, 100], ls="--", c=".3")  # add diagonal line
     
-    r2(x=df['T1w'], y=df['T2w'], ax=ax,  xy=(.95, .4))
-    r2(x=df_deepseg['T1w'], y=df_deepseg['T2w'], ax=ax, edgecolor='#e78ac3', xy=(.95, .3))
-    r2(x=df_nnunet['T1w'], y=df_nnunet['T2w'], ax=ax, edgecolor='#fc8d62', xy=(.95, .2))
-    r2(x=df_softseg['T1w'], y=df_softseg['T2w'], ax=ax, edgecolor='#82c6d6',)
+    r2(x=df['T1w'], y=df['T2w'], ax=ax,  xy=(.97, .41))
+    r2(x=df_deepseg['T1w'], y=df_deepseg['T2w'], ax=ax, edgecolor='#e78ac3', xy=(.97, .29))
+    r2(x=df_nnunet['T1w'], y=df_nnunet['T2w'], ax=ax, edgecolor='#fc8d62', xy=(.97, .17))
+    r2(x=df_softseg['T1w'], y=df_softseg['T2w'], ax=ax, edgecolor='#82c6d6', xy=(.97, .05))
     
     plt.gca().set_aspect("equal", adjustable="box")
     plt.xlim(55, 95)
