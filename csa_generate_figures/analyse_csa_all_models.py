@@ -189,8 +189,11 @@ def violin_plot(df, y_label, title, path_out, filename, set_ylim=False, annonate
         # NOTE: we're adding cut=0 because the STD CSA violin plot extends beyond zero
         df_filt = df.copy()
         df_filt = df_filt[(np.abs(stats.zscore(df_filt)) < 3).all(axis=1)]
+        #sns.violinplot(data=df_filt, ax=ax, inner="box", linewidth=2, palette=color_palette, cut=0,
+        #               showmeans=True, width=0.97, meanprops={"marker": "^", "markerfacecolor":"white", "markerscale": "3"})
         sns.violinplot(data=df_filt, ax=ax, inner="box", linewidth=2, palette=color_palette, cut=0,
-                       showmeans=True, width=0.97, meanprops={"marker": "^", "markerfacecolor":"white", "markerscale": "3"})
+                       width=0.97)
+
         x_bot, x_top = plt.xlim()
         # overlay scatter plot on the violin plot to show individual data points
         sns.swarmplot(data=df, ax=ax, alpha=0.5, size=3, palette='dark:black')
@@ -412,9 +415,9 @@ def main():
         'hard_per_contrast_csa_monai_2024-07-09': 'SoftSeg',
         #'hard_per_contrast_csa_monai_2024-07-09': 'hard_per_contrast',
         # loss
-        'csa_monai_nnunet_diceL': 'soft_all\ndice_loss',
+        'soft_all_dice_loss_csa_monai_2024-07-09': 'soft_all\ndice_loss',
         'hard_all_diceCE_loss_csa_monai_2024-07-09': 'hard_all\ndiceCE_loss',
-        'csa_monai_soft_diceCE_20240625': 'soft_all\ndiceCE_loss',
+        'soft_all_diceCE_loss_csa_monai_2024-07-09': 'soft_all\ndiceCE_loss',
     }
 
     print(dfs.keys())
