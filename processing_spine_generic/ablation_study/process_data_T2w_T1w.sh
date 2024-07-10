@@ -402,7 +402,7 @@ sct_maths -i sum_sc_seg.nii.gz -div sum_coverage.nii.gz -o ./anat/${file_t2}_seg
 file_softseg=./anat/"${file_t2}_seg_soft"
 # Check if softseg has NaN values, if so, change to 0
 python ${PATH_SCRIPT}/check_if_nan.py -i ${file_softseg}.nii.gz -o ./anat/${file_t2}_softseg.nii.gz
-
+file_softseg="./anat/${file_t2}_softseg"
 # Create QC report of softseg on T2w
 sct_qc -i ./anat/${file_t2}.nii.gz -s ${file_softseg}.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
 
