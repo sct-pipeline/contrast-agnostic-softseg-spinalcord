@@ -727,7 +727,7 @@ if __name__ == "__main__":
                         'of the image after 1mm isotropic resampling.  Default: 64x192x320')
     parser.add_argument("--contrast", default="t2w", type=str, help="Contrast to use for training", 
                     choices=["t1w", "t2w", "t2star", "mton", "mtoff", "dwi", "all", 
-                             "t2w_t1w", "t2w_t1w_dwi", "t2w_t1w_dwi_mtoff", "t2w_t1w_dwi_mtoff_t2star"])
+                             "t2w_t1w", "t2w_t1w_dwi", "t2w_t1w_dwi_t2star", "t2w_t1w_dwi_mtoff_t2star"])
     parser.add_argument('--label-type', default='soft', type=str, help="Type of labels to use for training",
                     choices=['hard', 'soft', 'soft_bin'])
     parser.add_argument('--loss', default='AdapW', type=str, help="Loss function to use for training",
