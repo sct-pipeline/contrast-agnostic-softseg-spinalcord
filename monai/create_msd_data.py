@@ -31,7 +31,7 @@ seed = args.seed
 contrast = args.contrast[0] if len(args.contrast) == 1 else args.contrast
 
 # log into a file
-logger.add(os.path.join(args.path_out, f'dataset_{("_").join(contrast)}_{args.label_type}_seed{seed}.txt'))
+logger.add(os.path.join(args.path_out, f'dataset_{contrast}_{args.label_type}_seed{seed}.txt'))
 
 if args.label_type == 'soft':
     logger.info("Using SOFT LABELS ...")
@@ -282,8 +282,8 @@ final_json = json.dumps(params, indent=4, sort_keys=True)
 if not os.path.exists(args.path_out):
     os.makedirs(args.path_out, exist_ok=True)
 
-if len(contrast) > 1:
-    contrast = ("_").join(contrast)
+# if len(contrast) > 1:
+#     contrast = ("_").join(contrast)
 
 jsonFile = open(args.path_out + "/" + f"dataset_{contrast}_{args.label_type}_seed{seed}.json", "w")
 jsonFile.write(final_json)

@@ -11,6 +11,11 @@ modified to include those as well.
 Usage example:
     python convert_spine-generic_to_nnUNetv2.py --path-data /path/to/spine-generic --path-out /path/to/nnunet 
         --path-joblib /path/to/ivadomed/joblib-file --dataset-name spineGen --dataset-number 701
+
+    python convert_spine-generic_to_nnUNetv2.py \
+        --path-data ~/datasets/spine-generic-processed-2023-08-08/ \
+        --path-out ${nnUNet_raw} --path-joblib . \
+        -dname spineGSoftAvgBin -dnum 714 --label-type soft
     
 """
 
