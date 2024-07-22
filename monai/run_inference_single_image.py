@@ -27,8 +27,6 @@ from dynamic_network_architectures.architectures.unet import PlainConvUNet, Resi
 from dynamic_network_architectures.building_blocks.helper import get_matching_instancenorm, convert_dim_to_conv_op
 from dynamic_network_architectures.initialization.weight_init import init_last_bn_before_add_to_0
 
-from nnunet_mednext import MedNeXt
-
 # NNUNET global params
 INIT_FILTERS=32
 ENABLE_DS = True
@@ -76,7 +74,7 @@ def get_parser():
                         ' Default: 64x192x-1')
     parser.add_argument('--device', default="gpu", type=str, choices=["gpu", "cpu"],
                         help='Device to run inference on. Default: cpu')
-    parser.add_argument('--model', default="monai", type=str, choices=["monai", "swinunetr", "mednext", "swinpretrained"], 
+    parser.add_argument('--model', default="monai", type=str, choices=["monai", "swinunetr", "swinpretrained"], 
                         help='Model to use for inference. Default: monai')
     parser.add_argument('--pred-type', default="soft", type=str, choices=["soft", "hard"],
                         help='Type of prediction to output/save. `soft` outputs soft segmentation masks with a threshold of 0.1'
@@ -286,26 +284,9 @@ def main():
             depths=config["model"]["swinunetr"]["depths"],
             feature_size=config["model"]["swinunetr"]["feature_size"], 
             num_heads=config["model"]["swinunetr"]["num_heads"])
-    
-    elif args.model == "mednext":
-        config_path = os.path.join(args.chkp_path, "config.yaml")
-        with open(config_path, "r") as f:
-            config = yaml.safe_load(f)
-
-        net = MedNeXt(
-            in_channels=config["model"]["mednext"]["num_input_channels"],
-            n_channels=config["model"]["mednext"]["base_num_features"],
-            n_classes=config["model"]["mednext"]["num_classes"],
-            exp_r=2,
-            kernel_size=config["model"]["mednext"]["kernel_size"],
-            deep_supervision=config["model"]["mednext"]["enable_deep_supervision"],
-            do_res=True,
-            do_res_up_down=True,
-            checkpoint_style="outside_block",
-            block_counts=config["model"]["mednext"]["block_counts"],)
-    
+        
     else:
-        raise ValueError("Model not recognized. Please choose from: nnunet, swinunetr, mednext")
+        raise ValueError("Model not recognized. Please choose from: nnunet, swinunetr")
 
 
     # define list to collect the test metrics
@@ -340,7 +321,7 @@ def main():
             batch["pred"] = sliding_window_inference(test_input, inference_roi_size, mode="gaussian",
                                                     sw_batch_size=4, predictor=net, overlap=0.5, progress=False)
 
-            if args.model in ["monai", "mednext"]:
+            if args.model in ["monai"]:
                 # take only the highest resolution prediction
                 # NOTE: both these models use Deep Supervision, so only the highest resolution prediction is taken
                 batch["pred"] = batch["pred"][0]
