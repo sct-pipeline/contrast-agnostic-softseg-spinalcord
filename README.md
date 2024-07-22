@@ -1,7 +1,7 @@
 # Towards Contrast-agnostic Soft Segmentation of the Spinal Cord
 Official repository for contrast-agnostic spinal cord segmentation.
 
-> **Note**
+> [!IMPORTANT]
 > This branch `nk/r1-exps` created from the tag `v2.0` to run additional experiments based on the R1 reviews received from Medical Image Analysis. This branch _cannot_ be merged to the current `main` branch as the code is outdated. This branch should also _not_ be deleted for reproducibility purposes. 
 
 This repo contains all the code for data preprocessing, training and running inference on other datasets. The code is mainly based on [Spinal Cord Toolbox](https://spinalcordtoolbox.com) and [MONAI](https://github.com/Project-MONAI/MONAI) (PyTorch).
