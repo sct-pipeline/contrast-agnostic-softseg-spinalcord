@@ -80,7 +80,7 @@ def get_parser():
                         help='Type of prediction to output/save. `soft` outputs soft segmentation masks with a threshold of 0.1'
                         '`hard` outputs binarized masks thresholded at 0.5  Default: hard')
     parser.add_argument('--pad-mode', default="constant", type=str, choices=["constant", "edge", "reflect"],
-                        help='Padding mode for the input image. Default: constant')
+                        help='Padding mode for the input image. Default: edge')
     return parser
 
 
@@ -93,7 +93,7 @@ def inference_transforms_single_image(crop_size, pad_mode="constant"):
             EnsureChannelFirstd(keys=["image"]),
             Orientationd(keys=["image"], axcodes="RPI"),
             Spacingd(keys=["image"], pixdim=(1.0, 1.0, 1.0), mode=(2)),
-            ResizeWithPadOrCropd(keys=["image"], spatial_size=crop_size,),
+            ResizeWithPadOrCropd(keys=["image"], spatial_size=crop_size, mode=pad_mode),
             # pad inputs to ensure divisibility by no. of layers nnUNet has (5)
             DivisiblePadd(keys=["image"], k=2**5, mode=pad_mode),
             NormalizeIntensityd(keys=["image"], nonzero=False, channel_wise=False),
