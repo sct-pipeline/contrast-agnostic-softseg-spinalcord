@@ -29,6 +29,8 @@ FILESEG_SUFFIXES = {
     "data-multi-subject": ["labels_softseg_bin", "desc-softseg_label-SC_seg"],
     "dcm-brno": ["labels", "seg"],
     "dcm-zurich": ["labels", "label-SC_mask-manual"],
+    "dcm-zurich-lesions": ["labels", "label-SC_mask-manual"],
+    "dcm-zurich-lesions-20231115": ["labels", "label-SC_mask-manual"],
     "lumbar-epfl": ["labels", "seg-manual"],
     "lumbar-vanderbilt": ["labels", "label-SC_seg"],
     "nih-ms-mp2rage": ["labels", "label-SC_seg"],
@@ -306,6 +308,9 @@ def create_df(dataset_path):
          
     # refactor to move filename and filesegname to the end of the dataframe
     df = df[['datasetName', 'subjectID', 'sessionID', 'orientationID', 'contrastID', 'pathologyID', 'filename']] #, 'filesegname']]
+
+    # sort the dataframe based on subjectID
+    df = df.sort_values(by=['subjectID'], ascending=True)
 
     return df
 
