@@ -27,6 +27,7 @@ FILESEG_SUFFIXES = {
     "basel-mp2rage": ["labels_softseg_bin", "desc-softseg_label-SC_seg"],
     "canproco": ["labels", "seg-manual"],
     "data-multi-subject": ["labels_softseg_bin", "desc-softseg_label-SC_seg"],
+    "dcm-brno": ["labels", "seg"],
     "dcm-zurich": ["labels", "label-SC_mask-manual"],
     "lumbar-epfl": ["labels", "seg-manual"],
     "lumbar-vanderbilt": ["labels", "label-SC_seg"],
