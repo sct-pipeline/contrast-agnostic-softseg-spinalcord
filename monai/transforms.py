@@ -23,15 +23,15 @@ def train_transforms(crop_size, lbl_key="label", pad_mode="zero", device="cuda")
                     scale_range=(-0.2, 0.2),
                     translate_range=(-0.1, 0.1)),
         transforms.Rand3DElasticd(keys=["image", lbl_key], prob=0.5,
-                       sigma_range=(3.5, 5.5),
-                       magnitude_range=(25., 35.)),
-        transforms.RandSimulateLowResolutiond(keys=["image"], zoom_range=(0.5, 1.0), prob=0.25),
+                       sigma_range=(3.5, 5.5), magnitude_range=(25., 35.),
+                       mode=(2, 1), padding_mode="border",),
+        transforms.RandSimulateLowResolutiond(keys=["image"], zoom_range=(0.5, 1.0), prob=0.5),
         transforms.RandAdjustContrastd(keys=["image"], gamma=(0.5, 3.), prob=0.5),    # this is monai's RandomGamma
         transforms.RandBiasFieldd(keys=["image"], coeff_range=(0.0, 0.5), degree=3, prob=0.3),
         transforms.RandGaussianNoised(keys=["image"], mean=0.0, std=0.1, prob=0.1),
-        transforms.RandGaussianSmoothd(keys=["image"], sigma_x=(0., 2.), sigma_y=(0., 2.), sigma_z=(0., 2.0), prob=0.3),
-        transforms.RandScaleIntensityd(keys=["image"], factors=(-0.25, 1), prob=0.15),  # this is nnUNet's BrightnessMultiplicativeTransform
-        transforms.RandFlipd(keys=["image", lbl_key], prob=0.3,),
+        transforms.RandGaussianSmoothd(keys=["image"], sigma_x=(0., 2.), sigma_y=(0., 2.), sigma_z=(0., 2.0), prob=0.5),
+        transforms.RandScaleIntensityd(keys=["image"], factors=(-0.25, 1), prob=0.35),  # this is nnUNet's BrightnessMultiplicativeTransform
+        transforms.RandFlipd(keys=["image", lbl_key], prob=0.5,),
         transforms.NormalizeIntensityd(keys=["image"], nonzero=False, channel_wise=False),
     ]
 
