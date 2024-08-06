@@ -88,29 +88,14 @@ def train_transforms(crop_size, lbl_key="label", pad_mode="zero", device="cuda")
         transforms.RandScaleIntensityd(keys=["image"], factors=(-0.25, 1), prob=0.35),  # this is nnUNet's BrightnessMultiplicativeTransform
         transforms.RandFlipd(keys=["image", lbl_key], prob=0.5,),
         transforms.NormalizeIntensityd(keys=["image"], nonzero=False, channel_wise=False),
+        # select one of: spinal cord contour transform or Identity transform (i.e. no transform)
+        transforms.OneOf(
+            transforms=[SpinalCordContourd(keys=["label"]), transforms.Identityd(keys=["label"])],
+            weights=[0.25, 0.75]
+        )
     ]
 
-    batchgenerators_transforms = [
-        bg_spatial_transforms.ChannelTranslation(
-            data_key="image",
-            const_channel=5,
-            max_shifts={'x': 5, 'y': 5, 'z': 5})
-    ]
-
-    # add batchgenerators transforms
-    transforms_final = monai_transforms + [
-        # add another dim as BatchGenerator expects shape [B, C, H, W, D]
-        transforms.EnsureChannelFirstd(keys=["image", lbl_key], channel_dim="no_channel"),
-        # batchgenerators transforms work on numpy arrays
-        transforms.ToNumpyd(keys=["image", lbl_key]),
-        # use adaptors to port batchgenerators transforms to monai-compatible transforms
-        transforms.adaptor(batchgenerators_transforms[0], {"image": "image", "label": f"{lbl_key}"}),
-        # convert the data back to Tensor
-        transforms.EnsureTyped(keys=["image", lbl_key], device=device, track_meta=False),
-        transforms.SqueezeDimd(keys=[f"{lbl_key}"], dim=0),
-    ]
-
-    return transforms.Compose(transforms_final)
+    return transforms.Compose(monai_transforms)
 
 def inference_transforms(crop_size, lbl_key="label"):
     return transforms.Compose([
