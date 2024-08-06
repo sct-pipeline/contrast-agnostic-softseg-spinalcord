@@ -17,17 +17,14 @@ from time import time
 import yaml
 from scipy import ndimage
 
+import monai.transforms as transforms
 from monai.inferers import sliding_window_inference
 from monai.data import (DataLoader, Dataset, decollate_batch)
 from monai.networks.nets import SwinUNETR
-from monai.transforms import (Compose, EnsureTyped, Invertd, SaveImage, Spacingd,
-                              LoadImaged, NormalizeIntensityd, EnsureChannelFirstd, 
-                              DivisiblePadd, Orientationd, ResizeWithPadOrCropd)
 from dynamic_network_architectures.architectures.unet import PlainConvUNet, ResidualEncoderUNet
 from dynamic_network_architectures.building_blocks.helper import get_matching_instancenorm, convert_dim_to_conv_op
 from dynamic_network_architectures.initialization.weight_init import init_last_bn_before_add_to_0
 
-from nnunet_mednext import MedNeXt
 
 # NNUNET global params
 INIT_FILTERS=32
@@ -76,30 +73,30 @@ def get_parser():
                         ' Default: 64x192x-1')
     parser.add_argument('--device', default="gpu", type=str, choices=["gpu", "cpu"],
                         help='Device to run inference on. Default: cpu')
-    parser.add_argument('--model', default="monai", type=str, choices=["monai", "swinunetr", "mednext", "swinpretrained"], 
+    parser.add_argument('--model', default="monai", type=str, choices=["monai", "swinunetr", "swinpretrained"], 
                         help='Model to use for inference. Default: monai')
     parser.add_argument('--pred-type', default="soft", type=str, choices=["soft", "hard"],
                         help='Type of prediction to output/save. `soft` outputs soft segmentation masks with a threshold of 0.1'
                         '`hard` outputs binarized masks thresholded at 0.5  Default: hard')
     parser.add_argument('--pad-mode', default="edge", type=str, choices=["constant", "edge", "reflect"],
-                        help='Padding mode for the input image. Default: constant')
+                        help='Padding mode for the input image. Default: edge')
     return parser
 
 
 # ===========================================================================
 #                          Test-time Transforms
 # ===========================================================================
-def inference_transforms_single_image(crop_size, pad_mode="constant"):
-    return Compose([
-            LoadImaged(keys=["image"], image_only=False),
-            EnsureChannelFirstd(keys=["image"]),
-            Orientationd(keys=["image"], axcodes="RPI"),
-            Spacingd(keys=["image"], pixdim=(1.0, 1.0, 1.0), mode=(2)),
-            ResizeWithPadOrCropd(keys=["image"], spatial_size=crop_size,),
-            # pad inputs to ensure divisibility by no. of layers nnUNet has (5)
-            DivisiblePadd(keys=["image"], k=2**5, mode=pad_mode),
-            NormalizeIntensityd(keys=["image"], nonzero=False, channel_wise=False),
-        ])
+def inference_transforms_single_image(crop_size, pad_mode="edge"):
+    return transforms.Compose([
+        transforms.LoadImaged(keys=["image"], image_only=False),
+        transforms.EnsureChannelFirstd(keys=["image"]),
+        transforms.Orientationd(keys=["image"], axcodes="RPI"),
+        transforms.Spacingd(keys=["image"], pixdim=(1.0, 1.0, 1.0), mode=(2)),
+        transforms.ResizeWithPadOrCropd(keys=["image"], spatial_size=crop_size, mode=pad_mode),
+        # pad inputs to ensure divisibility by no. of layers nnUNet has (5)
+        transforms.DivisiblePadd(keys=["image"], k=2**5, mode=pad_mode),
+        transforms.NormalizeIntensityd(keys=["image"], nonzero=False, channel_wise=False),
+    ])
 
 
 # ===========================================================================
@@ -197,9 +194,9 @@ def prepare_data(path_image, crop_size=(64, 160, 320), pad_mode="edge"):
     
     # define post-processing transforms for testing; taken (with explanations) from 
     # https://github.com/Project-MONAI/tutorials/blob/main/3d_segmentation/torch/unet_inference_dict.py#L66
-    test_post_pred = Compose([
-        EnsureTyped(keys=["pred"]),
-        Invertd(keys=["pred"], transform=transforms_test, 
+    test_post_pred = transforms.Compose([
+        transforms.EnsureTyped(keys=["pred"]),
+        transforms.Invertd(keys=["pred"], transform=transforms_test, 
                 orig_keys=["image"], 
                 meta_keys=["pred_meta_dict"],
                 nearest_interp=False, to_tensor=True),
@@ -287,25 +284,8 @@ def main():
             feature_size=config["model"]["swinunetr"]["feature_size"], 
             num_heads=config["model"]["swinunetr"]["num_heads"])
     
-    elif args.model == "mednext":
-        config_path = os.path.join(args.chkp_path, "config.yaml")
-        with open(config_path, "r") as f:
-            config = yaml.safe_load(f)
-
-        net = MedNeXt(
-            in_channels=config["model"]["mednext"]["num_input_channels"],
-            n_channels=config["model"]["mednext"]["base_num_features"],
-            n_classes=config["model"]["mednext"]["num_classes"],
-            exp_r=2,
-            kernel_size=config["model"]["mednext"]["kernel_size"],
-            deep_supervision=config["model"]["mednext"]["enable_deep_supervision"],
-            do_res=True,
-            do_res_up_down=True,
-            checkpoint_style="outside_block",
-            block_counts=config["model"]["mednext"]["block_counts"],)
-    
     else:
-        raise ValueError("Model not recognized. Please choose from: nnunet, swinunetr, mednext")
+        raise ValueError("Model not recognized. Please choose from: nnunet, swinunetr")
 
 
     # define list to collect the test metrics
@@ -340,7 +320,7 @@ def main():
             batch["pred"] = sliding_window_inference(test_input, inference_roi_size, mode="gaussian",
                                                     sw_batch_size=4, predictor=net, overlap=0.5, progress=False)
 
-            if args.model in ["monai", "mednext"]:
+            if args.model in ["monai"]:
                 # take only the highest resolution prediction
                 # NOTE: both these models use Deep Supervision, so only the highest resolution prediction is taken
                 batch["pred"] = batch["pred"][0]
@@ -370,7 +350,7 @@ def main():
 
             # this takes about 0.25s on average on a CPU
             # image saver class
-            pred_saver = SaveImage(
+            pred_saver = transforms.SaveImage(
                 output_dir=results_path, output_postfix="pred", output_ext=".nii.gz", 
                 separate_folder=False, print_log=False)
             # save the prediction
