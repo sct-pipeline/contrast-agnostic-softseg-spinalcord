@@ -1,9 +1,65 @@
 
 import numpy as np
+from typing import Dict, Hashable, Mapping
+from scipy.ndimage.morphology import binary_erosion
+import torch
 import monai.transforms as transforms
+from monai.config import KeysCollection
+from monai.transforms import MapTransform
 
 
-def train_transforms(crop_size, lbl_key="label", pad_mode="edge", device="cuda"):
+class SpinalCordContourd(MapTransform):
+    def __init__(
+        self,
+        keys: KeysCollection,
+        allow_missing_keys: bool = False,
+    ) -> None:
+        MapTransform.__init__(self, keys, allow_missing_keys)
+
+    def __call__(self, data: Mapping[Hashable, torch.Tensor]) -> Dict[Hashable, torch.Tensor]:
+        d = dict(data)
+
+        for key in self.keys:
+            d[key] = self.create_contour_mask_3d(d[key])
+                
+        return d
+
+    def create_contour_mask_3d(self, segmentation_mask):
+        # Get the shape of the 3D mask
+        depth = segmentation_mask.shape[-1]
+        
+        # Initialize the contour mask
+        contour_mask = torch.zeros_like(segmentation_mask)
+        
+        # Process each slice
+        for i in range(depth):
+            # Extract the 2D slice
+            slice_2d = segmentation_mask[0, :, :, i]
+
+            # Skip the slice if it is empty (because of padding)
+            if torch.sum(slice_2d) == 0:
+                continue
+            
+            # Ensure the slice is binary
+            binary_slice = (slice_2d > 0).astype(torch.uint8)
+            
+            # Perform binary erosion
+            # eroded_slice = binary_erosion(binary_slice, structure=kernel).astype(np.uint8)
+            eroded_slice = binary_erosion(binary_slice)
+            
+            # Subtract the eroded image from the original to get the contour
+            contour_slice = binary_slice - eroded_slice
+            
+            # Store the contour slice in the contour mask
+            contour_mask[0, :, :, i] = contour_slice
+        
+        return contour_mask
+
+    def inverse(self, data: Mapping[Hashable, torch.Tensor]) -> Dict[Hashable, torch.Tensor]:
+        return data
+
+
+def train_transforms(crop_size, lbl_key="label", pad_mode="zero", device="cuda"):
 
     monai_transforms = [    
         # pre-processing
@@ -32,9 +88,14 @@ def train_transforms(crop_size, lbl_key="label", pad_mode="edge", device="cuda")
         transforms.RandScaleIntensityd(keys=["image"], factors=(-0.25, 1), prob=0.35),  # this is nnUNet's BrightnessMultiplicativeTransform
         transforms.RandFlipd(keys=["image", lbl_key], prob=0.5,),
         transforms.NormalizeIntensityd(keys=["image"], nonzero=False, channel_wise=False),
+        # select one of: spinal cord contour transform or Identity transform (i.e. no transform)
+        transforms.OneOf(
+            transforms=[SpinalCordContourd(keys=["label"]), transforms.Identityd(keys=["label"])],
+            weights=[0.25, 0.75]
+        )
     ]
 
-    return transforms.Compose(monai_transforms) 
+    return transforms.Compose(monai_transforms)
 
 def inference_transforms(crop_size, lbl_key="label"):
     return transforms.Compose([
