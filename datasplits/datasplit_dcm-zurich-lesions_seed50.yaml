@@ -1,0 +1,17 @@
+test:
+- sub-13
+- sub-15
+train:
+- sub-01
+- sub-05
+- sub-06
+- sub-08
+- sub-09
+- sub-10
+- sub-11
+- sub-12
+- sub-14
+- sub-16
+val:
+- sub-02
+- sub-07
