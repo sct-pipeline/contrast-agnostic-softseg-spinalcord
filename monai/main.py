@@ -161,9 +161,9 @@ class Model(pl.LightningModule):
             test_files = test_files[:6]
 
         train_cache_rate = 0.5 # 0.25 if args.model == 'swinunetr' else 0.5
-        self.train_ds = CacheDataset(data=train_files, transform=transforms_train, cache_rate=train_cache_rate, num_workers=4,
+        self.train_ds = CacheDataset(data=train_files, transform=transforms_train, cache_rate=train_cache_rate, num_workers=12,
                                      copy_cache=False)
-        self.val_ds = CacheDataset(data=val_files, transform=transforms_val, cache_rate=0.25, num_workers=4,
+        self.val_ds = CacheDataset(data=val_files, transform=transforms_val, cache_rate=0.25, num_workers=12,
                                    copy_cache=False)
 
         # define test transforms
@@ -178,7 +178,7 @@ class Model(pl.LightningModule):
                     meta_keys=["pred_meta_dict", "label_meta_dict"],
                     nearest_interp=False, to_tensor=True),
             ])
-        self.test_ds = CacheDataset(data=test_files, transform=transforms_test, cache_rate=0.1, num_workers=4,
+        self.test_ds = CacheDataset(data=test_files, transform=transforms_test, cache_rate=0.1, num_workers=8,
                                     copy_cache=False)
 
         # # avoid the computation of meta information in random transforms
@@ -188,15 +188,15 @@ class Model(pl.LightningModule):
     # DATA LOADERS
     # --------------------------------
     def train_dataloader(self):
-        return ThreadDataLoader(self.train_ds, batch_size=self.cfg["opt"]["batch_size"], shuffle=True, num_workers=16,
+        return ThreadDataLoader(self.train_ds, batch_size=self.cfg["opt"]["batch_size"], shuffle=True, num_workers=8,
                             pin_memory=True, persistent_workers=True)
 
     def val_dataloader(self):
-        return ThreadDataLoader(self.val_ds, batch_size=1, shuffle=False, num_workers=16, pin_memory=True,
+        return ThreadDataLoader(self.val_ds, batch_size=1, shuffle=False, num_workers=8, pin_memory=True,
                           persistent_workers=True)
 
     def test_dataloader(self):
-        return ThreadDataLoader(self.test_ds, batch_size=1, shuffle=False, num_workers=8, pin_memory=True)
+        return ThreadDataLoader(self.test_ds, batch_size=1, shuffle=False, num_workers=4, pin_memory=True)
 
 
     # --------------------------------
@@ -707,7 +707,8 @@ def main(args):
                             log_model=True, # save best model using checkpoint callback
                             project='contrast-agnostic',
                             entity='naga-karthik',
-                            config=config)
+                            config=config,
+                            mode="disabled")
 
         # Saving training script to wandb
         wandb.save("main.py")
