@@ -276,9 +276,6 @@ def create_df(dataset_path):
     # refactor to move filename and filesegname to the end of the dataframe
     df = df[['datasetName', 'subjectID', 'sessionID', 'orientationID', 'contrastID', 'pathologyID', 'filename']] #, 'filesegname']]
 
-    # sort the dataframe based on subjectID
-    df = df.sort_values(by=['subjectID'], ascending=True)
-
     return df
 
 
@@ -451,6 +448,9 @@ def main():
 
     # reorder the columns
     df = df[['datasetName', 'subjectID', 'sessionID', 'orientationID', 'contrastID', 'pathologyID', 'split', 'filename']] #, 'filesegname']]
+
+    # sort the dataframe based on subjectID
+    df = df.sort_values(by=['subjectID'], ascending=True)     
     
     # save the dataframe to a csv file
     df.to_csv(os.path.join(args.path_out, f"df_{dataset_name}_seed{args.seed}.csv"), index=False)
