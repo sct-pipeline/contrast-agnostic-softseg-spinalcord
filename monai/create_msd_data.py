@@ -217,11 +217,15 @@ def create_df(dataset_path):
         # load the participants.tsv file
         df_participants = pd.read_csv(os.path.join(dataset_path, 'participants.tsv'), sep='\t')
 
-        # store the pathology info by merging the "pathology" colume from df_participants to the df dataframe
-        df = pd.merge(df, df_participants[['participant_id', 'pathology']], left_on='subjectID', right_on='participant_id', how='left')
+        # NOTE: participant_id are like sub-NIH001, sub-NIH002, etc. but the subjectIDs are like sub-nih001, sub-nih002, etc.
+        # convert participant_id to lower case
+        df_participants['participant_id'] = df_participants['participant_id'].str.lower()
 
-        # rename the column to 'pathologyID'
-        df.rename(columns={'pathology': 'pathologyID'}, inplace=True)        
+        # store the phenotype info by merging the "phenotype" colume from df_participants to the df dataframe
+        df = pd.merge(df, df_participants[['participant_id', 'phenotype']], left_on='subjectID', right_on='participant_id', how='left')
+
+        # rename phenotype to pathologyID
+        df.rename(columns={'phenotype': 'pathologyID'}, inplace=True)
 
     elif dataset_name == 'sct-testing-large':
 
@@ -270,11 +274,15 @@ def create_df(dataset_path):
         # load the participants.tsv file
         df_participants = pd.read_csv(os.path.join(dataset_path, 'participants.tsv'), sep='\t')
         
-        # store the pathology info by merging the "pathology_M0" colume from df_participants to the df dataframe
-        df = pd.merge(df, df_participants[['participant_id', 'pathology_M0']], left_on='subjectID', right_on='participant_id', how='left')
+        # NOTE: taking the phenotype directly and using it as pathology because pathology is MS for all phenotypes
+        # (easier to report different phenotypes )
+        # store the pathology info by merging the "phenotype_M0" colume from df_participants to the df dataframe
+        df = pd.merge(df, df_participants[['participant_id', 'phenotype_M0']], left_on='subjectID', right_on='participant_id', how='left')
+        # replace nan with HC
+        df['phenotype_M0'].fillna('HC', inplace=True)
 
         # rename the column to 'pathologyID'
-        df.rename(columns={'pathology_M0': 'pathologyID'}, inplace=True)
+        df.rename(columns={'phenotype_M0': 'pathologyID'}, inplace=True)
 
         for file in df['filename']: 
 
@@ -302,8 +310,16 @@ def create_df(dataset_path):
 
             # rename the column to 'pathologyID'
             df.rename(columns={'pathology': 'pathologyID'}, inplace=True)
+
+        elif 'sci' in dataset_name:
+            # sci-zurich and sci-colorado do not have a 'pathology' column in their participants.tsv file
+            df['pathologyID'] = 'SCI'
         
-        else: 
+        elif dataset_name == 'lumbar-epfl':
+            # lumbar-epfl does not have a 'pathology' column in their participants.tsv file
+            df['pathologyID'] = 'HC'
+        
+        else:
             df['pathologyID'] = 'n/a'
          
     # refactor to move filename and filesegname to the end of the dataframe
