@@ -41,7 +41,7 @@ FILESEG_SUFFIXES = {
 }
 
 # add abbreviations of pathologies in sct-testing-large and other datasets to be included in the aggregated dataset
-PATHOLOGIES = ["ALS", "DCM", "NMO", "MS", "SCI"]
+PATHOLOGIES = ["ALS", "DCM", "NMO", "MS", "SYR", "SCI"]
 
 
 def get_parser():
