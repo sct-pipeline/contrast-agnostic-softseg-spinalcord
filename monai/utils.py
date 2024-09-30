@@ -26,6 +26,32 @@ CONTRASTS = {
     "stir": ["STIR"]
 }
 
+def get_pathology_wise_split(datalists_root, path_save):
+    
+    # create a unified dataframe combining all datasets
+    csvs = [os.path.join(datalists_root, file) for file in os.listdir(datalists_root) if file.endswith('.csv')]
+    unified_df = pd.concat([pd.read_csv(csv) for csv in csvs], ignore_index=True)
+    
+    # sort the dataframe by the dataset column
+    unified_df = unified_df.sort_values(by='datasetName', ascending=True)
+
+    # pathologies
+    pathologies = unified_df['pathologyID'].unique()
+    print(pathologies)
+
+    # count the number of subjects for each pathology
+    pathology_subjects = {}
+    for pathology in pathologies:
+        pathology_subjects[pathology] = len(unified_df[unified_df['pathologyID'] == pathology]['subjectID'].unique())
+
+    # save the pathology-wise split as a markdown file
+    with open(os.path.join(path_save, 'pathology_wise_split.md'), 'w') as f:
+        f.write(f"Pathology | Number of Subjects\n")
+        f.write(f"--- | ---\n")
+        for pathology, num_subjects in pathology_subjects.items():
+            f.write(f"{pathology} | {num_subjects}\n")
+    
+
 def get_datasets_stats(datalists_root, contrasts_dict, path_save):
 
     datalists = [file for file in os.listdir(datalists_root) if file.endswith('_seed50.json')]
@@ -339,5 +365,6 @@ if __name__ == "__main__":
     # print(len(tr_ix), len(val_tx), len(te_ix))
 
     # datalists_root = "/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/datalists/lifelong-contrast-agnostic"
-    datalists_root = "/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/datalists/aggregation-20240517"
-    get_datasets_stats(datalists_root, contrasts_dict=CONTRASTS, path_save=datalists_root)
+    datalists_root = "/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/datalists/contrast-agnostic-v3-20240807"
+    # get_datasets_stats(datalists_root, contrasts_dict=CONTRASTS, path_save=datalists_root)
+    get_pathology_wise_split(datalists_root, path_save=datalists_root)
