@@ -199,17 +199,20 @@ segment_sc_MONAI(){
 	# 	PATH_MODEL=${PATH_MONAI_MODEL_BIN}
 	
 	# fi
-	if [[ $model == 'soft_monai_single' ]]; then
+	if [[ $model == 'v2x' ]]; then
 		FILEPRED="${file}_seg_${model}"
 		PATH_MODEL=${PATH_MONAI_MODEL_1}
+    max_feat=320
   
-  elif [[ $model == 'soft_monai_2datasets' ]]; then
+  elif [[ $model == 'v2x_contour' ]]; then
     FILEPRED="${file}_seg_${model}"
     PATH_MODEL=${PATH_MONAI_MODEL_2}
+    max_feat=384
   
-  elif [[ $model == 'soft_monai_7datasets' ]]; then
+  elif [[ $model == 'v2x_contour_dcm' ]]; then
     FILEPRED="${file}_seg_${model}"
     PATH_MODEL=${PATH_MONAI_MODEL_3}
+    max_feat=384
 	
 	# elif [[ $model == 'swinunetr' ]]; then
   #   FILEPRED="${file}_seg_swinunetr"
@@ -221,7 +224,7 @@ segment_sc_MONAI(){
   start_time=$(date +%s)
   # Run SC segmentation
   # python ${PATH_MONAI_SCRIPT} --path-img ${file}.nii.gz --path-out . --chkp-path ${PATH_MODEL} --device gpu --model ${model}
-  python ${PATH_MONAI_SCRIPT} --path-img ${file}.nii.gz --path-out . --chkp-path ${PATH_MODEL} --device gpu --model monai --pred-type soft --pad-mode edge
+  python ${PATH_MONAI_SCRIPT} --path-img ${file}.nii.gz --path-out . --chkp-path ${PATH_MODEL} --device gpu --model monai --pred-type soft --pad-mode edge --max-feat ${max_feat}
   # Rename MONAI output
   mv ${file}_pred.nii.gz ${FILEPRED}.nii.gz
   # Get the end time
@@ -230,8 +233,8 @@ segment_sc_MONAI(){
   execution_time=$(python3 -c "print($end_time - $start_time)")
   echo "${FILEPRED},${execution_time}" >> ${PATH_RESULTS}/execution_time.csv
 
-  # Generate QC report on soft predictions
-  sct_qc -i ${file}.nii.gz -s ${FILEPRED}.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
+  # # Generate QC report on soft predictions
+  # sct_qc -i ${file}.nii.gz -s ${FILEPRED}.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
 
   # Binarize MONAI output (which is soft by default); output is overwritten
   sct_maths -i ${FILEPRED}.nii.gz -bin 0.5 -o ${FILEPRED}.nii.gz
@@ -294,13 +297,14 @@ echo "Contrast: ${contrast}"
 
 # Copy source images
 # check if the file exists
-if [[ ! -e ${PATH_DATA}/./${SUBJECT}/anat/${SUBJECT//[\/]/_}*${contrast}.* ]]; then
-    echo "File ${PATH_DATA}/./${SUBJECT}/anat/${SUBJECT//[\/]/_}*${contrast}.* does not exist" >> ${PATH_LOG}/missing_files.log
-    echo "ERROR: File ${PATH_DATA}/./${SUBJECT}/anat/${SUBJECT//[\/]/_}*${contrast}.* does not exist. Exiting."
-    exit 1
-else 
-    rsync -Ravzh ${PATH_DATA}/./${SUBJECT}/anat/${SUBJECT//[\/]/_}*${contrast}.* .
-fi
+# if [[ ! -e ${PATH_DATA}/./${SUBJECT}/anat/${SUBJECT//[\/]/_}*${contrast}.nii.gz ]]; then
+#     echo "${PATH_DATA}/./${SUBJECT}/anat/${SUBJECT//[\/]/_}*${contrast}.nii.gz"
+#     echo "File ${PATH_DATA}/./${SUBJECT}/anat/${SUBJECT//[\/]/_}*${contrast}.* does not exist" >> ${PATH_LOG}/missing_files.log
+#     echo "ERROR: File ${PATH_DATA}/./${SUBJECT}/anat/${SUBJECT//[\/]/_}*${contrast}.* does not exist. Exiting."
+#     exit 1
+# else 
+rsync -Ravzh ${PATH_DATA}/./${SUBJECT}/anat/${SUBJECT//[\/]/_}*${contrast}.* .
+# fi
 
 # Go to the folder where the data is
 cd ${PATH_DATA_PROCESSED}/${SUBJECT}/anat
@@ -322,9 +326,9 @@ copy_gt_seg "${file}" "${label_suffix}"
 sct_qc -i ${file}.nii.gz -s ${file}_seg-manual.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
 
 # Segment SC using different methods, binarize at 0.5 and compute QC
-# CUDA_VISIBLE_DEVICES=1 segment_sc_MONAI ${file} 'soft_monai_single'
-# CUDA_VISIBLE_DEVICES=2 segment_sc_MONAI ${file} 'soft_monai_2datasets'
-CUDA_VISIBLE_DEVICES=0 segment_sc_MONAI ${file} 'soft_monai_7datasets'
+CUDA_VISIBLE_DEVICES=2 segment_sc_MONAI ${file} 'v2x'
+CUDA_VISIBLE_DEVICES=2 segment_sc_MONAI ${file} 'v2x_contour'
+CUDA_VISIBLE_DEVICES=3 segment_sc_MONAI ${file} 'v2x_contour_dcm'
 # segment_sc_MONAI ${file} 'monai'
 # segment_sc_MONAI ${file} 'swinunetr'
 
@@ -343,22 +347,22 @@ json_dict='{
   ]
 }'
 
-PATH_DATA_PROCESSED_CLEAN="${PATH_DATA_PROCESSED}_clean"
-# create new folder and copy only the predictions
-mkdir -p ${PATH_DATA_PROCESSED_CLEAN}/derivatives/labels_softseg_bin/${SUBJECT}/anat
+# PATH_DATA_PROCESSED_CLEAN="${PATH_DATA_PROCESSED}_clean"
+# # create new folder and copy only the predictions
+# mkdir -p ${PATH_DATA_PROCESSED_CLEAN}/derivatives/labels_softseg_bin/${SUBJECT}/anat
 
-rsync -avzh ${file}_seg_soft_monai_4datasets.nii.gz ${PATH_DATA_PROCESSED_CLEAN}/derivatives/labels_softseg_bin/${SUBJECT}/anat/${file%%_*}_space-other_${contrast}_desc-softseg_label-SC_seg.nii.gz
-rsync -avzh ${file}_seg-manual.json ${PATH_DATA_PROCESSED_CLEAN}/derivatives/labels_softseg_bin/${SUBJECT}/anat/${file%%_*}_space-other_${contrast}_desc-softseg_label-SC_seg.json
+# rsync -avzh ${file}_seg_soft_monai_4datasets.nii.gz ${PATH_DATA_PROCESSED_CLEAN}/derivatives/labels_softseg_bin/${SUBJECT}/anat/${file%%_*}_space-other_${contrast}_desc-softseg_label-SC_seg.nii.gz
+# rsync -avzh ${file}_seg-manual.json ${PATH_DATA_PROCESSED_CLEAN}/derivatives/labels_softseg_bin/${SUBJECT}/anat/${file%%_*}_space-other_${contrast}_desc-softseg_label-SC_seg.json
 
-# create json file
-echo $json_dict > ${PATH_DATA_PROCESSED_CLEAN}/derivatives/labels_softseg_bin/${SUBJECT}/anat/${file%%_*}_space-other_${contrast}_desc-softseg_label-SC_seg.json
-# re-save json files with indentation
-python -c "import json;
-json_file = '${PATH_DATA_PROCESSED_CLEAN}/derivatives/labels_softseg_bin/${SUBJECT}/anat/${file%%_*}_space-other_${contrast}_desc-softseg_label-SC_seg.json'
-with open(json_file, 'r') as f:
-    data = json.load(f)
-    json.dump(data, open(json_file, 'w'), indent=4)
-"
+# # create json file
+# echo $json_dict > ${PATH_DATA_PROCESSED_CLEAN}/derivatives/labels_softseg_bin/${SUBJECT}/anat/${file%%_*}_space-other_${contrast}_desc-softseg_label-SC_seg.json
+# # re-save json files with indentation
+# python -c "import json;
+# json_file = '${PATH_DATA_PROCESSED_CLEAN}/derivatives/labels_softseg_bin/${SUBJECT}/anat/${file%%_*}_space-other_${contrast}_desc-softseg_label-SC_seg.json'
+# with open(json_file, 'r') as f:
+#     data = json.load(f)
+#     json.dump(data, open(json_file, 'w'), indent=4)
+# "
 
 # ------------------------------------------------------------------------------
 # End
