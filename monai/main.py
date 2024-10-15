@@ -628,7 +628,7 @@ def main(args):
         # save experiment id
         save_exp_id = f"{args.model}_seed={config['seed']}_" \
                         f"ndata={n_datasets}_ncont={n_contrasts}_" \
-                        f"nf={config['model']['nnunet-plain']['features_per_stage'][0]}_" \
+                        f"nf={config['model']['nnunet-plain']['features_per_stage'][-1]}_" \
                         f"opt={config['opt']['name']}_lr={config['opt']['lr']}_AdapW_" \
                         f"bs={config['opt']['batch_size']}" \
 
