@@ -8,6 +8,8 @@ Author: Naga Karthik
 import os
 import argparse
 import numpy as np
+import pydoc
+import warnings
 from loguru import logger
 import torch.nn.functional as F
 import torch
@@ -22,30 +24,41 @@ from monai.data import (DataLoader, Dataset, decollate_batch)
 from monai.networks.nets import SwinUNETR
 import monai.transforms as transforms
 
+# ---------------------------- Imports for nnUNet's Model -----------------------------
+from batchgenerators.utilities.file_and_folder_operations import join
+from utils import recursive_find_python_class
+
+
 nnunet_plans = {
-    "UNet_class_name": "PlainConvUNet",
-    "UNet_base_num_features": INIT_FILTERS,
-    "n_conv_per_stage_encoder": [2, 2, 2, 2, 2, 2],
-    "n_conv_per_stage_decoder": [2, 2, 2, 2, 2],
-    "pool_op_kernel_sizes": [
-        [1, 1, 1],
-        [2, 2, 2],
-        [2, 2, 2],
-        [2, 2, 2],
-        [2, 2, 2],
-        [1, 2, 2]
-    ],
-    "conv_kernel_sizes": [
-        [3, 3, 3],
-        [3, 3, 3],
-        [3, 3, 3],
-        [3, 3, 3],
-        [3, 3, 3],
-        [3, 3, 3]
-    ],
-    "unet_max_num_features": 320,
+    "arch_class_name": "dynamic_network_architectures.architectures.unet.PlainConvUNet",
+    "arch_kwargs": {
+        "n_stages": 6,
+        "features_per_stage": [32, 64, 128, 256, 384, 384],
+        "strides": [
+            [1, 1, 1], 
+            [2, 2, 2], 
+            [2, 2, 2], 
+            [2, 2, 2],
+            [2, 2, 2],
+            [1, 2, 2]
+        ],
+        "n_conv_per_stage": [2, 2, 2, 2, 2, 2],
+        "n_conv_per_stage_decoder": [2, 2, 2, 2, 2]
+    },
+    "arch_kwargs_requires_import": ["conv_op", "norm_op", "dropout_op", "nonlin"],
 }
 
+nnunet_plans_resencM = {
+    "arch_class_name": "dynamic_network_architectures.architectures.unet.ResidualEncoderUNet",
+    "arch_kwargs": {
+        "n_stages": nnunet_plans["arch_kwargs"]["n_stages"],
+        "features_per_stage": nnunet_plans["arch_kwargs"]["features_per_stage"],
+        "strides": nnunet_plans["arch_kwargs"]["strides"],
+        "n_blocks_per_stage": [1, 3, 4, 6, 6, 6],
+        "n_conv_per_stage_decoder": [1, 1, 1, 1, 1]
+    },
+    "arch_kwargs_requires_import": ["conv_op", "norm_op", "dropout_op", "nonlin"],
+}
 
 def get_parser():
 
@@ -108,70 +121,72 @@ class InitWeights_He(object):
 # ============================================================================
 #               Define the network based on nnunet_plans dict
 # ============================================================================
-def create_nnunet_from_plans(plans, num_input_channels: int, num_classes: int, deep_supervision: bool = True):
+def create_nnunet_from_plans(plans, input_channels, output_channels, allow_init = True, 
+                             deep_supervision: bool = True):
     """
-    Adapted from nnUNet's source code: 
+    Adapted from nnUNet's source code:
     https://github.com/MIC-DKFZ/nnUNet/blob/master/nnunetv2/utilities/get_network_from_plans.py#L9
-
     """
-    num_stages = len(plans["conv_kernel_sizes"])
 
-    dim = len(plans["conv_kernel_sizes"][0])
-    conv_op = convert_dim_to_conv_op(dim)
-
-    segmentation_network_class_name = plans["UNet_class_name"]
-    mapping = {
-        'PlainConvUNet': PlainConvUNet,
-        'ResidualEncoderUNet': ResidualEncoderUNet
-    }
-    kwargs = {
-        'PlainConvUNet': {
-            'conv_bias': True,
-            'norm_op': get_matching_instancenorm(conv_op),
-            'norm_op_kwargs': {'eps': 1e-5, 'affine': True},
-            'dropout_op': None, 'dropout_op_kwargs': None,
-            'nonlin': nn.LeakyReLU, 'nonlin_kwargs': {'inplace': True},
+    network_class = plans["arch_class_name"]
+    # only the keys that "could" depend on the dataset are defined in main.py
+    architecture_kwargs = dict(**plans["arch_kwargs"])
+    # rest of the default keys are defined here
+    architecture_kwargs.update({
+        "kernel_sizes": [
+            [3, 3, 3], 
+            [3, 3, 3], 
+            [3, 3, 3], 
+            [3, 3, 3], 
+            [3, 3, 3], 
+            [3, 3, 3],
+        ],
+        "conv_op": "torch.nn.modules.conv.Conv3d",
+        "conv_bias": True,
+        "norm_op": "torch.nn.modules.instancenorm.InstanceNorm3d",
+        "norm_op_kwargs": {
+            "eps": 1e-05,
+            "affine": True
         },
-        'ResidualEncoderUNet': {
-            'conv_bias': True,
-            'norm_op': get_matching_instancenorm(conv_op),
-            'norm_op_kwargs': {'eps': 1e-5, 'affine': True},
-            'dropout_op': None, 'dropout_op_kwargs': None,
-            'nonlin': nn.LeakyReLU, 'nonlin_kwargs': {'inplace': True},
-        }
-    }
-    assert segmentation_network_class_name in mapping.keys(), 'The network architecture specified by the plans file ' \
-                                                              'is non-standard (maybe your own?). Yo\'ll have to dive ' \
-                                                              'into either this ' \
-                                                              'function (get_network_from_plans) or ' \
-                                                              'the init of your nnUNetModule to accomodate that.'
-    network_class = mapping[segmentation_network_class_name]
+        "dropout_op": None,
+        "dropout_op_kwargs": None,
+        "nonlin": "torch.nn.LeakyReLU",
+        "nonlin_kwargs": {"inplace": True},
+    })
 
-    conv_or_blocks_per_stage = {
-        'n_conv_per_stage'
-        if network_class != ResidualEncoderUNet else 'n_blocks_per_stage': plans["n_conv_per_stage_encoder"],
-        'n_conv_per_stage_decoder': plans["n_conv_per_stage_decoder"]
-    }
-    
-    # network class name!!
-    model = network_class(
-        input_channels=num_input_channels,
-        n_stages=num_stages,
-        features_per_stage=[min(plans["UNet_base_num_features"] * 2 ** i, 
-                                plans["unet_max_num_features"]) for i in range(num_stages)],
-        conv_op=conv_op,
-        kernel_sizes=plans["conv_kernel_sizes"],
-        strides=plans["pool_op_kernel_sizes"],
-        num_classes=num_classes,    
-        deep_supervision=deep_supervision,
-        **conv_or_blocks_per_stage,
-        **kwargs[segmentation_network_class_name]
+    for ri in plans["arch_kwargs_requires_import"]:
+        if architecture_kwargs[ri] is not None:
+            architecture_kwargs[ri] = pydoc.locate(architecture_kwargs[ri])
+
+    nw_class = pydoc.locate(network_class)
+    # sometimes things move around, this makes it so that we can at least recover some of that
+    if nw_class is None:
+        warnings.warn(f'Network class {network_class} not found. Attempting to locate it within '
+                      f'dynamic_network_architectures.architectures...')
+        
+        import dynamic_network_architectures
+        
+        nw_class = recursive_find_python_class(join(dynamic_network_architectures.__path__[0], "architectures"),
+                                               network_class.split(".")[-1],
+                                               'dynamic_network_architectures.architectures')
+        if nw_class is not None:
+            print(f'FOUND IT: {nw_class}')
+        else:
+            raise ImportError('Network class could not be found, please check/correct your plans file')
+
+    if deep_supervision is not None and 'deep_supervision' not in architecture_kwargs.keys():
+        architecture_kwargs['deep_supervision'] = deep_supervision
+
+    network = nw_class(
+        input_channels=input_channels,
+        num_classes=output_channels,
+        **architecture_kwargs
     )
-    model.apply(InitWeights_He(1e-2))
-    if network_class == ResidualEncoderUNet:
-        model.apply(init_last_bn_before_add_to_0)
-    
-    return model
+
+    if hasattr(network, 'initialize') and allow_init:
+        network.apply(network.initialize)
+
+    return network
 
 
 # ===========================================================================
@@ -259,8 +274,11 @@ def main():
 
     # define model
     if args.model == "monai":
-        net = create_nnunet_from_plans(plans=nnunet_plans, 
-            num_input_channels=1, num_classes=1, deep_supervision=ENABLE_DS)
+        net = create_nnunet_from_plans(plans=nnunet_plans, input_channels=1, 
+                                       output_channels=1, deep_supervision=True)
+    elif args.model == "monai-resencM":
+        net = create_nnunet_from_plans(plans=nnunet_plans_resencM, input_channels=1,
+                                       output_channels=1, deep_supervision=True)    
     
     elif args.model in ["swinunetr", "swinpretrained"]:
         # load config file
