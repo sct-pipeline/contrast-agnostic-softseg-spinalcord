@@ -78,13 +78,15 @@ def get_parser():
                         ' Default: 64x192x-1')
     parser.add_argument('--device', default="gpu", type=str, choices=["gpu", "cpu"],
                         help='Device to run inference on. Default: cpu')
-    parser.add_argument('--model', default="monai", type=str, choices=["monai", "swinunetr", "swinpretrained"], 
+    parser.add_argument('--model', default="monai", type=str, choices=["monai", "monai-resencM", "swinunetr", "swinpretrained"], 
                         help='Model to use for inference. Default: monai')
     parser.add_argument('--pred-type', default="soft", type=str, choices=["soft", "hard"],
                         help='Type of prediction to output/save. `soft` outputs soft segmentation masks with a threshold of 0.1'
                         '`hard` outputs binarized masks thresholded at 0.5  Default: hard')
     parser.add_argument('--pad-mode', default="constant", type=str, choices=["constant", "edge", "reflect"],
                         help='Padding mode for the input image. Default: edge')
+    parser.add_argument('--max-feat', default=384, type=int,
+                        help='Maximum number of features in the network. Default: 320')
     return parser
 
 
@@ -102,20 +104,6 @@ def inference_transforms_single_image(crop_size, pad_mode="constant"):
         transforms.DivisiblePadd(keys=["image"], k=2**5, mode=pad_mode),
         transforms.NormalizeIntensityd(keys=["image"], nonzero=False, channel_wise=False),
         ])
-
-
-# ===========================================================================
-#                              Model utils
-# ===========================================================================
-class InitWeights_He(object):
-    def __init__(self, neg_slope=1e-2):
-        self.neg_slope = neg_slope
-
-    def __call__(self, module):
-        if isinstance(module, nn.Conv3d) or isinstance(module, nn.ConvTranspose3d):
-            module.weight = nn.init.kaiming_normal_(module.weight, a=self.neg_slope)
-            if module.bias is not None:
-                module.bias = nn.init.constant_(module.bias, 0)
 
 
 # ============================================================================
@@ -255,7 +243,7 @@ def main():
     # define root path for finding datalists
     path_image = args.path_img
     results_path = args.path_out
-    chkp_path = os.path.join(args.chkp_path, "model", "best_model.ckpt")
+    chkp_path = os.path.join(args.chkp_path, "best_model.ckpt")
 
     # save terminal outputs to a file
     logger.add(os.path.join(results_path, "logs.txt"), rotation="10 MB", level="INFO")
@@ -271,6 +259,10 @@ def main():
     # define the dataset and dataloader
     test_ds, test_post_pred = prepare_data(path_image, crop_size=crop_size, pad_mode=args.pad_mode)
     test_loader = DataLoader(test_ds, batch_size=1, shuffle=False, num_workers=8, pin_memory=True)
+
+    # temporary fix for the nnUNet model because v2x was trained with 320 max features but the newer 
+    # models have 384 max features
+    nnunet_plans["arch_kwargs"]["features_per_stage"] = [32, 64, 128, 256, args.max_feat, args.max_feat]
 
     # define model
     if args.model == "monai":
@@ -330,7 +322,7 @@ def main():
             batch["pred"] = sliding_window_inference(test_input, inference_roi_size, mode="gaussian",
                                                     sw_batch_size=4, predictor=net, overlap=0.5, progress=False)
 
-            if args.model in ["monai"]:
+            if args.model in ["monai", "monai-resencM"]:
                 # take only the highest resolution prediction
                 # NOTE: both these models use Deep Supervision, so only the highest resolution prediction is taken
                 batch["pred"] = batch["pred"][0]
