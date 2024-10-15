@@ -20,16 +20,7 @@ from scipy import ndimage
 from monai.inferers import sliding_window_inference
 from monai.data import (DataLoader, Dataset, decollate_batch)
 from monai.networks.nets import SwinUNETR
-from monai.transforms import (Compose, EnsureTyped, Invertd, SaveImage, Spacingd,
-                              LoadImaged, NormalizeIntensityd, EnsureChannelFirstd, 
-                              DivisiblePadd, Orientationd, ResizeWithPadOrCropd)
-from dynamic_network_architectures.architectures.unet import PlainConvUNet, ResidualEncoderUNet
-from dynamic_network_architectures.building_blocks.helper import get_matching_instancenorm, convert_dim_to_conv_op
-from dynamic_network_architectures.initialization.weight_init import init_last_bn_before_add_to_0
-
-# NNUNET global params
-INIT_FILTERS=32
-ENABLE_DS = True
+import monai.transforms as transforms
 
 nnunet_plans = {
     "UNet_class_name": "PlainConvUNet",
@@ -88,15 +79,15 @@ def get_parser():
 #                          Test-time Transforms
 # ===========================================================================
 def inference_transforms_single_image(crop_size, pad_mode="constant"):
-    return Compose([
-            LoadImaged(keys=["image"], image_only=False),
-            EnsureChannelFirstd(keys=["image"]),
-            Orientationd(keys=["image"], axcodes="RPI"),
-            Spacingd(keys=["image"], pixdim=(1.0, 1.0, 1.0), mode=(2)),
-            ResizeWithPadOrCropd(keys=["image"], spatial_size=crop_size, mode=pad_mode),
-            # pad inputs to ensure divisibility by no. of layers nnUNet has (5)
-            DivisiblePadd(keys=["image"], k=2**5, mode=pad_mode),
-            NormalizeIntensityd(keys=["image"], nonzero=False, channel_wise=False),
+    return transforms.Compose([
+        transforms.LoadImaged(keys=["image"], image_only=False),
+        transforms.EnsureChannelFirstd(keys=["image"]),
+        transforms.Orientationd(keys=["image"], axcodes="RPI"),
+        transforms.Spacingd(keys=["image"], pixdim=(1.0, 1.0, 1.0), mode=(2)),
+        transforms.ResizeWithPadOrCropd(keys=["image"], spatial_size=crop_size, mode=pad_mode),
+        # pad inputs to ensure divisibility by no. of layers nnUNet has (5)
+        transforms.DivisiblePadd(keys=["image"], k=2**5, mode=pad_mode),
+        transforms.NormalizeIntensityd(keys=["image"], nonzero=False, channel_wise=False),
         ])
 
 
@@ -195,9 +186,9 @@ def prepare_data(path_image, crop_size=(64, 160, 320), pad_mode="edge"):
     
     # define post-processing transforms for testing; taken (with explanations) from 
     # https://github.com/Project-MONAI/tutorials/blob/main/3d_segmentation/torch/unet_inference_dict.py#L66
-    test_post_pred = Compose([
-        EnsureTyped(keys=["pred"]),
-        Invertd(keys=["pred"], transform=transforms_test, 
+    test_post_pred = transforms.Compose([
+        transforms.EnsureTyped(keys=["pred"]),
+        transforms.Invertd(keys=["pred"], transform=transforms_test, 
                 orig_keys=["image"], 
                 meta_keys=["pred_meta_dict"],
                 nearest_interp=False, to_tensor=True),
@@ -351,7 +342,7 @@ def main():
 
             # this takes about 0.25s on average on a CPU
             # image saver class
-            pred_saver = SaveImage(
+            pred_saver = transforms.SaveImage(
                 output_dir=results_path, output_postfix="pred", output_ext=".nii.gz", 
                 separate_folder=False, print_log=False)
             # save the prediction
