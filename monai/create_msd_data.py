@@ -11,6 +11,7 @@ from sklearn.model_selection import train_test_split
 from collections import OrderedDict
 import subprocess
 from datetime import datetime
+import nibabel as nib
 
 from utils import get_git_branch_and_commit
 
@@ -439,6 +440,7 @@ def main():
                                     
                     temp_data["image"] = fname_image
                     temp_data["label"] = fname_label
+                    temp_data["spacing"] = str(nib.load(fname_image).header.get_zooms())
 
                     if os.path.exists(temp_data["image"]) and os.path.exists(temp_data["label"]):
                         temp_list.append(temp_data)
