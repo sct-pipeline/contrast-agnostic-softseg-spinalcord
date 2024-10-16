@@ -26,7 +26,7 @@ CONTRASTS = {
     "stir": ["STIR"]
 }
 
-def get_pathology_wise_split(datalists_root, path_save):
+def get_pathology_wise_split(datalists_root):
     
     # create a unified dataframe combining all datasets
     csvs = [os.path.join(datalists_root, file) for file in os.listdir(datalists_root) if file.endswith('.csv')]
@@ -34,22 +34,18 @@ def get_pathology_wise_split(datalists_root, path_save):
     
     # sort the dataframe by the dataset column
     unified_df = unified_df.sort_values(by='datasetName', ascending=True)
+    # drop nan
+    unified_df = unified_df.dropna(subset=['pathologyID'])
 
     # pathologies
     pathologies = unified_df['pathologyID'].unique()
-    print(pathologies)
 
     # count the number of subjects for each pathology
     pathology_subjects = {}
     for pathology in pathologies:
         pathology_subjects[pathology] = len(unified_df[unified_df['pathologyID'] == pathology]['subjectID'].unique())
 
-    # save the pathology-wise split as a markdown file
-    with open(os.path.join(path_save, 'pathology_wise_split.md'), 'w') as f:
-        f.write(f"Pathology | Number of Subjects\n")
-        f.write(f"--- | ---\n")
-        for pathology, num_subjects in pathology_subjects.items():
-            f.write(f"{pathology} | {num_subjects}\n")
+    return pathology_subjects
     
 
 def get_datasets_stats(datalists_root, contrasts_dict, path_save):
@@ -95,13 +91,32 @@ def get_datasets_stats(datalists_root, contrasts_dict, path_save):
     df = df.rename(columns={'contrast': 'Contrast', 'train': '#train_images', 'validation': '#validation_images', 'test': '#test_images'})
     # add a row for the total number of images
     df.loc[len(df)] = ['TOTAL', df['#train_images'].sum(), df['#validation_images'].sum(), df['#test_images'].sum()]
-    # print(df.to_markdown(index=False))
-    df.to_markdown(os.path.join(path_save, 'dataset_split.md'), index=False)
 
-    # # total number of images for each split
-    # print(f"Total number of training images: {df['#train_images'].sum()}")
-    # print(f"Total number of validation images: {df['#validation_images'].sum()}")
-    # print(f"Total number of test images: {df['#test_images'].sum()}")
+    # get the pathology-wise split
+    pathology_subjects = get_pathology_wise_split(datalists_root)
+    df_pathology = pd.DataFrame.from_dict(pathology_subjects, orient='index', columns=['Number of Subjects'])
+    # rename index to Pathology
+    df_pathology.index.name = 'Pathology'
+    # add a row for the total number of subjects
+    df_pathology.loc['TOTAL'] = df_pathology['Number of Subjects'].sum()
+
+    # create a txt file
+    with open(os.path.join(path_save, 'dataset_stats_overall.txt'), 'w') as f:
+        # 1. write the datalists used in a bullet list
+        f.write(f"DATASETS USED FOR MODEL TRAINING (n={len(datalists)}):\n\n")
+        for datalist in datalists:
+            f.write(f"\t- {datalist}\n")
+        f.write("\n\n")
+
+        # 2. write the table with proper formatting
+        f.write(f"SPLITS ACROSS DIFFERENT CONTRASTS (n={len(contrasts_final)}):\n\n")
+        f.write(df.to_markdown(index=False))
+        f.write("\n\n")
+
+        # 3. write the pathology-wise split
+        f.write(f"\nPATHOLOGY-WISE SPLIT:\n\n")
+        f.write(df_pathology.to_markdown())
+        f.write("\n\n")
 
     # create a unified dataframe combining all datasets
     csvs = [os.path.join(datalists_root, file) for file in os.listdir(datalists_root) if file.endswith('.csv')]
@@ -366,5 +381,5 @@ if __name__ == "__main__":
 
     # datalists_root = "/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/datalists/lifelong-contrast-agnostic"
     datalists_root = "/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/datalists/contrast-agnostic-v3-20240807"
-    # get_datasets_stats(datalists_root, contrasts_dict=CONTRASTS, path_save=datalists_root)
-    get_pathology_wise_split(datalists_root, path_save=datalists_root)
+    get_datasets_stats(datalists_root, contrasts_dict=CONTRASTS, path_save=datalists_root)
+    # get_pathology_wise_split(datalists_root, path_save=datalists_root)
