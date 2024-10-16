@@ -12,10 +12,10 @@ import pytorch_lightning as pl
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
 
-from utils import dice_score, PolyLRScheduler, check_empty_patch, count_parameters, get_datasets_stats
-from losses import AdapWingLoss
+from utils import dice_score, PolyLRScheduler, check_empty_patch, count_parameters, get_datasets_stats, plot_slices
+from losses import AdapWingLoss, DiceCrossEntropyLoss
 from transforms import train_transforms, val_transforms
-from models import create_nnunet_from_plans, load_pretrained_swinunetr
+from models import create_nnunet_from_plans, HyperUNet
 
 from monai.apps import download_url
 from monai.utils import set_determinism
@@ -43,7 +43,7 @@ def get_args():
     parser = argparse.ArgumentParser(description='Script for training contrast-agnositc SC segmentation model.')
 
     # arguments for model
-    parser.add_argument('-m', '--model', choices=['nnunet-plain', 'nnunet-resencM', 'swinunetr'],
+    parser.add_argument('-m', '--model', choices=['nnunet-plain', 'nnunet-resencM', 'swinunetr', 'hyperunet'],
                         default='nnunet', type=str,
                         help='Model type to be used. Options: nnunet, swinunetr.')
     # path to the config file
@@ -88,7 +88,7 @@ class Model(pl.LightningModule):
         # which could be sub-optimal.
         # On the other hand, ivadomed used a patch-size that's heavily padded along the R-L direction so that
         # only the SC is in context.
-        self.spacing = config["preprocessing"]["spacing"]
+        # self.spacing = config["preprocessing"]["spacing"]
         self.voxel_cropping_size = self.inference_roi_size = config["preprocessing"]["crop_pad_size"]
 
         # define post-processing transforms for validation, nothing fancy just making sure that it's a tensor (default)
@@ -160,6 +160,8 @@ class Model(pl.LightningModule):
             val_files = val_files[:15]
             test_files = test_files[:6]
 
+        train_files = train_files[:len(train_files)//2]
+        val_files = val_files[:len(val_files)//4]
         train_cache_rate = 0.5 # 0.25 if args.model == 'swinunetr' else 0.5
         self.train_ds = CacheDataset(data=train_files, transform=transforms_train, cache_rate=train_cache_rate, num_workers=12,
                                      copy_cache=False)
@@ -218,7 +220,12 @@ class Model(pl.LightningModule):
     # --------------------------------
     def training_step(self, batch, batch_idx):
 
-        inputs, labels = batch["image"], batch["label"]
+        inputs, labels, spacings = batch["image"], batch["label"], batch["spacing"]
+        
+        spc = []
+        for idx in range(len(spacings)):
+            spc.append(torch.tensor([float(num) for num in spacings[idx].strip('()').split(',')]).cuda())
+        spacings = torch.stack(spc)
 
         if self.input_label_type == "bin":
             # binarize the labels with a threshold of 0.5
@@ -230,8 +237,10 @@ class Model(pl.LightningModule):
             # print(f"Empty label patch found. Skipping training step ...")
             return None
 
-        output = self.forward(inputs)   # logits
-        # print(f"labels.shape: {labels.shape} \t output.shape: {output.shape}")
+        if args.model == "hyperunet":
+            output = self.net(inputs, spacings)   # logits
+        else:
+            output = self.forward(inputs)   # logits
 
         if args.model in ["nnunet-plain", "nnunet-resencM"] and self.cfg['model'][args.model]["enable_deep_supervision"]:
 
@@ -275,9 +284,9 @@ class Model(pl.LightningModule):
             "loss": loss.cpu(),
             "train_soft_dice": train_soft_dice.detach().cpu(),
             "train_number": len(inputs),
-            # "train_image": inputs[0].detach().cpu().squeeze(),
-            # "train_gt": labels[0].detach().cpu().squeeze(),
-            # "train_pred": output[0].detach().cpu().squeeze()
+            "train_image": inputs[0].detach().cpu().squeeze(),
+            "train_gt": labels[0].detach().cpu().squeeze(),
+            "train_pred": output[0].detach().cpu().squeeze()
         }
         self.train_step_outputs.append(metrics_dict)
 
@@ -304,17 +313,17 @@ class Model(pl.LightningModule):
             }
             self.log_dict(wandb_logs)
 
-            # # plot the training images
-            # fig = plot_slices(image=self.train_step_outputs[0]["train_image"],
-            #                   gt=self.train_step_outputs[0]["train_gt"],
-            #                   pred=self.train_step_outputs[0]["train_pred"],
-            #                   debug=args.debug)
-            # wandb.log({"training images": wandb.Image(fig)})
+            # plot the training images
+            fig = plot_slices(image=self.train_step_outputs[0]["train_image"],
+                              gt=self.train_step_outputs[0]["train_gt"],
+                              pred=self.train_step_outputs[0]["train_pred"],
+                              debug=args.debug)
+            wandb.log({"training images": wandb.Image(fig)})
 
             # free up memory
             self.train_step_outputs.clear()
             wandb_logs.clear()
-            # plt.close(fig)
+            plt.close(fig)
 
 
     # --------------------------------
@@ -322,15 +331,24 @@ class Model(pl.LightningModule):
     # --------------------------------
     def validation_step(self, batch, batch_idx):
 
-        inputs, labels = batch["image"], batch["label"]
+        inputs, labels, spacings = batch["image"], batch["label"], batch["spacing"]
+        # convert spacing from string to tensor
+        spacings = torch.tensor([float(num) for num in spacings[0].strip('()').split(',')]).cuda()
+        # add a channel dimension to the spacings
+        spacings = spacings.unsqueeze(0)
 
         if self.input_label_type == "bin":
             # binarize the labels with a threshold of 0.5
             labels = (labels > 0.5).float()
 
         # NOTE: this calculates the loss on the entire image after sliding window
-        outputs = sliding_window_inference(inputs, self.inference_roi_size, mode="gaussian",
-                                           sw_batch_size=4, predictor=self.forward, overlap=0.5,)
+        if args.model == "hyperunet":
+            outputs = sliding_window_inference(inputs, self.inference_roi_size, mode="gaussian",
+                                            sw_batch_size=4, predictor=self.net, overlap=0.5, **{"conditioning": spacings})
+        else:
+            outputs = sliding_window_inference(inputs, self.inference_roi_size, mode="gaussian",
+                                            sw_batch_size=4, predictor=self.forward, overlap=0.5,)
+
         # outputs shape: (B, C, <original H x W x D>)
         if args.model in ["nnunet-plain", "nnunet-resencM"] and self.cfg['model'][args.model]["enable_deep_supervision"]:
             # we only need the output with the highest resolution
@@ -358,9 +376,9 @@ class Model(pl.LightningModule):
             "val_soft_dice": val_soft_dice.detach().cpu(),
             "val_hard_dice": val_hard_dice.detach().cpu(),
             "val_number": len(post_outputs),
-            # "val_image": inputs[0].detach().cpu().squeeze(),
-            # "val_gt": labels[0].detach().cpu().squeeze(),
-            # "val_pred": post_outputs[0].detach().cpu().squeeze(),
+            "val_image": inputs[0].detach().cpu().squeeze(),
+            "val_gt": labels[0].detach().cpu().squeeze(),
+            "val_pred": post_outputs[0].detach().cpu().squeeze(),
         }
         self.val_step_outputs.append(metrics_dict)
 
@@ -406,16 +424,16 @@ class Model(pl.LightningModule):
         # log on to wandb
         self.log_dict(wandb_logs)
 
-        # # plot the validation images
-        # fig = plot_slices(image=self.val_step_outputs[0]["val_image"],
-        #                   gt=self.val_step_outputs[0]["val_gt"],
-        #                   pred=self.val_step_outputs[0]["val_pred"],)
-        # wandb.log({"validation images": wandb.Image(fig)})
+        # plot the validation images
+        fig = plot_slices(image=self.val_step_outputs[0]["val_image"],
+                          gt=self.val_step_outputs[0]["val_gt"],
+                          pred=self.val_step_outputs[0]["val_pred"],)
+        wandb.log({"validation images": wandb.Image(fig)})
 
         # free up memory
         self.val_step_outputs.clear()
         wandb_logs.clear()
-        # plt.close(fig)
+        plt.close(fig)
 
         # return {"log": wandb_logs}
 
@@ -634,6 +652,28 @@ def main(args):
 
         if args.debug:
             save_exp_id = f"DEBUG_{save_exp_id}"
+    
+    elif args.model in ["hyperunet"]:
+        # HyperUNet model
+        logger.info(f"Using HyperUNet model ...")
+
+        net = HyperUNet(
+            hypernetwork_layers=config["model"]["hyperunet"]["hn_layers"],
+            in_c=config["model"]["hyperunet"]["in_channels"],
+            out_c=config["model"]["hyperunet"]["out_channels"],
+            n_down=config["model"]["hyperunet"]["num_down_blocks"],
+            C=config["model"]["hyperunet"]["num_init_channels"],
+            n_fix=3,
+            n_dim=3,
+        )
+        save_exp_id = f"{args.model}_seed={config['seed']}_" \
+                        f"ndata={n_datasets}_ncont={n_contrasts}_{args.pad_mode}_" \
+                        f"nf={config['model']['hyperunet']['num_init_channels']}" \
+                        # f"opt={config['opt']['name']}_lr={config['opt']['lr']}_AdapW_" \
+                        # f"bs={config['opt']['batch_size']}" \
+        
+        if args.debug:
+            save_exp_id = f"DEBUG_{save_exp_id}"
 
     timestamp = datetime.now().strftime(f"%Y%m%d-%H%M")   # prints in YYYYMMDD-HHMMSS format
     save_exp_id = f"{save_exp_id}_{timestamp}"
@@ -650,9 +690,9 @@ def main(args):
 
     # define loss function
     loss_func = AdapWingLoss(theta=0.5, omega=8, alpha=2.1, epsilon=1, reduction="sum")
-    # NOTE: tried increasing omega and decreasing epsilon but results marginally worse than the above
-    # loss_func = AdapWingLoss(theta=0.5, omega=12, alpha=2.1, epsilon=0.5, reduction="sum")
     logger.info(f"Using AdapWingLoss with theta={loss_func.theta}, omega={loss_func.omega}, alpha={loss_func.alpha}, epsilon={loss_func.epsilon} ...")
+    # loss_func = DiceCrossEntropyLoss(weight_ce=1.0, weight_dice=1.0)
+    # logger.info(f"Using DiceCrossEntropyLoss ...")
 
     # define callbacks
     early_stopping = pl.callbacks.EarlyStopping(
@@ -705,10 +745,10 @@ def main(args):
                             save_dir="/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/saved_models",
                             group=config["dataset"]["name"],
                             log_model=True, # save best model using checkpoint callback
-                            project='contrast-agnostic',
+                            project='hyper-space',
                             entity='naga-karthik',
-                            config=config,
-                            mode="disabled")
+                            config=config,)
+                            # mode="disabled")
 
         # Saving training script to wandb
         wandb.save("main.py")
@@ -726,7 +766,7 @@ def main(args):
             callbacks=[checkpoint_callback_loss, lr_monitor, early_stopping],
             check_val_every_n_epoch=config["opt"]["check_val_every_n_epochs"],
             max_epochs=config["opt"]["max_epochs"],
-            precision="bf16-mixed",
+            precision=32, #"bf16-mixed",
             # NOTE: Each epoch takes a looot of time with the aggregated dataset, so limiting the number of training batches
             # per epoch. Turns out that we don't need to go through all the training samples within an epoch for good performance.
             # nnunet hardcodes 250 training steps per epoch and we all know how it performs :)
