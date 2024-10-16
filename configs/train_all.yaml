@@ -3,9 +3,9 @@ save_test_preds: True
 
 directories:
   # Path to the saved models directory
-  models_dir: /home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/saved_models/lifelong
+  models_dir: /home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/saved_models/hyperunet
   # Path to the saved results directory
-  results_dir: /home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/results/models_lifelong
+  results_dir: /home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/results/models_hyper
   # Path to the saved wandb logs directory
   # if None, starts training from scratch. Otherwise, resumes training from the specified wandb run folder
   wandb_run_folder: None
@@ -15,7 +15,7 @@ dataset:
   name: lifelong-contrast-agnostic
   # Path to the dataset directory containing all datalists (.json files)
   # root_dir: /home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/datalists/lifelong-contrast-agnostic
-  root_dir: /home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/datalists/aggregation-20240517
+  root_dir: /home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/datalists/spine-generic-hyper-20241015
   # Type of contrast to be used for training. "all" corresponds to training on all contrasts
   contrast: all   # choices: ["t1w", "t2w", "t2star", "mton", "mtoff", "dwi", "all"]
   # Type of label to be used for training.
@@ -23,10 +23,10 @@ dataset:
 
 preprocessing:
   # Online resampling of images to the specified spacing.
-  spacing: [1.0, 1.0, 1.0]
+  # spacing: [1.0, 1.0, 1.0]
   # Center crop/pad images to the specified size. (NOTE: done after resampling)
   # values correspond to R-L, A-P, I-S axes of the image after 1mm isotropic resampling.
-  crop_pad_size: [64, 192, 320]
+  crop_pad_size: [192, 224, 320]
 
 opt:
   name: adam
@@ -34,13 +34,21 @@ opt:
   max_epochs: 250
   batch_size: 2
   # Interval between validation checks in epochs
-  check_val_every_n_epochs: 1
+  check_val_every_n_epochs: 5
   # Early stopping patience (this is until patience * check_val_every_n_epochs)
   early_stopping_patience: 20
 
 
 model:
   # Model architecture to be used for training (also to be specified as args in the command line)
+  
+  hyperunet:
+    hn_layers: [3, 32, 64, 64, 64]
+    in_channels: 1
+    out_channels: 1
+    num_down_blocks: 3
+    num_init_channels: 12
+
   nnunet-plain:
     # NOTE: these info are typically taken from nnUNetPlans.json (if an nnUNet model is trained)
     n_stages: 6
