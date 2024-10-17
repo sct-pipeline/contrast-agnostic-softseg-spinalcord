@@ -4,6 +4,7 @@ from datetime import datetime
 from loguru import logger
 import yaml
 import json
+import time
 
 import numpy as np
 import wandb
@@ -28,8 +29,8 @@ from monai.transforms import (Compose, EnsureType, EnsureTyped, Invertd, SaveIma
 CONTRASTS = {
     "t1map": ["T1map"],
     "mp2rage": ["inv-1_part-mag_MP2RAGE", "inv-2_part-mag_MP2RAGE"],
-    "t1w": ["T1w", "space-other_T1w"],
-    "t2w": ["T2w", "space-other_T2w"],
+    "t1w": ["T1w", "space-other_T1w", "acq-lowresSag_T1w"],
+    "t2w": ["T2w", "space-other_T2w", "acq-lowresSag_T2w", "acq-highresSag_T2w"],
     "t2star": ["T2star", "space-other_T2star"],
     "dwi": ["rec-average_dwi", "acq-dwiMean_dwi"],
     "mt-on": ["flip-1_mt-on_space-other_MTS", "acq-MTon_MTR"],
@@ -698,6 +699,7 @@ def main(args):
         num_model_params = count_parameters(model=net)
         logger.info(f"Number of Trainable model parameters: {(num_model_params / 1e6):.3f}M")
 
+        start_time = time.time()
         logger.info(f"Starting training from scratch ...")
         # wandb logger
         exp_logger = pl.loggers.WandbLogger(
@@ -712,7 +714,6 @@ def main(args):
 
         # Saving training script to wandb
         wandb.save("main.py")
-        wandb.save("transforms.py")
 
         # Enable TF32 on matmul and on cuDNN
         # torch._dynamo.config.verbose = True
@@ -730,13 +731,17 @@ def main(args):
             # NOTE: Each epoch takes a looot of time with the aggregated dataset, so limiting the number of training batches
             # per epoch. Turns out that we don't need to go through all the training samples within an epoch for good performance.
             # nnunet hardcodes 250 training steps per epoch and we all know how it performs :)
-            limit_train_batches=0.5,  # use 1.0 for full training
+            # limit_train_batches=0.5,  # use 1.0 for full training
             enable_progress_bar=True)
             # profiler="simple",)     # to profile the training time taken for each step
 
         # Train!
         trainer.fit(pl_model)
         logger.info(f" Training Done!")
+        end_time = time.time()
+
+        duration = (end_time - start_time)
+        logger.info(f"Total training time: {duration / 3600}hrs {(duration / 60) % 60}mins {(duration) % 60}secs")
 
     else:
         logger.info(f" Resuming training from the latest checkpoint! ")
