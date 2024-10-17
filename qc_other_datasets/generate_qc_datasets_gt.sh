@@ -73,6 +73,10 @@ elif [[ $QC_DATASET == "canproco" ]]; then
     contrasts="PSIR STIR T2w"
     label_suffix="seg-manual"
 
+elif [[ $QC_DATASET == "spider-challenge-2023" ]]; then
+    contrasts="acq-lowresSag_T1w acq-lowresSag_T2w acq-highresSag_T2w"
+    label_suffix="label-SC_seg"
+
 fi
 
 PATH_DERIVATIVES="${PATH_DATA}/derivatives/labels/./${SUBJECT}/anat"
