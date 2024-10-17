@@ -38,10 +38,11 @@ FILESEG_SUFFIXES = {
     "sci-paris": ["labels", "seg-manual"],
     "sci-zurich": ["labels", "seg-manual"],
     "sct-testing-large": ["labels", "seg-manual"],
+    "spider-challenge-2023": ["labels", "label-SC_seg"]
 }
 
 # add abbreviations of pathologies in sct-testing-large and other datasets to be included in the aggregated dataset
-PATHOLOGIES = ["ALS", "DCM", "NMO", "MS", "SYR", "SCI"]
+PATHOLOGIES = ["ALS", "DCM", "NMO", "MS", "SYR", "SCI", "LBP"]
 
 
 def get_parser():
@@ -109,7 +110,7 @@ def fetch_subject_nifti_details(filename_path):
     else:
         # TODO: add more contrasts as needed
         # contrast_pattern =  r'.*_(T1w|T2w|T2star|PSIR|STIR|UNIT1|acq-MTon_MTR|acq-dwiMean_dwi|acq-b0Mean_dwi|acq-T1w_MTR).*'
-        contrast_pattern =  r'.*_(T1w|T2w|T2star|PSIR|STIR|UNIT1|T1map|inv-1_part-mag_MP2RAGE|inv-2_part-mag_MP2RAGE|acq-MTon_MTR|acq-dwiMean_dwi|acq-T1w_MTR).*'
+        contrast_pattern =  r'.*_(T1w|acq-lowresSag_T1w|T2w|acq-lowresSag_T2w|acq-highresSag_T2w|T2star|PSIR|STIR|UNIT1|T1map|inv-1_part-mag_MP2RAGE|inv-2_part-mag_MP2RAGE|acq-MTon_MTR|acq-dwiMean_dwi|acq-T1w_MTR).*'
     contrast = re.search(contrast_pattern, filename_path)
     contrastID = contrast.group(1) if contrast else ""
 
@@ -300,6 +301,9 @@ def create_df(dataset_path):
             except subprocess.CalledProcessError as e:
                 logger.error(f"Error in downloading {file} from git-annex: {e}")
     
+    elif dataset_name == 'spider-challenge-2023':
+        df['pathologyID'] = 'LBP'
+
     else:
         # load the participants.tsv file
         df_participants = pd.read_csv(os.path.join(dataset_path, 'participants.tsv'), sep='\t')
