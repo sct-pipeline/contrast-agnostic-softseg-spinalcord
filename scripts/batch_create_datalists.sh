@@ -13,13 +13,13 @@ DATASETS=("basel-mp2rage" "canproco" "data-multi-subject" \
             "dcm-brno" "dcm-zurich" "dcm-zurich-lesions" "dcm-zurich-lesions-20231115" \
             "lumbar-epfl" "lumbar-vanderbilt" "nih-ms-mp2rage" \ 
             "sci-colorado" "sci-paris" "sci-zurich" \
-            "sct-testing-large")
+            "sct-testing-large" "spider-challenge-2023")
 
 # base root path for the datasets
 PATH_DATA_BASE="/home/GRAMES.POLYMTL.CA/u114716/datasets"
 
 # output path
-PATH_OUTPUT="/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/datalists/contrast-agnostic-v3-20240807"
+PATH_OUTPUT="/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/datalists/v2-final-aggregation-20241017"
 
 # create datalists!
 

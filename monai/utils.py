@@ -15,8 +15,8 @@ from batchgenerators.utilities.file_and_folder_operations import *
 CONTRASTS = {
     "t1map": ["T1map"],
     "mp2rage": ["inv-1_part-mag_MP2RAGE", "inv-2_part-mag_MP2RAGE"],
-    "t1w": ["T1w", "space-other_T1w"],
-    "t2w": ["T2w", "space-other_T2w"],
+    "t1w": ["T1w", "space-other_T1w", "acq-lowresSag_T1w"],
+    "t2w": ["T2w", "space-other_T2w", "acq-lowresSag_T2w", "acq-highresSag_T2w"],
     "t2star": ["T2star", "space-other_T2star"],
     "dwi": ["rec-average_dwi", "acq-dwiMean_dwi"],
     "mt-on": ["flip-1_mt-on_space-other_MTS", "acq-MTon_MTR"],
@@ -51,6 +51,8 @@ def get_pathology_wise_split(datalists_root):
 def get_datasets_stats(datalists_root, contrasts_dict, path_save):
 
     datalists = [file for file in os.listdir(datalists_root) if file.endswith('_seed50.json')]
+    # sort the datalists
+    datalists.sort()
 
     df = pd.DataFrame(columns=['train', 'validation', 'test'])
     # collect all the contrasts from the datalists
@@ -380,6 +382,6 @@ if __name__ == "__main__":
     # print(len(tr_ix), len(val_tx), len(te_ix))
 
     # datalists_root = "/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/datalists/lifelong-contrast-agnostic"
-    datalists_root = "/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/datalists/contrast-agnostic-v3-20240807"
+    datalists_root = "/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/datalists/v2-final-aggregation-20241017"
     get_datasets_stats(datalists_root, contrasts_dict=CONTRASTS, path_save=datalists_root)
     # get_pathology_wise_split(datalists_root, path_save=datalists_root)
