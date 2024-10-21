@@ -63,6 +63,99 @@ def get_pathology_wise_split(unified_df):
     return pathology_subjects, pathology_contrasts
     
 
+def plot_contrast_wise_pathology(df, path_save):
+    # remove the TOTAL row
+    df = df[:-1]
+    # remove the #total_per_contrast column
+    df = df.drop(columns=['#total_per_contrast'])
+
+    color_palette = {
+        'HC': '#fc8d62',
+        'MS': '#b3b3b3',
+        'RIS': '#e78ac3',
+        'RRMS': '#e31a1c',
+        'PPMS': '#ffd92f',
+        'DCM': '#8da0cb',
+        'SPMS': '#66c2a5',
+        'SCI': '#66c2a5',
+        'NMO': '#386cb0',
+        'SYR': '#b3b3b3',
+        'ALS': '#a6d854',
+        'LBP': '#cab2d6'
+    }
+
+    contrasts = df.index.tolist()
+
+    # plot a pie chart for each contrast and save as different file
+    for contrast in contrasts:
+        df_contrast = df.loc[[contrast]].T
+        # reorder the columsn to put 'ALS' between 'HC' and 'MS'
+        if contrast in ['dwi']:
+            df_contrast = df_contrast.reindex(['ALS', 'HC', 'MS', 'DCM', 'SCI', 'NMO', 'RRMS', 'PPMS', 'SPMS', 'RIS', 'LBP', 'SYR'])
+        elif contrast in ['unit1']:
+            # reorder the columsn to put 'PPMS' between 'MS' and 'RRMS'
+            df_contrast = df_contrast.reindex(['HC', 'MS', 'PPMS', 'RRMS', 'SPMS', 'RIS', 'DCM', 'SCI', 'NMO', 'ALS', 'LBP', 'SYR'])
+        elif contrast in ['t2star']:
+            df_contrast = df_contrast.reindex(['HC', 'ALS', 'MS', 'DCM', 'SCI', 'NMO', 'RRMS', 'PPMS', 'SPMS', 'RIS', 'LBP', 'SYR'])
+
+        df_contrast = df_contrast[df_contrast[contrast] != 0]
+        
+        fig, ax = plt.subplots(figsize=(5.5, 3.5), subplot_kw=dict(aspect="equal"))  # Increased figure size
+        wedges, texts = ax.pie(
+            df_contrast[contrast], 
+            wedgeprops=dict(width=0.5), 
+            startangle=-40,
+            colors=[color_palette[pathology] for pathology in df_contrast.index],
+        )
+
+        # Annotation customization
+        bbox_props = dict(boxstyle="square,pad=0.5", fc="w", ec="k", lw=0.72)
+        kw = dict(arrowprops=dict(arrowstyle="-"), bbox=bbox_props, zorder=0, va="center")
+        texts_to_adjust = []  # collect all annotations for adjustment
+
+        for i, p in enumerate(wedges):
+            ang = (p.theta2 - p.theta1)/2. + p.theta1
+            y = np.sin(np.deg2rad(ang))
+            x = np.cos(np.deg2rad(ang))
+            horizontalalignment = {-1: "right", 1: "left"}[int(np.sign(x))]
+            connectionstyle = f"angle,angleA=0,angleB={ang}"
+            kw["arrowprops"].update({"connectionstyle": connectionstyle})
+            # font size
+            kw["fontsize"] = 11
+            # bold font
+            kw["fontweight"] = 'bold'
+
+            # Skip annotation for 'SYR'
+            if df_contrast.index[i] == 'SYR':
+                continue
+
+            # Push small labels further away from pie
+            distance = 1.1 #1.4 if df_contrast[contrast].iloc[i] / df_contrast[contrast].sum() < 0.1 else 1.2
+            # for dwi contrast and sci pathology, plot the annotation to the left
+            if contrast == 'dwi' and df_contrast.index[i] == 'SCI':
+                distance = 1.4
+                horizontalalignment = 'left'
+            # plot 'ALS' annotation to the right
+            if df_contrast.index[i] == 'ALS':
+                distance = 1.2
+                horizontalalignment = 'left'                
+            if contrast == 't2w' and df_contrast.index[i] == 'RIS':
+                distance = 1.4
+                horizontalalignment = 'left'
+                
+            # Annotate with number of images per pathology
+            text = f"{df_contrast.index[i]} (n={df_contrast.iloc[i, 0]})"
+            annotation = ax.annotate(text, xy=(x, y), xytext=(distance*np.sign(x), distance*y),
+                                     horizontalalignment=horizontalalignment, **kw)
+            texts_to_adjust.append(annotation)
+
+        plt.ylabel('')
+        plt.tight_layout()
+        plt.savefig(os.path.join(path_save, f'{contrast}_pathology_split.png'), dpi=300)
+        plt.close()
+
+
+
 def get_datasets_stats(datalists_root, contrasts_dict, path_save):
 
     # create a unified dataframe combining all datasets
@@ -115,6 +208,23 @@ def get_datasets_stats(datalists_root, contrasts_dict, path_save):
     df_pathology = df_pathology.sort_index()
     # add a row for the total number of subjects
     df_pathology.loc['TOTAL'] = df_pathology['Number of Subjects'].sum()
+
+
+    # get the contrast-wise pathology split
+    df_contrast_pathology = pd.DataFrame.from_dict(pathology_contrasts, orient='index')
+    # sort the dataframe by the contrast column
+    df_contrast_pathology = df_contrast_pathology.sort_index()
+    # add a row for the total number of images
+    df_contrast_pathology.loc['TOTAL'] = df_contrast_pathology.sum()
+    # add a column for the total number of images per contrast
+    df_contrast_pathology['#total_per_contrast'] = df_contrast_pathology.sum(axis=1)
+    # print(df_contrast_pathology)
+    
+    # plots 
+    save_path = os.path.join(path_save, 'plots')
+    os.makedirs(save_path, exist_ok=True)
+    plot_contrast_wise_pathology(df_contrast_pathology, save_path)
+    # exit()
 
     # create a txt file
     with open(os.path.join(path_save, 'dataset_stats_overall.txt'), 'w') as f:
