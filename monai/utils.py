@@ -87,6 +87,8 @@ def plot_contrast_wise_pathology(df, path_save):
     contrasts = df.index.tolist()
 
     # plot a pie chart for each contrast and save as different file
+    # NOTE: some pathologies with less subjects were overlapping so this is a hacky (and bad) way to fix this 
+    # issue temporarily by reordering the columns of the df
     for contrast in contrasts:
         df_contrast = df.loc[[contrast]].T
         # reorder the columsn to put 'ALS' between 'HC' and 'MS'
@@ -98,8 +100,10 @@ def plot_contrast_wise_pathology(df, path_save):
         elif contrast in ['t2star']:
             df_contrast = df_contrast.reindex(['HC', 'ALS', 'MS', 'DCM', 'SCI', 'NMO', 'RRMS', 'PPMS', 'SPMS', 'RIS', 'LBP', 'SYR'])
 
+        # for the given contrast, remove columns (pathologies) with 0 images
         df_contrast = df_contrast[df_contrast[contrast] != 0]
         
+        # adapted from https://matplotlib.org/stable/gallery/pie_and_polar_charts/pie_and_donut_labels.html
         fig, ax = plt.subplots(figsize=(5.5, 3.5), subplot_kw=dict(aspect="equal"))  # Increased figure size
         wedges, texts = ax.pie(
             df_contrast[contrast], 
