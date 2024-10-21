@@ -4,7 +4,6 @@ from torch.optim.lr_scheduler import _LRScheduler
 import torch
 import subprocess
 import os
-import json
 import pandas as pd
 import re
 import importlib
@@ -210,80 +209,6 @@ def get_git_branch_and_commit(dataset_path=None):
     return branch, commit
 
 
-def numeric_score(prediction, groundtruth):
-    """Computation of statistical numerical scores:
-
-    * FP = Soft False Positives
-    * FN = Soft False Negatives
-    * TP = Soft True Positives
-    * TN = Soft True Negatives
-
-    Robust to hard or soft input masks. For example::
-        prediction=np.asarray([0, 0.5, 1])
-        groundtruth=np.asarray([0, 1, 1])
-        Leads to FP = 1.5
-
-    Note: It assumes input values are between 0 and 1.
-
-    Args:
-        prediction (ndarray): Binary prediction.
-        groundtruth (ndarray): Binary groundtruth.
-
-    Returns:
-        float, float, float, float: FP, FN, TP, TN
-    """
-    FP = float(np.sum(prediction * (1.0 - groundtruth)))
-    FN = float(np.sum((1.0 - prediction) * groundtruth))
-    TP = float(np.sum(prediction * groundtruth))
-    TN = float(np.sum((1.0 - prediction) * (1.0 - groundtruth)))
-    return FP, FN, TP, TN
-
-
-def precision_score(prediction, groundtruth, err_value=0.0):
-    """Positive predictive value (PPV).
-
-    Precision equals the number of true positive voxels divided by the sum of true and false positive voxels.
-    True and false positives are computed on soft masks, see ``"numeric_score"``.
-    Taken from: https://github.com/ivadomed/ivadomed/blob/master/ivadomed/metrics.py
-
-    Args:
-        prediction (ndarray): First array.
-        groundtruth (ndarray): Second array.
-        err_value (float): Value returned in case of error.
-
-    Returns:
-        float: Precision score.
-    """
-    FP, FN, TP, TN = numeric_score(prediction, groundtruth)
-    if (TP + FP) <= 0.0:
-        return err_value
-
-    precision = np.divide(TP, TP + FP)
-    return precision
-
-
-def recall_score(prediction, groundtruth, err_value=0.0):
-    """True positive rate (TPR).
-
-    Recall equals the number of true positive voxels divided by the sum of true positive and false negative voxels.
-    True positive and false negative values are computed on soft masks, see ``"numeric_score"``.
-    Taken from: https://github.com/ivadomed/ivadomed/blob/master/ivadomed/metrics.py
-
-    Args:
-        prediction (ndarray): First array.
-        groundtruth (ndarray): Second array.
-        err_value (float): Value returned in case of error.
-
-    Returns:
-        float: Recall score.
-    """
-    FP, FN, TP, TN = numeric_score(prediction, groundtruth)
-    if (TP + FN) <= 0.0:
-        return err_value
-    TPR = np.divide(TP, TP + FN)
-    return TPR
-
-
 def dice_score(prediction, groundtruth):
     smooth = 1.
     numer = (prediction * groundtruth).sum()
@@ -335,17 +260,6 @@ def plot_slices(image, gt, pred, debug=False):
     plt.tight_layout()
     fig.show()
     return fig
-
-
-def compute_average_csa(patch, spacing):
-    num_slices = patch.shape[2]
-    areas = torch.empty(num_slices)
-    for slice_idx in range(num_slices):
-        slice_mask = patch[:, :, slice_idx]
-        area = torch.count_nonzero(slice_mask) * (spacing[0] * spacing[1])
-        areas[slice_idx] = area
-
-    return torch.mean(areas)
 
 
 class PolyLRScheduler(_LRScheduler):
