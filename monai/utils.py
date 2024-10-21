@@ -25,18 +25,11 @@ CONTRASTS = {
     "stir": ["STIR"]
 }
 
-def get_pathology_wise_split(datalists_root):
+def get_pathology_wise_split(unified_df):
     
-    # create a unified dataframe combining all datasets
-    csvs = [os.path.join(datalists_root, file) for file in os.listdir(datalists_root) if file.endswith('.csv')]
-    unified_df = pd.concat([pd.read_csv(csv) for csv in csvs], ignore_index=True)
-    
-    # sort the dataframe by the dataset column
-    unified_df = unified_df.sort_values(by='datasetName', ascending=True)
-    # drop nan
-    unified_df = unified_df.dropna(subset=['pathologyID'])
-
-    # pathologies
+    # ===========================================================================
+    #                Subject-wise Pathology split
+    # ===========================================================================
     pathologies = unified_df['pathologyID'].unique()
 
     # count the number of subjects for each pathology
@@ -44,7 +37,30 @@ def get_pathology_wise_split(datalists_root):
     for pathology in pathologies:
         pathology_subjects[pathology] = len(unified_df[unified_df['pathologyID'] == pathology]['subjectID'].unique())
 
-    return pathology_subjects
+    # merge MildCompression, DCM, MildCompression/DCM into DCM
+    pathology_subjects['DCM'] = pathology_subjects['MildCompression'] + pathology_subjects['MildCompression/DCM'] + pathology_subjects['DCM']
+    pathology_subjects.pop('MildCompression', None)
+    pathology_subjects.pop('MildCompression/DCM', None)
+
+    # ===========================================================================
+    #                Contrast-wise Pathology split
+    # ===========================================================================
+    # for a given contrast, count the number of images for each pathology
+    pathology_contrasts = {}
+    for contrast in CONTRASTS.keys():
+        pathology_contrasts[contrast] = {}
+        # initialize the count for each pathology
+        pathology_contrasts[contrast] = {pathology: 0 for pathology in pathologies}
+        for pathology in pathologies:
+                pathology_contrasts[contrast][pathology] += len(unified_df[(unified_df['pathologyID'] == pathology) & (unified_df['contrastID'] == contrast)]['filename'])
+
+    # merge MildCompression, DCM, MildCompression/DCM into DCM
+    for contrast in pathology_contrasts.keys():
+        pathology_contrasts[contrast]['DCM'] = pathology_contrasts[contrast]['MildCompression'] + pathology_contrasts[contrast]['MildCompression/DCM'] + pathology_contrasts[contrast]['DCM']
+        pathology_contrasts[contrast].pop('MildCompression', None)
+        pathology_contrasts[contrast].pop('MildCompression/DCM', None)
+
+    return pathology_subjects, pathology_contrasts
     
 
 def get_datasets_stats(datalists_root, contrasts_dict, path_save):
@@ -90,9 +106,13 @@ def get_datasets_stats(datalists_root, contrasts_dict, path_save):
     df['#images_per_contrast'] = df['train'] + df['validation'] + df['test']
     
 
+    # get the subject-wise pathology split
+    pathology_subjects, pathology_contrasts = get_pathology_wise_split(unified_df)
     df_pathology = pd.DataFrame.from_dict(pathology_subjects, orient='index', columns=['Number of Subjects'])
     # rename index to Pathology
     df_pathology.index.name = 'Pathology'
+    # sort the dataframe by the pathology column
+    df_pathology = df_pathology.sort_index()
     # add a row for the total number of subjects
     df_pathology.loc['TOTAL'] = df_pathology['Number of Subjects'].sum()
 
