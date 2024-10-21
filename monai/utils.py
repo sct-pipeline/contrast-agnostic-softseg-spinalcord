@@ -229,30 +229,27 @@ def get_datasets_stats(datalists_root, contrasts_dict, path_save):
     # create a txt file
     with open(os.path.join(path_save, 'dataset_stats_overall.txt'), 'w') as f:
         # 1. write the datalists used in a bullet list
-        f.write(f"DATASETS USED FOR MODEL TRAINING (n={len(datalists)}):\n\n")
-        for datalist in datalists:
-            f.write(f"\t- {datalist}\n")
-        f.write("\n\n")
+        f.write(f"DATASETS USED FOR MODEL TRAINING (n={len(csvs)}):\n")
+        for csv in csvs:
+            # only write the dataset name
+            f.write(f"\t- {csv.split('_')[1]}\n")
+        f.write("\n")
 
-        # 2. write the table with proper formatting
+        # 2. write the subject-wise pathology split
+        f.write(f"\nSUBJECT-WISE PATHOLOGY SPLIT:\n\n")
+        f.write(df_pathology.to_markdown())
+        f.write("\n\n\n")
+
+        # 3. write the contrast-wise pathology split (a subject can have multiple contrasts)
+        f.write(f"CONTRAST-WISE PATHOLOGY SPLIT (a subject can have multiple contrasts):\n\n")
+        f.write(df_contrast_pathology.to_markdown())
+        f.write("\n\n\n")
+
+        # 4. write the train/validation/test split per contrast
         f.write(f"SPLITS ACROSS DIFFERENT CONTRASTS (n={len(contrasts_final)}):\n\n")
         f.write(df.to_markdown(index=False))
         f.write("\n\n")
 
-        # 3. write the pathology-wise split
-        f.write(f"\nPATHOLOGY-WISE SPLIT:\n\n")
-        f.write(df_pathology.to_markdown())
-        f.write("\n\n")
-
-    # create a unified dataframe combining all datasets
-    csvs = [os.path.join(datalists_root, file) for file in os.listdir(datalists_root) if file.endswith('.csv')]
-    unified_df = pd.concat([pd.read_csv(csv) for csv in csvs], ignore_index=True)
-    
-    # sort the dataframe by the dataset column
-    unified_df = unified_df.sort_values(by='datasetName', ascending=True)
-
-    # save as csv
-    unified_df.to_csv(os.path.join(path_save, 'dataset_contrast_agnostic.csv'), index=False)
 
 
 # Taken from: https://github.com/MIC-DKFZ/nnUNet/blob/master/nnunetv2/utilities/find_class_by_name.py
