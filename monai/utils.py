@@ -49,52 +49,47 @@ def get_pathology_wise_split(datalists_root):
 
 def get_datasets_stats(datalists_root, contrasts_dict, path_save):
 
-    datalists = [file for file in os.listdir(datalists_root) if file.endswith('_seed50.json')]
-    # sort the datalists
-    datalists.sort()
+    # create a unified dataframe combining all datasets
+    csvs = [os.path.join(datalists_root, file) for file in os.listdir(datalists_root) if file.endswith('_seed50.csv')]
+    unified_df = pd.concat([pd.read_csv(csv) for csv in csvs], ignore_index=True)
+    
+    # sort the dataframe by the dataset column
+    unified_df = unified_df.sort_values(by='datasetName', ascending=True)
 
-    df = pd.DataFrame(columns=['train', 'validation', 'test'])
-    # collect all the contrasts from the datalists
-    for datalist in datalists:
-        json_path = os.path.join(datalists_root, datalist)
-        with open(json_path, 'r') as f:
-            data = json.load(f)
-            data = data['numImagesPerContrast'].items()
+    # save the originals as the csv
+    unified_df.to_csv(os.path.join(path_save, 'dataset_contrast_agnostic.csv'), index=False)
 
-        for split, contrast_info in data:
-            for contrast, num_images in contrast_info.items():
-                # add the contrast and the number of images to the dataframe
-                if contrast not in df.index:
-                    df.loc[contrast] = [0, 0, 0]
-                df.loc[contrast, split] += num_images
-
-    # reshape dataframe and add a column for contrast
-    df = df.reset_index()
-    df = df.rename(columns={'index': 'contrast'})
+    # dropna
+    unified_df = unified_df.dropna(subset=['pathologyID'])
 
     contrasts_final = list(contrasts_dict.keys())
-
     # rename the contrasts column as per contrasts_final
-    for c in df['contrast'].unique():
+    for c in unified_df['contrastID'].unique():
         for cf in contrasts_final:
             if re.search(cf, c.lower()):
-                df.loc[df['contrast'] == c, 'contrast'] = cf
+                unified_df.loc[unified_df['contrastID'] == c, 'contrastID'] = cf
                 break
-    
+
     # NOTE: MTon-MTR is same as flip-1_mt-on_space-other_MTS, but the naming is not mt-on
     # so doing the renaming manually
-    df.loc[df['contrast'] == 'acq-MTon_MTR', 'contrast'] = 'mt-on'
+    unified_df.loc[unified_df['contrastID'] == 'acq-MTon_MTR', 'contrastID'] = 'mt-on'
 
-    # sum the duplicate contrasts 
-    df = df.groupby('contrast').sum().reset_index()
-    
-    # rename columns
-    df = df.rename(columns={'contrast': 'Contrast', 'train': '#train_images', 'validation': '#validation_images', 'test': '#test_images'})
+    splits = ['train', 'validation', 'test']
+    # count the number of images per contrast
+    df = pd.DataFrame(columns=['contrast', 'train', 'validation', 'test'])
+    for contrast in contrasts_final:
+        df.loc[len(df)] = [contrast, 0, 0, 0]
+        for split in splits:
+            df.loc[df['contrast'] == contrast, split] = len(unified_df[(unified_df['contrastID'] == contrast) & (unified_df['split'] == split)])
+
+    # sort the dataframe by the contrast column
+    df = df.sort_values(by='contrast', ascending=True)
     # add a row for the total number of images
-    df.loc[len(df)] = ['TOTAL', df['#train_images'].sum(), df['#validation_images'].sum(), df['#test_images'].sum()]
+    df.loc[len(df)] = ['TOTAL', df['train'].sum(), df['validation'].sum(), df['test'].sum()]
+    # add a column for total number of images per contrast
+    df['#images_per_contrast'] = df['train'] + df['validation'] + df['test']
+    
 
-    # get the pathology-wise split
-    pathology_subjects = get_pathology_wise_split(datalists_root)
     df_pathology = pd.DataFrame.from_dict(pathology_subjects, orient='index', columns=['Number of Subjects'])
     # rename index to Pathology
     df_pathology.index.name = 'Pathology'
