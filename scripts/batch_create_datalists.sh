@@ -19,7 +19,8 @@ DATASETS=("basel-mp2rage" "canproco" "data-multi-subject" \
 PATH_DATA_BASE="/home/GRAMES.POLYMTL.CA/u114716/datasets"
 
 # output path
-PATH_OUTPUT="/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/datalists/v2-final-aggregation-20241017"
+folder_name=v2-final-aggregation-$(date +"%Y%m%d")
+PATH_OUTPUT="/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/datalists/${folder_name}"
 
 # create datalists!
 
