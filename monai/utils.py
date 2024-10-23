@@ -9,6 +9,7 @@ import re
 import importlib
 import pkgutil
 from batchgenerators.utilities.file_and_folder_operations import *
+from image import Image
 
 
 CONTRASTS = {
@@ -24,6 +25,39 @@ CONTRASTS = {
     "psir": ["PSIR"],
     "stir": ["STIR"]
 }
+
+
+def get_image_stats(image_path):
+    """
+    This function takes an image file as input and returns its orientation.
+
+    Input:
+        image_path : str : Path to the image file
+
+    Returns:
+        orientation : str : Orientation of the image
+    """
+    img = Image(str(image_path))
+    img.change_orientation('RPI')
+    shape = img.dim[:3]
+    shape = [int(s) for s in shape]
+    # Get pixdim
+    pixdim = img.dim[4:7]
+    # If all are the same, the image is isotropic
+    if np.allclose(pixdim, pixdim[0], atol=1e-3):
+        orientation = 'isotropic'
+    # Elif, the lowest arg is 0 then the orientation is sagittal
+    elif np.argmax(pixdim) == 0:
+        orientation = 'sagittal'
+    # Elif, the lowest arg is 1 then the orientation is coronal
+    elif np.argmax(pixdim) == 1:
+        orientation = 'coronal'
+    # Else the orientation is axial
+    else:
+        orientation = 'axial'
+    resolution = np.round(pixdim, 2)
+    return shape, orientation, resolution
+
 
 def get_pathology_wise_split(unified_df):
     
@@ -421,7 +455,9 @@ if __name__ == "__main__":
     # tr_ix, val_tx, te_ix, fold = names_list[0]
     # print(len(tr_ix), len(val_tx), len(te_ix))
 
-    # datalists_root = "/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/datalists/lifelong-contrast-agnostic"
-    datalists_root = "/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/datalists/v2-final-aggregation-20241017"
-    get_datasets_stats(datalists_root, contrasts_dict=CONTRASTS, path_save=datalists_root)
-    # get_pathology_wise_split(datalists_root, path_save=datalists_root)
+    # datalists_root = "/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/datalists/v2-final-aggregation-20241017"
+    # get_datasets_stats(datalists_root, contrasts_dict=CONTRASTS, path_save=datalists_root)
+    # # get_pathology_wise_split(datalists_root, path_save=datalists_root)
+
+    img_path = "/home/GRAMES.POLYMTL.CA/u114716/datasets/sci-colorado/sub-5694/anat/sub-5694_T2w.nii.gz"
+    get_image_stats(img_path)
