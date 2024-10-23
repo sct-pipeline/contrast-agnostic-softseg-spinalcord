@@ -12,7 +12,7 @@ from collections import OrderedDict
 import subprocess
 from datetime import datetime
 
-from utils import get_git_branch_and_commit
+from utils import get_git_branch_and_commit, get_image_stats
 
 import pandas as pd
 pd.set_option('display.max_colwidth', None)
@@ -175,9 +175,6 @@ def create_df(dataset_path):
     # get subjectID, sessionID and orientationID
     df['subjectID'], df['sessionID'], df['orientationID'], df['contrastID'] = zip(*df['filename'].map(fetch_subject_nifti_details))
 
-    # sub_files = [ df[df['subjectID'] == 'sub-sherbrookeBiospective006']['filename'].values[idx] for idx in range(len(df[df['subjectID'] == 'sub-sherbrookeBiospective006']))]
-    # print(len(sub_files))
-
     if dataset_name == 'basel-mp2rage':
         
         # set the type of pathologyID as str
@@ -325,9 +322,13 @@ def create_df(dataset_path):
         
         else:
             df['pathologyID'] = 'n/a'
-         
+
+    # get image stats
+    df['shape'], df['imgOrientation'], df['spacing'] = zip(*df['filename'].map(get_image_stats))
+
     # refactor to move filename and filesegname to the end of the dataframe
-    df = df[['datasetName', 'subjectID', 'sessionID', 'orientationID', 'contrastID', 'pathologyID', 'filename']] #, 'filesegname']]
+    df = df[['datasetName', 'subjectID', 'sessionID', 'orientationID', 'contrastID', 'pathologyID', 
+        'shape', 'imgOrientation', 'spacing', 'filename']]
 
     return df
 
@@ -506,7 +507,7 @@ def main():
         df['filename'] = df['filename'].replace(file, os.path.basename(file))
 
     # reorder the columns
-    df = df[['datasetName', 'subjectID', 'sessionID', 'orientationID', 'contrastID', 'pathologyID', 'split', 'filename']] #, 'filesegname']]
+    df = df[['datasetName', 'subjectID', 'sessionID', 'orientationID', 'contrastID', 'pathologyID', 'shape', 'imgOrientation', 'spacing', 'split', 'filename']]
     # sort the dataframe based on subjectID
     df = df.sort_values(by=['subjectID'], ascending=True)
     # save the dataframe to a csv file
