@@ -37,7 +37,10 @@ LIST_OF_PARAMETERS = [
     'MagneticFieldStrength',
     'Manufacturer',
     'ManufacturerModelName',
-    'ProtocolName'
+    'ProtocolName',
+    'RepetitionTime',
+    'EchoTime',
+    'InversionTime',
     ]
 
 
@@ -51,7 +54,7 @@ def get_parser():
         prog=os.path.basename(__file__).strip('.py')
     )
     parser.add_argument(
-        '--path-datalist', required=True, type=str,
+        '--path-datalists', required=True, type=str,
         help='Path to datalist json containing filename of subjects included train/val/test splits. ' 
              '(i.e. the output of create_msd_data.py script). Output is stored in args.path_datalist/sequence_parameters'
     )
@@ -79,10 +82,10 @@ def parse_json_file(file_path):
     # Initialize an empty dictionary to store the parsed information
     parsed_info = {}
 
-    if 'zurich' in file_path:
+    if 'sci-zurich' in file_path:
         # For sci-zurich, JSON file contains a list of dictionaries, each dictionary contains a list of dictionaries
         data = data['acqpar'][0]
-    elif 'colorado' in file_path:
+    elif 'sci-colorado' in file_path:
         data = data
 
     # Loop across the parameters
@@ -151,40 +154,46 @@ def main():
     parser = get_parser()
     args = parser.parse_args()
 
-    dir_path = os.path.dirname(args.path_datalist)
-    out_path = os.path.join(dir_path, 'sequence_parameters')
-    dataset_name = args.path_datalist.split('/')[-1].split('_')[1]
+    datalists = [os.path.join(args.path_datalists, file) for file in os.listdir(args.path_datalists) if file.endswith('_seed50.json')]
+    out_path = os.path.join(args.path_datalists, 'sequence_parameters')
+    if not os.path.exists(out_path):
+        os.makedirs(out_path, exist_ok=True)
 
-    if not os.path.exists(args.path_datalist):
-        print(f'ERROR: {args.path_datalist} does not exist. Run create_msd_data.py script first.')
+    for datalist in datalists:
+        dataset_name = datalist.split('/')[-1].split('_')[1]
 
-    # load json file
-    with open(args.path_datalist, 'r') as f:
-        data = json.load(f)
-    
-    list_of_files = []
-    for split in ['train', 'validation', 'test']:
-        for idx in range(len(data[split])):
-            list_of_files.append(data[split][idx]["image"])
+        if not os.path.exists(datalist):
+            print(f'ERROR: {datalist} does not exist. Run create_msd_data.py script first.')
 
-    # Initialize an empty list to store the parsed data
-    parsed_data = []
+        # load json file
+        with open(datalist, 'r') as f:
+            data = json.load(f)
+        
+        list_of_files = []
+        for split in ['train', 'validation', 'test']:
+            for idx in range(len(data[split])):
+                list_of_files.append(data[split][idx]["image"])
+
+        # Initialize an empty list to store the parsed data
+        parsed_data = []
 
 
-    # Loop across JSON sidecar files in the input path
-    for file in tqdm(list_of_files):
-        # print(f'Parsing {file}')
-        parsed_json = parse_json_file(file)
-        parsed_header = parse_nii_file(file)
-        # Note: **metrics is used to unpack the key-value pairs from the metrics dictionary
-        parsed_data.append({'filename': file, **parsed_json, **parsed_header})
+        # Loop across JSON sidecar files in the input path
+        for file in tqdm(list_of_files):
+            # print(f'Parsing {file}')
+            parsed_json = parse_json_file(file)
+            parsed_header = parse_nii_file(file)
+            # Note: **metrics is used to unpack the key-value pairs from the metrics dictionary
+            parsed_data.append({'filename': file, **parsed_json, **parsed_header})
 
-    # Create a pandas DataFrame from the parsed data
-    df = pd.DataFrame(parsed_data)
+        # Create a pandas DataFrame from the parsed data
+        df = pd.DataFrame(parsed_data)
 
-    # Save the DataFrame to a CSV file
-    df.to_csv(os.path.join(out_path, f'{dataset_name}_parsed_data.csv'), index=False)
-    print(f"Parsed data saved to {os.path.join(out_path, f'{dataset_name}_parsed_data.csv')}")
+        df['filename'] = df['filename'].apply(lambda x: x.replace('/home/GRAMES.POLYMTL.CA/u114716/datasets/', ''))
+
+        # Save the DataFrame to a CSV file
+        df.to_csv(os.path.join(out_path, f'{dataset_name}_parsed_data.csv'), index=False)
+        print(f"Parsed data saved to {os.path.join(out_path, f'{dataset_name}_parsed_data.csv')}")
 
     # # For sci-paris, we do not have JSON sidecars --> we can fetch only PixDim and SliceThickness from nii header
     # if 'sci-paris' in dir_path:
