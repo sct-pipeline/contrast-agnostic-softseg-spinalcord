@@ -168,21 +168,24 @@ def plot_contrast_wise_pathology(df, path_save):
                 continue
 
             # Push small labels further away from pie
-            distance = 1.1 #1.4 if df_contrast[contrast].iloc[i] / df_contrast[contrast].sum() < 0.1 else 1.2
+            distance = 1.1
             # for dwi contrast and sci pathology, plot the annotation to the left
             if contrast == 'dwi' and df_contrast.index[i] == 'SCI':
                 distance = 1.5
                 horizontalalignment = 'right'
-            # plot 'ALS' annotation to the right
             if df_contrast.index[i] == 'ALS':
                 distance = 1.2
                 horizontalalignment = 'left'                
-            if contrast == 't2w' and df_contrast.index[i] in ['RIS', 'ALS']:
-                distance = 1.4
+            if contrast == 't2w' and df_contrast.index[i] in ['RIS', 'ALS', 'PPMS']:
+                if df_contrast.index[i] != 'PPMS':
+                    distance = 1.4
+                    horizontalalignment = 'left'
+                else:
+                    distance = 1
+                    horizontalalignment = 'right'
+            if contrast == 't1w' and df_contrast.index[i] == 'LBP':
+                distance = 1.3
                 horizontalalignment = 'left'
-            if contrast == 't2w' and df_contrast.index[i] == 'PPMS':
-                distance = 1
-                horizontalalignment = 'right'
                 
             # Annotate with number of images per pathology
             text = f"{df_contrast.index[i]} (n={df_contrast.iloc[i, 0]})"
