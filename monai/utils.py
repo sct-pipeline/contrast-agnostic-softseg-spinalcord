@@ -255,46 +255,72 @@ def get_datasets_stats(datalists_root, contrasts_dict, path_save):
     # add a column for total number of images per contrast
     df['#images_per_contrast'] = df['train'] + df['validation'] + df['test']
     
-    # get the median resolutions per contrast
-    df_res_median = pd.DataFrame(columns=['contrast', 'x', 'y', 'z'])
-    df_res_min = pd.DataFrame(columns=['contrast', 'x', 'y', 'z'])
-    df_res_max = pd.DataFrame(columns=['contrast', 'x', 'y', 'z'])
-    df_res_mean = pd.DataFrame(columns=['contrast', 'x', 'y', 'z'])
-    for contrast in contrasts_final:
-        # median
-        df_res_median.loc[len(df_res_median)] = [contrast] + [
-            unified_df[unified_df['contrastID'] == contrast]['spacing'].apply(lambda x: x[i]).median() for i in range(3)]
-        # min
-        df_res_min.loc[len(df_res_min)] = [contrast] + [
-            unified_df[unified_df['contrastID'] == contrast]['spacing'].apply(lambda x: x[i]).min() for i in range(3)]
-        # max
-        df_res_max.loc[len(df_res_max)] = [contrast] + [
-            unified_df[unified_df['contrastID'] == contrast]['spacing'].apply(lambda x: x[i]).max() for i in range(3)]
-        # mean
-        df_res_mean.loc[len(df_res_mean)] = [contrast] + [
-            unified_df[unified_df['contrastID'] == contrast]['spacing'].apply(lambda x: x[i]).mean().round(2) for i in range(3)]
+    df_mega = pd.DataFrame()
+    for orientation in ['sagittal', 'axial', 'isotropic']:
+        
+        # get the median resolutions per contrast
+        df_res_median = pd.DataFrame(columns=[f'contrast', 'x', 'y', 'z'])
+        df_res_min = pd.DataFrame(columns=[f'contrast', 'x', 'y', 'z'])
+        df_res_max = pd.DataFrame(columns=[f'contrast', 'x', 'y', 'z'])
+        df_res_mean = pd.DataFrame(columns=[f'contrast', 'x', 'y', 'z'])
+
+        for contrast in contrasts_final:
+            
+            if len(unified_df[(unified_df['contrastID'] == contrast) & (unified_df['imgOrientation'] == orientation)]) == 0:
+                # set NA values for the contrast
+                df_res_median.loc[len(df_res_median)] = [f'{contrast}_{orientation}'] + [np.nan, np.nan, np.nan]
+                df_res_min.loc[len(df_res_min)] = [f'{contrast}_{orientation}'] + [np.nan, np.nan, np.nan]
+                df_res_max.loc[len(df_res_max)] = [f'{contrast}_{orientation}'] + [np.nan, np.nan, np.nan]
+                df_res_mean.loc[len(df_res_mean)] = [f'{contrast}_{orientation}'] + [np.nan, np.nan, np.nan]
+            
+            else:
+                # median
+                df_res_median.loc[len(df_res_median)] = [f'{contrast}_{orientation}'] + [
+                    unified_df[(unified_df['contrastID'] == contrast) & (unified_df['imgOrientation'] == orientation)
+                               ]['spacing'].apply(lambda x: x[i]).median() for i in range(3)]
+                # min
+                df_res_min.loc[len(df_res_min)] = [f'{contrast}_{orientation}'] + [
+                    unified_df[(unified_df['contrastID'] == contrast) & (unified_df['imgOrientation'] == orientation)
+                               ]['spacing'].apply(lambda x: x[i]).min() for i in range(3)]
+                # max
+                df_res_max.loc[len(df_res_max)] = [f'{contrast}_{orientation}'] + [
+                    unified_df[(unified_df['contrastID'] == contrast) & (unified_df['imgOrientation'] == orientation)
+                               ]['spacing'].apply(lambda x: x[i]).max() for i in range(3)]
+                # mean
+                df_res_mean.loc[len(df_res_mean)] = [f'{contrast}_{orientation}'] + [
+                    unified_df[(unified_df['contrastID'] == contrast) & (unified_df['imgOrientation'] == orientation)
+                               ]['spacing'].apply(lambda x: x[i]).mean().round(2) for i in range(3)]
+
+        # drop rows with NA values
+        df_res_median = df_res_median.dropna()
+        df_res_min = df_res_min.dropna()
+        df_res_max = df_res_max.dropna()
+        df_res_mean = df_res_mean.dropna()
+        
+        # combine the x,y,z columns into a single column and drop the x,y,z columns
+        df_res_median['median_resolution_rpi'] = df_res_median.apply(lambda x: f"{x['x']} x {x['y']} x {x['z']}", axis=1)
+        df_res_median = df_res_median.drop(columns=['x', 'y', 'z'])
+
+        df_res_min['min_resolution_rpi'] = df_res_min.apply(lambda x: f"{x['x']} x {x['y']} x {x['z']}", axis=1)
+        df_res_min = df_res_min.drop(columns=['x', 'y', 'z'])
+
+        df_res_max['max_resolution_rpi'] = df_res_max.apply(lambda x: f"{x['x']} x {x['y']} x {x['z']}", axis=1)
+        df_res_max = df_res_max.drop(columns=['x', 'y', 'z'])
+
+        df_res_mean['mean_resolution_rpi'] = df_res_mean.apply(lambda x: f"{x['x']} x {x['y']} x {x['z']}", axis=1)
+        df_res_mean = df_res_mean.drop(columns=['x', 'y', 'z'])
+
+        # combine the dataframes based on the contrast column
+        df_res = pd.merge(df_res_median, df_res_min, on='contrast')
+        df_res = pd.merge(df_res, df_res_max, on='contrast')
+        df_res = pd.merge(df_res, df_res_mean, on='contrast')
+
+        # sort the dataframe by the contrast column
+        df_res = df_res.sort_values(by='contrast', ascending=True)
+
+        # concatenate the dataframes for different orientations on columns
+        df_mega = pd.concat([df_mega, df_res], axis=0)
     
-    # combine the x,y,z columns into a single column
-    df_res_median['median_resolution_rpi'] = df_res_median.apply(lambda x: f"{x['x']} x {x['y']} x {x['z']}", axis=1)
-    df_res_median = df_res_median.drop(columns=['x', 'y', 'z'])
-    
-    df_res_min['min_resolution_rpi'] = df_res_min.apply(lambda x: f"{x['x']} x {x['y']} x {x['z']}", axis=1)
-    df_res_min = df_res_min.drop(columns=['x', 'y', 'z'])
-
-    df_res_max['max_resolution_rpi'] = df_res_max.apply(lambda x: f"{x['x']} x {x['y']} x {x['z']}", axis=1)
-    df_res_max = df_res_max.drop(columns=['x', 'y', 'z'])
-    
-    df_res_mean['mean_resolution_rpi'] = df_res_mean.apply(lambda x: f"{x['x']} x {x['y']} x {x['z']}", axis=1)
-    df_res_mean = df_res_mean.drop(columns=['x', 'y', 'z'])
-
-    # combine the dataframes based on the contrast column
-    df_res = pd.merge(df_res_median, df_res_min, on='contrast')
-    df_res = pd.merge(df_res, df_res_max, on='contrast')
-    df_res = pd.merge(df_res, df_res_mean, on='contrast')
-
-    # sort the dataframe by the contrast column
-    df_res = df_res.sort_values(by='contrast', ascending=True)
-
 
     # get the subject-wise pathology split
     pathology_subjects, pathology_contrasts = get_pathology_wise_split(unified_df)
@@ -351,14 +377,13 @@ def get_datasets_stats(datalists_root, contrasts_dict, path_save):
         f.write("\n\n\n")
 
         # 5. write the median, min, max and mean resolutions per contrast
-        f.write(f"RESOLUTIONS PER CONTRAST (in mm^3):\n")
-        f.write(f"If resolution[0] > (resolution[1], resolution[2]) --> Sagittal Orientation\n")
-        f.write(f"\tand Slice Thickness --> resolution[0]\n")
-        f.write(f"\tIn-plane Resolution: resolution[1] x resolution[2]\n")
-        f.write(f"If resolution[2] > (resolution[0], resolution[1]) --> Axial Orientation\n")
-        f.write(f"\tand Slice Thickness --> resolution[2]\n")
-        f.write(f"\tIn-plane Resolution: resolution[0] x resolution[1]\n\n")
-        f.write(df_res.to_markdown(index=False))
+        f.write(f"RESOLUTIONS PER CONTRAST PER ORIENTATION (in mm^3):\n\n")
+        f.write(f"How to interpret the table: Each row corresponds to the contrast and its orientation with the median, min, max and mean resolutions in mm^3.\n")
+        f.write(f"For simplification, if a contrast does not have any images in a particular orientation in the dataset, then the row is not present in the table.\n")
+        f.write(f"For e.g. if you want to report the mean (min, max) resolution of a contrast, say, 'dwi_axial', \n")
+        f.write(f"then you pick the respective element in each of the columns.\n")
+        f.write(f"\t i.e. mean in-plane resolution: 0.89x0.89; range: (0.34x0.34, 1x1), and, likewise, Slice thickness: 5.1; range: (4, 17.5)\n\n")
+        f.write(df_mega.to_markdown(index=False))
         f.write("\n\n")
 
 
