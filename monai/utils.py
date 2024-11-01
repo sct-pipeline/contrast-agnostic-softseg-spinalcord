@@ -196,6 +196,12 @@ def plot_contrast_wise_pathology(df, path_save):
         plt.close()
 
 
+def parse_spacing(spacing_str):
+    # Remove brackets and split by spaces
+    spacing_values = re.findall(r"[\d.]+", spacing_str)
+    # Convert to float
+    return [float(val) for val in spacing_values]
+
 
 def get_datasets_stats(datalists_root, contrasts_dict, path_save):
 
@@ -224,11 +230,18 @@ def get_datasets_stats(datalists_root, contrasts_dict, path_save):
     # so doing the renaming manually
     unified_df.loc[unified_df['contrastID'] == 'acq-MTon_MTR', 'contrastID'] = 'mt-on'
 
+    # convert 'spacing' column from a string like "[1. 1. 1.]" to a list of floats
+    unified_df['spacing'] = unified_df['spacing'].apply(parse_spacing)
+    # for contrast in contrasts_final:
+    #     print(f"Max resolution for {contrast}:")
+    #     print([unified_df[unified_df['contrastID'] == contrast]['spacing'].apply(lambda x: x[i]).max() for i in range(3)])
+
     splits = ['train', 'validation', 'test']
     # count the number of images per contrast
     df = pd.DataFrame(columns=['contrast', 'train', 'validation', 'test'])
     for contrast in contrasts_final:
         df.loc[len(df)] = [contrast, 0, 0, 0]
+        # count the number of images per split
         for split in splits:
             df.loc[df['contrast'] == contrast, split] = len(unified_df[(unified_df['contrastID'] == contrast) & (unified_df['split'] == split)])
 
@@ -239,6 +252,46 @@ def get_datasets_stats(datalists_root, contrasts_dict, path_save):
     # add a column for total number of images per contrast
     df['#images_per_contrast'] = df['train'] + df['validation'] + df['test']
     
+    # get the median resolutions per contrast
+    df_res_median = pd.DataFrame(columns=['contrast', 'x', 'y', 'z'])
+    df_res_min = pd.DataFrame(columns=['contrast', 'x', 'y', 'z'])
+    df_res_max = pd.DataFrame(columns=['contrast', 'x', 'y', 'z'])
+    df_res_mean = pd.DataFrame(columns=['contrast', 'x', 'y', 'z'])
+    for contrast in contrasts_final:
+        # median
+        df_res_median.loc[len(df_res_median)] = [contrast] + [
+            unified_df[unified_df['contrastID'] == contrast]['spacing'].apply(lambda x: x[i]).median() for i in range(3)]
+        # min
+        df_res_min.loc[len(df_res_min)] = [contrast] + [
+            unified_df[unified_df['contrastID'] == contrast]['spacing'].apply(lambda x: x[i]).min() for i in range(3)]
+        # max
+        df_res_max.loc[len(df_res_max)] = [contrast] + [
+            unified_df[unified_df['contrastID'] == contrast]['spacing'].apply(lambda x: x[i]).max() for i in range(3)]
+        # mean
+        df_res_mean.loc[len(df_res_mean)] = [contrast] + [
+            unified_df[unified_df['contrastID'] == contrast]['spacing'].apply(lambda x: x[i]).mean().round(2) for i in range(3)]
+    
+    # combine the x,y,z columns into a single column
+    df_res_median['median_resolution_rpi'] = df_res_median.apply(lambda x: f"{x['x']} x {x['y']} x {x['z']}", axis=1)
+    df_res_median = df_res_median.drop(columns=['x', 'y', 'z'])
+    
+    df_res_min['min_resolution_rpi'] = df_res_min.apply(lambda x: f"{x['x']} x {x['y']} x {x['z']}", axis=1)
+    df_res_min = df_res_min.drop(columns=['x', 'y', 'z'])
+
+    df_res_max['max_resolution_rpi'] = df_res_max.apply(lambda x: f"{x['x']} x {x['y']} x {x['z']}", axis=1)
+    df_res_max = df_res_max.drop(columns=['x', 'y', 'z'])
+    
+    df_res_mean['mean_resolution_rpi'] = df_res_mean.apply(lambda x: f"{x['x']} x {x['y']} x {x['z']}", axis=1)
+    df_res_mean = df_res_mean.drop(columns=['x', 'y', 'z'])
+
+    # combine the dataframes based on the contrast column
+    df_res = pd.merge(df_res_median, df_res_min, on='contrast')
+    df_res = pd.merge(df_res, df_res_max, on='contrast')
+    df_res = pd.merge(df_res, df_res_mean, on='contrast')
+
+    # sort the dataframe by the contrast column
+    df_res = df_res.sort_values(by='contrast', ascending=True)
+
 
     # get the subject-wise pathology split
     pathology_subjects, pathology_contrasts = get_pathology_wise_split(unified_df)
@@ -267,6 +320,9 @@ def get_datasets_stats(datalists_root, contrasts_dict, path_save):
     plot_contrast_wise_pathology(df_contrast_pathology, save_path)
     # exit()
 
+    # sort the csvs list
+    csvs = sorted(csvs)
+
     # create a txt file
     with open(os.path.join(path_save, 'dataset_stats_overall.txt'), 'w') as f:
         # 1. write the datalists used in a bullet list
@@ -289,6 +345,17 @@ def get_datasets_stats(datalists_root, contrasts_dict, path_save):
         # 4. write the train/validation/test split per contrast
         f.write(f"SPLITS ACROSS DIFFERENT CONTRASTS (n={len(contrasts_final)}):\n\n")
         f.write(df.to_markdown(index=False))
+        f.write("\n\n\n")
+
+        # 5. write the median, min, max and mean resolutions per contrast
+        f.write(f"RESOLUTIONS PER CONTRAST (in mm^3):\n")
+        f.write(f"If resolution[0] > (resolution[1], resolution[2]) --> Sagittal Orientation\n")
+        f.write(f"\tand Slice Thickness --> resolution[0]\n")
+        f.write(f"\tIn-plane Resolution: resolution[1] x resolution[2]\n")
+        f.write(f"If resolution[2] > (resolution[0], resolution[1]) --> Axial Orientation\n")
+        f.write(f"\tand Slice Thickness --> resolution[2]\n")
+        f.write(f"\tIn-plane Resolution: resolution[0] x resolution[1]\n\n")
+        f.write(df_res.to_markdown(index=False))
         f.write("\n\n")
 
 
@@ -458,9 +525,9 @@ if __name__ == "__main__":
     # tr_ix, val_tx, te_ix, fold = names_list[0]
     # print(len(tr_ix), len(val_tx), len(te_ix))
 
-    # datalists_root = "/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/datalists/v2-final-aggregation-20241017"
-    # get_datasets_stats(datalists_root, contrasts_dict=CONTRASTS, path_save=datalists_root)
-    # # get_pathology_wise_split(datalists_root, path_save=datalists_root)
+    datalists_root = "/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/datalists/v2-final-aggregation-20241022"
+    get_datasets_stats(datalists_root, contrasts_dict=CONTRASTS, path_save=datalists_root)
+    # get_pathology_wise_split(datalists_root, path_save=datalists_root)
 
-    img_path = "/home/GRAMES.POLYMTL.CA/u114716/datasets/sci-colorado/sub-5694/anat/sub-5694_T2w.nii.gz"
-    get_image_stats(img_path)
+    # img_path = "/home/GRAMES.POLYMTL.CA/u114716/datasets/sci-colorado/sub-5694/anat/sub-5694_T2w.nii.gz"
+    # get_image_stats(img_path)
