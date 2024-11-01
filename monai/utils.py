@@ -104,18 +104,18 @@ def plot_contrast_wise_pathology(df, path_save):
     df = df.drop(columns=['#total_per_contrast'])
 
     color_palette = {
-        'HC': '#fc8d62',
-        'MS': '#b3b3b3',
-        'RIS': '#e78ac3',
-        'RRMS': '#e31a1c',
-        'PPMS': '#ffd92f',
-        'DCM': '#8da0cb',
-        'SPMS': '#66c2a5',
-        'SCI': '#66c2a5',
-        'NMO': '#386cb0',
+        'HC': '#55A868',
+        'MS': '#2B4373',
+        'RRMS': '#6A89C8',
+        'PPMS': '#88A1E0',
+        'SPMS': '#3B5A92',
+        'RIS': '#4C72B0',
+        'DCM': '#DD8452',
+        'SCI': '#C44E52',
+        'NMO': '#937860',
         'SYR': '#b3b3b3',
-        'ALS': '#a6d854',
-        'LBP': '#cab2d6'
+        'ALS': '#DA8BC3',
+        'LBP': '#CCB974'
     }
 
     contrasts = df.index.tolist()
@@ -138,7 +138,7 @@ def plot_contrast_wise_pathology(df, path_save):
         df_contrast = df_contrast[df_contrast[contrast] != 0]
         
         # adapted from https://matplotlib.org/stable/gallery/pie_and_polar_charts/pie_and_donut_labels.html
-        fig, ax = plt.subplots(figsize=(5.5, 3.5), subplot_kw=dict(aspect="equal"))  # Increased figure size
+        fig, ax = plt.subplots(figsize=(6.3, 3.5), subplot_kw=dict(aspect="equal"))  # Increased figure size
         wedges, texts = ax.pie(
             df_contrast[contrast], 
             wedgeprops=dict(width=0.5), 
@@ -159,7 +159,7 @@ def plot_contrast_wise_pathology(df, path_save):
             connectionstyle = f"angle,angleA=0,angleB={ang}"
             kw["arrowprops"].update({"connectionstyle": connectionstyle})
             # font size
-            kw["fontsize"] = 11
+            kw["fontsize"] = 14.5
             # bold font
             kw["fontweight"] = 'bold'
 
@@ -171,19 +171,22 @@ def plot_contrast_wise_pathology(df, path_save):
             distance = 1.1 #1.4 if df_contrast[contrast].iloc[i] / df_contrast[contrast].sum() < 0.1 else 1.2
             # for dwi contrast and sci pathology, plot the annotation to the left
             if contrast == 'dwi' and df_contrast.index[i] == 'SCI':
-                distance = 1.4
-                horizontalalignment = 'left'
+                distance = 1.5
+                horizontalalignment = 'right'
             # plot 'ALS' annotation to the right
             if df_contrast.index[i] == 'ALS':
                 distance = 1.2
                 horizontalalignment = 'left'                
-            if contrast == 't2w' and df_contrast.index[i] == 'RIS':
+            if contrast == 't2w' and df_contrast.index[i] in ['RIS', 'ALS']:
                 distance = 1.4
                 horizontalalignment = 'left'
+            if contrast == 't2w' and df_contrast.index[i] == 'PPMS':
+                distance = 1
+                horizontalalignment = 'right'
                 
             # Annotate with number of images per pathology
             text = f"{df_contrast.index[i]} (n={df_contrast.iloc[i, 0]})"
-            annotation = ax.annotate(text, xy=(x, y), xytext=(distance*np.sign(x), distance*y),
+            annotation = ax.annotate(text, xy=(x, y), xytext=(distance*np.sign(x)*1.05, distance*y),
                                      horizontalalignment=horizontalalignment, **kw)
             texts_to_adjust.append(annotation)
 
@@ -258,7 +261,7 @@ def get_datasets_stats(datalists_root, contrasts_dict, path_save):
     df_contrast_pathology['#total_per_contrast'] = df_contrast_pathology.sum(axis=1)
     # print(df_contrast_pathology)
     
-    # plots 
+    # plots
     save_path = os.path.join(path_save, 'plots')
     os.makedirs(save_path, exist_ok=True)
     plot_contrast_wise_pathology(df_contrast_pathology, save_path)
