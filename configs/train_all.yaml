@@ -1,5 +1,5 @@
 seed: 50
-save_test_preds: True
+save_test_preds: False
 
 directories:
   # Path to the saved models directory
@@ -12,14 +12,9 @@ directories:
 
 dataset:
   # Dataset name (will be used as "group_name" for wandb logging)
-  name: lifelong-contrast-agnostic
+  name: contrast-agnostic-v3
   # Path to the dataset directory containing all datalists (.json files)
-  # root_dir: /home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/datalists/lifelong-contrast-agnostic
-  root_dir: /home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/datalists/aggregation-20240517
-  # Type of contrast to be used for training. "all" corresponds to training on all contrasts
-  contrast: all   # choices: ["t1w", "t2w", "t2star", "mton", "mtoff", "dwi", "all"]
-  # Type of label to be used for training.
-  label_type: soft_bin  # choices: ["hard", "soft", "soft_bin"]
+  root_dir: /home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/datalists/v2-final-aggregation-20241017
 
 preprocessing:
   # Online resampling of images to the specified spacing.
@@ -34,7 +29,7 @@ opt:
   max_epochs: 250
   batch_size: 2
   # Interval between validation checks in epochs
-  check_val_every_n_epochs: 1
+  check_val_every_n_epochs: 50
   # Early stopping patience (this is until patience * check_val_every_n_epochs)
   early_stopping_patience: 20
 
@@ -72,19 +67,3 @@ model:
       [1, 2, 2],
     ]
     enable_deep_supervision: True
-
-  mednext:
-    num_input_channels: 1
-    base_num_features: 32
-    num_classes: 1
-    kernel_size: 3            # 3x3x3 and 5x5x5 were tested in publication
-    block_counts: [2,2,2,2,1,1,1,1,1] # number of blocks in each layer
-    norm_type: 'layer'
-    enable_deep_supervision: True
-
-  swinunetr:
-    spatial_dims: 3
-    depths: [2, 2, 2, 2]
-    num_heads: [3, 6, 12, 24]   # number of heads in multi-head Attention
-    feature_size: 36
-    use_pretrained: False

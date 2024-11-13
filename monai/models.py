@@ -15,42 +15,23 @@ from utils import recursive_find_python_class
 #                              Define plans json taken from nnUNet
 # ======================================================================================================
 nnunet_plans = {
-    "UNet_class_name": "PlainConvUNet",
-    "UNet_base_num_features": 32,
-    "n_conv_per_stage_encoder": [2, 2, 2, 2, 2, 2],
-    "n_conv_per_stage_decoder": [2, 2, 2, 2, 2],
-    "pool_op_kernel_sizes": [
-        [1, 1, 1],
-        [2, 2, 2],
-        [2, 2, 2],
-        [2, 2, 2],
-        [2, 2, 2],
-        [1, 2, 2]
-    ],
-    "conv_kernel_sizes": [
-        [3, 3, 3],
-        [3, 3, 3],
-        [3, 3, 3],
-        [3, 3, 3],
-        [3, 3, 3],
-        [3, 3, 3]
-    ],
-    "unet_max_num_features": 320,
+    "arch_class_name": "dynamic_network_architectures.architectures.unet.PlainConvUNet",
+    "arch_kwargs": {
+        "n_stages": 6,
+        "features_per_stage": [32, 64, 128, 256, 384, 384],
+        "strides": [
+            [1, 1, 1], 
+            [2, 2, 2], 
+            [2, 2, 2], 
+            [2, 2, 2],
+            [2, 2, 2],
+            [1, 2, 2]
+        ],
+        "n_conv_per_stage": [2, 2, 2, 2, 2, 2],
+        "n_conv_per_stage_decoder": [2, 2, 2, 2, 2]
+    },
+    "arch_kwargs_requires_import": ["conv_op", "norm_op", "dropout_op", "nonlin"],
 }
-
-
-# ======================================================================================================
-#                               Utils for nnUNet's Model
-# ====================================================================================================
-class InitWeights_He(object):
-    def __init__(self, neg_slope=1e-2):
-        self.neg_slope = neg_slope
-
-    def __call__(self, module):
-        if isinstance(module, nn.Conv3d) or isinstance(module, nn.ConvTranspose3d):
-            module.weight = nn.init.kaiming_normal_(module.weight, a=self.neg_slope)
-            if module.bias is not None:
-                module.bias = nn.init.constant_(module.bias, 0)
 
 
 # ======================================================================================================
@@ -180,7 +161,7 @@ def load_pretrained_swinunetr(model, path_pretrained_weights: str):
 if __name__ == "__main__":
 
     enable_deep_supervision = True
-    model = create_nnunet_from_plans(nnunet_plans, 1, 1, enable_deep_supervision)
+    model = create_nnunet_from_plans(nnunet_plans, 1, 1, deep_supervision=enable_deep_supervision)
     input = torch.randn(1, 1, 160, 224, 96)
     output = model(input)
     if enable_deep_supervision:

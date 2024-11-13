@@ -4,19 +4,19 @@ from torch.optim.lr_scheduler import _LRScheduler
 import torch
 import subprocess
 import os
-import json
 import pandas as pd
 import re
 import importlib
 import pkgutil
 from batchgenerators.utilities.file_and_folder_operations import *
+from image import Image
 
 
 CONTRASTS = {
     "t1map": ["T1map"],
     "mp2rage": ["inv-1_part-mag_MP2RAGE", "inv-2_part-mag_MP2RAGE"],
-    "t1w": ["T1w", "space-other_T1w"],
-    "t2w": ["T2w", "space-other_T2w"],
+    "t1w": ["T1w", "space-other_T1w", "acq-lowresSag_T1w"],
+    "t2w": ["T2w", "space-other_T2w", "acq-lowresSag_T2w", "acq-highresSag_T2w"],
     "t2star": ["T2star", "space-other_T2star"],
     "dwi": ["rec-average_dwi", "acq-dwiMean_dwi"],
     "mt-on": ["flip-1_mt-on_space-other_MTS", "acq-MTon_MTR"],
@@ -26,66 +26,366 @@ CONTRASTS = {
     "stir": ["STIR"]
 }
 
+
+def get_image_stats(image_path):
+    """
+    This function takes an image file as input and returns its orientation.
+
+    Input:
+        image_path : str : Path to the image file
+
+    Returns:
+        orientation : str : Orientation of the image
+    """
+    img = Image(str(image_path))
+    img.change_orientation('RPI')
+    shape = img.dim[:3]
+    shape = [int(s) for s in shape]
+    # Get pixdim
+    pixdim = img.dim[4:7]
+    # If all are the same, the image is isotropic
+    if np.allclose(pixdim, pixdim[0], atol=1e-3):
+        orientation = 'isotropic'
+    # Elif, the lowest arg is 0 then the orientation is sagittal
+    elif np.argmax(pixdim) == 0:
+        orientation = 'sagittal'
+    # Elif, the lowest arg is 1 then the orientation is coronal
+    elif np.argmax(pixdim) == 1:
+        orientation = 'coronal'
+    # Else the orientation is axial
+    else:
+        orientation = 'axial'
+    resolution = np.round(pixdim, 2)
+    return shape, orientation, resolution
+
+
+def get_pathology_wise_split(unified_df):
+    
+    # ===========================================================================
+    #                Subject-wise Pathology split
+    # ===========================================================================
+    pathologies = unified_df['pathologyID'].unique()
+
+    # count the number of subjects for each pathology
+    pathology_subjects = {}
+    for pathology in pathologies:
+        pathology_subjects[pathology] = len(unified_df[unified_df['pathologyID'] == pathology]['subjectID'].unique())
+
+    # merge MildCompression, DCM, MildCompression/DCM into DCM
+    pathology_subjects['DCM'] = pathology_subjects['MildCompression'] + pathology_subjects['MildCompression/DCM'] + pathology_subjects['DCM']
+    pathology_subjects.pop('MildCompression', None)
+    pathology_subjects.pop('MildCompression/DCM', None)
+
+    # ===========================================================================
+    #                Contrast-wise Pathology split
+    # ===========================================================================
+    # for a given contrast, count the number of images for each pathology
+    pathology_contrasts = {}
+    for contrast in CONTRASTS.keys():
+        pathology_contrasts[contrast] = {}
+        # initialize the count for each pathology
+        pathology_contrasts[contrast] = {pathology: 0 for pathology in pathologies}
+        for pathology in pathologies:
+                pathology_contrasts[contrast][pathology] += len(unified_df[(unified_df['pathologyID'] == pathology) & (unified_df['contrastID'] == contrast)]['filename'])
+
+    # merge MildCompression, DCM, MildCompression/DCM into DCM
+    for contrast in pathology_contrasts.keys():
+        pathology_contrasts[contrast]['DCM'] = pathology_contrasts[contrast]['MildCompression'] + pathology_contrasts[contrast]['MildCompression/DCM'] + pathology_contrasts[contrast]['DCM']
+        pathology_contrasts[contrast].pop('MildCompression', None)
+        pathology_contrasts[contrast].pop('MildCompression/DCM', None)
+
+    return pathology_subjects, pathology_contrasts
+    
+
+def plot_contrast_wise_pathology(df, path_save):
+    # remove the TOTAL row
+    df = df[:-1]
+    # remove the #total_per_contrast column
+    df = df.drop(columns=['#total_per_contrast'])
+
+    color_palette = {
+        'HC': '#55A868',
+        'MS': '#2B4373',
+        'RRMS': '#6A89C8',
+        'PPMS': '#88A1E0',
+        'SPMS': '#3B5A92',
+        'RIS': '#4C72B0',
+        'DCM': '#DD8452',
+        'SCI': '#C44E52',
+        'NMO': '#937860',
+        'SYR': '#b3b3b3',
+        'ALS': '#DA8BC3',
+        'LBP': '#CCB974'
+    }
+
+    contrasts = df.index.tolist()
+
+    # plot a pie chart for each contrast and save as different file
+    # NOTE: some pathologies with less subjects were overlapping so this is a hacky (and bad) way to fix this 
+    # issue temporarily by reordering the columns of the df
+    for contrast in contrasts:
+        df_contrast = df.loc[[contrast]].T
+        # reorder the columsn to put 'ALS' between 'HC' and 'MS'
+        if contrast in ['dwi']:
+            df_contrast = df_contrast.reindex(['ALS', 'HC', 'MS', 'DCM', 'SCI', 'NMO', 'RRMS', 'PPMS', 'SPMS', 'RIS', 'LBP', 'SYR'])
+        elif contrast in ['unit1']:
+            # reorder the columsn to put 'PPMS' between 'MS' and 'RRMS'
+            df_contrast = df_contrast.reindex(['HC', 'MS', 'PPMS', 'RRMS', 'SPMS', 'RIS', 'DCM', 'SCI', 'NMO', 'ALS', 'LBP', 'SYR'])
+        elif contrast in ['t2star']:
+            df_contrast = df_contrast.reindex(['HC', 'ALS', 'MS', 'DCM', 'SCI', 'NMO', 'RRMS', 'PPMS', 'SPMS', 'RIS', 'LBP', 'SYR'])
+
+        # for the given contrast, remove columns (pathologies) with 0 images
+        df_contrast = df_contrast[df_contrast[contrast] != 0]
+        
+        # adapted from https://matplotlib.org/stable/gallery/pie_and_polar_charts/pie_and_donut_labels.html
+        fig, ax = plt.subplots(figsize=(6.3, 3.5), subplot_kw=dict(aspect="equal"))  # Increased figure size
+        wedges, texts = ax.pie(
+            df_contrast[contrast], 
+            wedgeprops=dict(width=0.5), 
+            startangle=-40,
+            colors=[color_palette[pathology] for pathology in df_contrast.index],
+        )
+
+        # Annotation customization
+        bbox_props = dict(boxstyle="square,pad=0.5", fc="w", ec="k", lw=0.72)
+        kw = dict(arrowprops=dict(arrowstyle="-"), bbox=bbox_props, zorder=0, va="center")
+        texts_to_adjust = []  # collect all annotations for adjustment
+
+        for i, p in enumerate(wedges):
+            ang = (p.theta2 - p.theta1)/2. + p.theta1
+            y = np.sin(np.deg2rad(ang))
+            x = np.cos(np.deg2rad(ang))
+            horizontalalignment = {-1: "right", 1: "left"}[int(np.sign(x))]
+            connectionstyle = f"angle,angleA=0,angleB={ang}"
+            kw["arrowprops"].update({"connectionstyle": connectionstyle})
+            # font size
+            kw["fontsize"] = 14.5
+            # bold font
+            kw["fontweight"] = 'bold'
+
+            # Skip annotation for 'SYR'
+            if df_contrast.index[i] == 'SYR':
+                continue
+
+            # Push small labels further away from pie
+            distance = 1.1
+            # for dwi contrast and sci pathology, plot the annotation to the left
+            if contrast == 'dwi' and df_contrast.index[i] == 'SCI':
+                distance = 1.5
+                horizontalalignment = 'right'
+            if df_contrast.index[i] == 'ALS':
+                distance = 1.2
+                horizontalalignment = 'left'                
+            if contrast == 't2w' and df_contrast.index[i] in ['RIS', 'ALS', 'PPMS']:
+                if df_contrast.index[i] != 'PPMS':
+                    distance = 1.4
+                    horizontalalignment = 'left'
+                else:
+                    distance = 1
+                    horizontalalignment = 'right'
+            if contrast == 't1w' and df_contrast.index[i] == 'LBP':
+                distance = 1.3
+                horizontalalignment = 'left'
+                
+            # Annotate with number of images per pathology
+            text = f"{df_contrast.index[i]} (n={df_contrast.iloc[i, 0]})"
+            annotation = ax.annotate(text, xy=(x, y), xytext=(distance*np.sign(x)*1.05, distance*y),
+                                     horizontalalignment=horizontalalignment, **kw)
+            texts_to_adjust.append(annotation)
+
+        plt.ylabel('')
+        plt.tight_layout()
+        plt.savefig(os.path.join(path_save, f'{contrast}_pathology_split.png'), dpi=300)
+        plt.close()
+
+
+def parse_spacing(spacing_str):
+    # Remove brackets and split by spaces
+    spacing_values = re.findall(r"[\d.]+", spacing_str)
+    # Convert to float
+    return [float(val) for val in spacing_values]
+
+
 def get_datasets_stats(datalists_root, contrasts_dict, path_save):
 
-    datalists = [file for file in os.listdir(datalists_root) if file.endswith('_seed50.json')]
-
-    df = pd.DataFrame(columns=['train', 'validation', 'test'])
-    # collect all the contrasts from the datalists
-    for datalist in datalists:
-        json_path = os.path.join(datalists_root, datalist)
-        with open(json_path, 'r') as f:
-            data = json.load(f)
-            data = data['numImagesPerContrast'].items()
-
-        for split, contrast_info in data:
-            for contrast, num_images in contrast_info.items():
-                # add the contrast and the number of images to the dataframe
-                if contrast not in df.index:
-                    df.loc[contrast] = [0, 0, 0]
-                df.loc[contrast, split] += num_images
-
-    # reshape dataframe and add a column for contrast
-    df = df.reset_index()
-    df = df.rename(columns={'index': 'contrast'})
-
-    contrasts_final = list(contrasts_dict.keys())
-
-    # rename the contrasts column as per contrasts_final
-    for c in df['contrast'].unique():
-        for cf in contrasts_final:
-            if re.search(cf, c.lower()):
-                df.loc[df['contrast'] == c, 'contrast'] = cf
-                break
-    
-    # NOTE: MTon-MTR is same as flip-1_mt-on_space-other_MTS, but the naming is not mt-on
-    # so doing the renaming manually
-    df.loc[df['contrast'] == 'acq-MTon_MTR', 'contrast'] = 'mt-on'
-
-    # sum the duplicate contrasts 
-    df = df.groupby('contrast').sum().reset_index()
-    
-    # rename columns
-    df = df.rename(columns={'contrast': 'Contrast', 'train': '#train_images', 'validation': '#validation_images', 'test': '#test_images'})
-    # add a row for the total number of images
-    df.loc[len(df)] = ['TOTAL', df['#train_images'].sum(), df['#validation_images'].sum(), df['#test_images'].sum()]
-    # print(df.to_markdown(index=False))
-    df.to_markdown(os.path.join(path_save, 'dataset_split.md'), index=False)
-
-    # # total number of images for each split
-    # print(f"Total number of training images: {df['#train_images'].sum()}")
-    # print(f"Total number of validation images: {df['#validation_images'].sum()}")
-    # print(f"Total number of test images: {df['#test_images'].sum()}")
-
     # create a unified dataframe combining all datasets
-    csvs = [os.path.join(datalists_root, file) for file in os.listdir(datalists_root) if file.endswith('.csv')]
+    csvs = [os.path.join(datalists_root, file) for file in os.listdir(datalists_root) if file.endswith('_seed50.csv')]
     unified_df = pd.concat([pd.read_csv(csv) for csv in csvs], ignore_index=True)
     
     # sort the dataframe by the dataset column
     unified_df = unified_df.sort_values(by='datasetName', ascending=True)
 
-    # save as csv
+    # save the originals as the csv
     unified_df.to_csv(os.path.join(path_save, 'dataset_contrast_agnostic.csv'), index=False)
+
+    # dropna
+    unified_df = unified_df.dropna(subset=['pathologyID'])
+
+    contrasts_final = list(contrasts_dict.keys())
+    # rename the contrasts column as per contrasts_final
+    for c in unified_df['contrastID'].unique():
+        for cf in contrasts_final:
+            if re.search(cf, c.lower()):
+                unified_df.loc[unified_df['contrastID'] == c, 'contrastID'] = cf
+                break
+
+    # NOTE: MTon-MTR is same as flip-1_mt-on_space-other_MTS, but the naming is not mt-on
+    # so doing the renaming manually
+    unified_df.loc[unified_df['contrastID'] == 'acq-MTon_MTR', 'contrastID'] = 'mt-on'
+
+    # convert 'spacing' column from a string like "[1. 1. 1.]" to a list of floats
+    unified_df['spacing'] = unified_df['spacing'].apply(parse_spacing)
+    # for contrast in contrasts_final:
+    #     print(f"Max resolution for {contrast}:")
+    #     print([unified_df[unified_df['contrastID'] == contrast]['spacing'].apply(lambda x: x[i]).max() for i in range(3)])
+
+    splits = ['train', 'validation', 'test']
+    # count the number of images per contrast
+    df = pd.DataFrame(columns=['contrast', 'train', 'validation', 'test'])
+    for contrast in contrasts_final:
+        df.loc[len(df)] = [contrast, 0, 0, 0]
+        # count the number of images per split
+        for split in splits:
+            df.loc[df['contrast'] == contrast, split] = len(unified_df[(unified_df['contrastID'] == contrast) & (unified_df['split'] == split)])
+
+    # sort the dataframe by the contrast column
+    df = df.sort_values(by='contrast', ascending=True)
+    # add a row for the total number of images
+    df.loc[len(df)] = ['TOTAL', df['train'].sum(), df['validation'].sum(), df['test'].sum()]
+    # add a column for total number of images per contrast
+    df['#images_per_contrast'] = df['train'] + df['validation'] + df['test']
+    
+    df_mega = pd.DataFrame()
+    for orientation in ['sagittal', 'axial', 'isotropic']:
+        
+        # get the median resolutions per contrast
+        df_res_median = pd.DataFrame(columns=[f'contrast', 'x', 'y', 'z'])
+        df_res_min = pd.DataFrame(columns=[f'contrast', 'x', 'y', 'z'])
+        df_res_max = pd.DataFrame(columns=[f'contrast', 'x', 'y', 'z'])
+        df_res_mean = pd.DataFrame(columns=[f'contrast', 'x', 'y', 'z'])
+
+        for contrast in contrasts_final:
+            
+            if len(unified_df[(unified_df['contrastID'] == contrast) & (unified_df['imgOrientation'] == orientation)]) == 0:
+                # set NA values for the contrast
+                df_res_median.loc[len(df_res_median)] = [f'{contrast}_{orientation}'] + [np.nan, np.nan, np.nan]
+                df_res_min.loc[len(df_res_min)] = [f'{contrast}_{orientation}'] + [np.nan, np.nan, np.nan]
+                df_res_max.loc[len(df_res_max)] = [f'{contrast}_{orientation}'] + [np.nan, np.nan, np.nan]
+                df_res_mean.loc[len(df_res_mean)] = [f'{contrast}_{orientation}'] + [np.nan, np.nan, np.nan]
+            
+            else:
+                # median
+                df_res_median.loc[len(df_res_median)] = [f'{contrast}_{orientation}'] + [
+                    unified_df[(unified_df['contrastID'] == contrast) & (unified_df['imgOrientation'] == orientation)
+                               ]['spacing'].apply(lambda x: x[i]).median() for i in range(3)]
+                # min
+                df_res_min.loc[len(df_res_min)] = [f'{contrast}_{orientation}'] + [
+                    unified_df[(unified_df['contrastID'] == contrast) & (unified_df['imgOrientation'] == orientation)
+                               ]['spacing'].apply(lambda x: x[i]).min() for i in range(3)]
+                # max
+                df_res_max.loc[len(df_res_max)] = [f'{contrast}_{orientation}'] + [
+                    unified_df[(unified_df['contrastID'] == contrast) & (unified_df['imgOrientation'] == orientation)
+                               ]['spacing'].apply(lambda x: x[i]).max() for i in range(3)]
+                # mean
+                df_res_mean.loc[len(df_res_mean)] = [f'{contrast}_{orientation}'] + [
+                    unified_df[(unified_df['contrastID'] == contrast) & (unified_df['imgOrientation'] == orientation)
+                               ]['spacing'].apply(lambda x: x[i]).mean().round(2) for i in range(3)]
+
+        # drop rows with NA values
+        df_res_median = df_res_median.dropna()
+        df_res_min = df_res_min.dropna()
+        df_res_max = df_res_max.dropna()
+        df_res_mean = df_res_mean.dropna()
+        
+        # combine the x,y,z columns into a single column and drop the x,y,z columns
+        df_res_median['median_resolution_rpi'] = df_res_median.apply(lambda x: f"{x['x']} x {x['y']} x {x['z']}", axis=1)
+        df_res_median = df_res_median.drop(columns=['x', 'y', 'z'])
+
+        df_res_min['min_resolution_rpi'] = df_res_min.apply(lambda x: f"{x['x']} x {x['y']} x {x['z']}", axis=1)
+        df_res_min = df_res_min.drop(columns=['x', 'y', 'z'])
+
+        df_res_max['max_resolution_rpi'] = df_res_max.apply(lambda x: f"{x['x']} x {x['y']} x {x['z']}", axis=1)
+        df_res_max = df_res_max.drop(columns=['x', 'y', 'z'])
+
+        df_res_mean['mean_resolution_rpi'] = df_res_mean.apply(lambda x: f"{x['x']} x {x['y']} x {x['z']}", axis=1)
+        df_res_mean = df_res_mean.drop(columns=['x', 'y', 'z'])
+
+        # combine the dataframes based on the contrast column
+        df_res = pd.merge(df_res_median, df_res_min, on='contrast')
+        df_res = pd.merge(df_res, df_res_max, on='contrast')
+        df_res = pd.merge(df_res, df_res_mean, on='contrast')
+
+        # sort the dataframe by the contrast column
+        df_res = df_res.sort_values(by='contrast', ascending=True)
+
+        # concatenate the dataframes for different orientations on columns
+        df_mega = pd.concat([df_mega, df_res], axis=0)
+    
+
+    # get the subject-wise pathology split
+    pathology_subjects, pathology_contrasts = get_pathology_wise_split(unified_df)
+    df_pathology = pd.DataFrame.from_dict(pathology_subjects, orient='index', columns=['Number of Subjects'])
+    # rename index to Pathology
+    df_pathology.index.name = 'Pathology'
+    # sort the dataframe by the pathology column
+    df_pathology = df_pathology.sort_index()
+    # add a row for the total number of subjects
+    df_pathology.loc['TOTAL'] = df_pathology['Number of Subjects'].sum()
+
+
+    # get the contrast-wise pathology split
+    df_contrast_pathology = pd.DataFrame.from_dict(pathology_contrasts, orient='index')
+    # sort the dataframe by the contrast column
+    df_contrast_pathology = df_contrast_pathology.sort_index()
+    # add a row for the total number of images
+    df_contrast_pathology.loc['TOTAL'] = df_contrast_pathology.sum()
+    # add a column for the total number of images per contrast
+    df_contrast_pathology['#total_per_contrast'] = df_contrast_pathology.sum(axis=1)
+    # print(df_contrast_pathology)
+    
+    # plots
+    save_path = os.path.join(path_save, 'plots')
+    os.makedirs(save_path, exist_ok=True)
+    plot_contrast_wise_pathology(df_contrast_pathology, save_path)
+    # exit()
+
+    # sort the csvs list
+    csvs = sorted(csvs)
+
+    # create a txt file
+    with open(os.path.join(path_save, 'dataset_stats_overall.txt'), 'w') as f:
+        # 1. write the datalists used in a bullet list
+        f.write(f"DATASETS USED FOR MODEL TRAINING (n={len(csvs)}):\n")
+        for csv in csvs:
+            # only write the dataset name
+            f.write(f"\t- {csv.split('_')[1]}\n")
+        f.write("\n")
+
+        # 2. write the subject-wise pathology split
+        f.write(f"\nSUBJECT-WISE PATHOLOGY SPLIT:\n\n")
+        f.write(df_pathology.to_markdown())
+        f.write("\n\n\n")
+
+        # 3. write the contrast-wise pathology split (a subject can have multiple contrasts)
+        f.write(f"CONTRAST-WISE PATHOLOGY SPLIT (a subject can have multiple contrasts):\n\n")
+        f.write(df_contrast_pathology.to_markdown())
+        f.write("\n\n\n")
+
+        # 4. write the train/validation/test split per contrast
+        f.write(f"SPLITS ACROSS DIFFERENT CONTRASTS (n={len(contrasts_final)}):\n\n")
+        f.write(df.to_markdown(index=False))
+        f.write("\n\n\n")
+
+        # 5. write the median, min, max and mean resolutions per contrast
+        f.write(f"RESOLUTIONS PER CONTRAST PER ORIENTATION (in mm^3):\n\n")
+        f.write(f"How to interpret the table: Each row corresponds to the contrast and its orientation with the median, min, max and mean resolutions in mm^3.\n")
+        f.write(f"For simplification, if a contrast does not have any images in a particular orientation in the dataset, then the row is not present in the table.\n")
+        f.write(f"For e.g. if you want to report the mean (min, max) resolution of a contrast, say, 'dwi_axial', \n")
+        f.write(f"then you pick the respective element in each of the columns.\n")
+        f.write(f"\t i.e. mean in-plane resolution: 0.89x0.89; range: (0.34x0.34, 1x1), and, likewise, Slice thickness: 5.1; range: (4, 17.5)\n\n")
+        f.write(df_mega.to_markdown(index=False))
+        f.write("\n\n")
+
 
 
 # Taken from: https://github.com/MIC-DKFZ/nnUNet/blob/master/nnunetv2/utilities/find_class_by_name.py
@@ -167,80 +467,6 @@ def get_git_branch_and_commit(dataset_path=None):
     return branch, commit
 
 
-def numeric_score(prediction, groundtruth):
-    """Computation of statistical numerical scores:
-
-    * FP = Soft False Positives
-    * FN = Soft False Negatives
-    * TP = Soft True Positives
-    * TN = Soft True Negatives
-
-    Robust to hard or soft input masks. For example::
-        prediction=np.asarray([0, 0.5, 1])
-        groundtruth=np.asarray([0, 1, 1])
-        Leads to FP = 1.5
-
-    Note: It assumes input values are between 0 and 1.
-
-    Args:
-        prediction (ndarray): Binary prediction.
-        groundtruth (ndarray): Binary groundtruth.
-
-    Returns:
-        float, float, float, float: FP, FN, TP, TN
-    """
-    FP = float(np.sum(prediction * (1.0 - groundtruth)))
-    FN = float(np.sum((1.0 - prediction) * groundtruth))
-    TP = float(np.sum(prediction * groundtruth))
-    TN = float(np.sum((1.0 - prediction) * (1.0 - groundtruth)))
-    return FP, FN, TP, TN
-
-
-def precision_score(prediction, groundtruth, err_value=0.0):
-    """Positive predictive value (PPV).
-
-    Precision equals the number of true positive voxels divided by the sum of true and false positive voxels.
-    True and false positives are computed on soft masks, see ``"numeric_score"``.
-    Taken from: https://github.com/ivadomed/ivadomed/blob/master/ivadomed/metrics.py
-
-    Args:
-        prediction (ndarray): First array.
-        groundtruth (ndarray): Second array.
-        err_value (float): Value returned in case of error.
-
-    Returns:
-        float: Precision score.
-    """
-    FP, FN, TP, TN = numeric_score(prediction, groundtruth)
-    if (TP + FP) <= 0.0:
-        return err_value
-
-    precision = np.divide(TP, TP + FP)
-    return precision
-
-
-def recall_score(prediction, groundtruth, err_value=0.0):
-    """True positive rate (TPR).
-
-    Recall equals the number of true positive voxels divided by the sum of true positive and false negative voxels.
-    True positive and false negative values are computed on soft masks, see ``"numeric_score"``.
-    Taken from: https://github.com/ivadomed/ivadomed/blob/master/ivadomed/metrics.py
-
-    Args:
-        prediction (ndarray): First array.
-        groundtruth (ndarray): Second array.
-        err_value (float): Value returned in case of error.
-
-    Returns:
-        float: Recall score.
-    """
-    FP, FN, TP, TN = numeric_score(prediction, groundtruth)
-    if (TP + FN) <= 0.0:
-        return err_value
-    TPR = np.divide(TP, TP + FN)
-    return TPR
-
-
 def dice_score(prediction, groundtruth):
     smooth = 1.
     numer = (prediction * groundtruth).sum()
@@ -294,17 +520,6 @@ def plot_slices(image, gt, pred, debug=False):
     return fig
 
 
-def compute_average_csa(patch, spacing):
-    num_slices = patch.shape[2]
-    areas = torch.empty(num_slices)
-    for slice_idx in range(num_slices):
-        slice_mask = patch[:, :, slice_idx]
-        area = torch.count_nonzero(slice_mask) * (spacing[0] * spacing[1])
-        areas[slice_idx] = area
-
-    return torch.mean(areas)
-
-
 class PolyLRScheduler(_LRScheduler):
     """
     Polynomial learning rate scheduler. Taken from:
@@ -338,6 +553,9 @@ if __name__ == "__main__":
     # tr_ix, val_tx, te_ix, fold = names_list[0]
     # print(len(tr_ix), len(val_tx), len(te_ix))
 
-    # datalists_root = "/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/datalists/lifelong-contrast-agnostic"
-    datalists_root = "/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/datalists/aggregation-20240517"
+    datalists_root = "/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/datalists/v2-final-aggregation-20241022"
     get_datasets_stats(datalists_root, contrasts_dict=CONTRASTS, path_save=datalists_root)
+    # get_pathology_wise_split(datalists_root, path_save=datalists_root)
+
+    # img_path = "/home/GRAMES.POLYMTL.CA/u114716/datasets/sci-colorado/sub-5694/anat/sub-5694_T2w.nii.gz"
+    # get_image_stats(img_path)

@@ -12,7 +12,7 @@ from collections import OrderedDict
 import subprocess
 from datetime import datetime
 
-from utils import get_git_branch_and_commit
+from utils import get_git_branch_and_commit, get_image_stats
 
 import pandas as pd
 pd.set_option('display.max_colwidth', None)
@@ -27,7 +27,10 @@ FILESEG_SUFFIXES = {
     "basel-mp2rage": ["labels_softseg_bin", "desc-softseg_label-SC_seg"],
     "canproco": ["labels", "seg-manual"],
     "data-multi-subject": ["labels_softseg_bin", "desc-softseg_label-SC_seg"],
+    "dcm-brno": ["labels", "seg"],
     "dcm-zurich": ["labels", "label-SC_mask-manual"],
+    "dcm-zurich-lesions": ["labels", "label-SC_mask-manual"],
+    "dcm-zurich-lesions-20231115": ["labels", "label-SC_mask-manual"],
     "lumbar-epfl": ["labels", "seg-manual"],
     "lumbar-vanderbilt": ["labels", "label-SC_seg"],
     "nih-ms-mp2rage": ["labels", "label-SC_seg"],
@@ -35,10 +38,11 @@ FILESEG_SUFFIXES = {
     "sci-paris": ["labels", "seg-manual"],
     "sci-zurich": ["labels", "seg-manual"],
     "sct-testing-large": ["labels", "seg-manual"],
+    "spider-challenge-2023": ["labels", "label-SC_seg"]
 }
 
 # add abbreviations of pathologies in sct-testing-large and other datasets to be included in the aggregated dataset
-PATHOLOGIES = ["ALS", "DCM", "NMO", "MS", "SCI"]
+PATHOLOGIES = ["ALS", "DCM", "NMO", "MS", "SYR", "SCI", "LBP"]
 
 
 def get_parser():
@@ -106,7 +110,7 @@ def fetch_subject_nifti_details(filename_path):
     else:
         # TODO: add more contrasts as needed
         # contrast_pattern =  r'.*_(T1w|T2w|T2star|PSIR|STIR|UNIT1|acq-MTon_MTR|acq-dwiMean_dwi|acq-b0Mean_dwi|acq-T1w_MTR).*'
-        contrast_pattern =  r'.*_(T1w|T2w|T2star|PSIR|STIR|UNIT1|T1map|inv-1_part-mag_MP2RAGE|inv-2_part-mag_MP2RAGE|acq-MTon_MTR|acq-dwiMean_dwi|acq-T1w_MTR).*'
+        contrast_pattern =  r'.*_(T1w|acq-lowresSag_T1w|T2w|acq-lowresSag_T2w|acq-highresSag_T2w|T2star|PSIR|STIR|UNIT1|T1map|inv-1_part-mag_MP2RAGE|inv-2_part-mag_MP2RAGE|acq-MTon_MTR|acq-dwiMean_dwi|acq-T1w_MTR).*'
     contrast = re.search(contrast_pattern, filename_path)
     contrastID = contrast.group(1) if contrast else ""
 
@@ -171,9 +175,6 @@ def create_df(dataset_path):
     # get subjectID, sessionID and orientationID
     df['subjectID'], df['sessionID'], df['orientationID'], df['contrastID'] = zip(*df['filename'].map(fetch_subject_nifti_details))
 
-    # sub_files = [ df[df['subjectID'] == 'sub-sherbrookeBiospective006']['filename'].values[idx] for idx in range(len(df[df['subjectID'] == 'sub-sherbrookeBiospective006']))]
-    # print(len(sub_files))
-
     if dataset_name == 'basel-mp2rage':
         
         # set the type of pathologyID as str
@@ -214,11 +215,15 @@ def create_df(dataset_path):
         # load the participants.tsv file
         df_participants = pd.read_csv(os.path.join(dataset_path, 'participants.tsv'), sep='\t')
 
-        # store the pathology info by merging the "pathology" colume from df_participants to the df dataframe
-        df = pd.merge(df, df_participants[['participant_id', 'pathology']], left_on='subjectID', right_on='participant_id', how='left')
+        # NOTE: participant_id are like sub-NIH001, sub-NIH002, etc. but the subjectIDs are like sub-nih001, sub-nih002, etc.
+        # convert participant_id to lower case
+        df_participants['participant_id'] = df_participants['participant_id'].str.lower()
 
-        # rename the column to 'pathologyID'
-        df.rename(columns={'pathology': 'pathologyID'}, inplace=True)        
+        # store the phenotype info by merging the "phenotype" colume from df_participants to the df dataframe
+        df = pd.merge(df, df_participants[['participant_id', 'phenotype']], left_on='subjectID', right_on='participant_id', how='left')
+
+        # rename phenotype to pathologyID
+        df.rename(columns={'phenotype': 'pathologyID'}, inplace=True)
 
     elif dataset_name == 'sct-testing-large':
 
@@ -267,11 +272,15 @@ def create_df(dataset_path):
         # load the participants.tsv file
         df_participants = pd.read_csv(os.path.join(dataset_path, 'participants.tsv'), sep='\t')
         
-        # store the pathology info by merging the "pathology_M0" colume from df_participants to the df dataframe
-        df = pd.merge(df, df_participants[['participant_id', 'pathology_M0']], left_on='subjectID', right_on='participant_id', how='left')
+        # NOTE: taking the phenotype directly and using it as pathology because pathology is MS for all phenotypes
+        # (easier to report different phenotypes )
+        # store the pathology info by merging the "phenotype_M0" colume from df_participants to the df dataframe
+        df = pd.merge(df, df_participants[['participant_id', 'phenotype_M0']], left_on='subjectID', right_on='participant_id', how='left')
+        # replace nan with HC
+        df['phenotype_M0'].fillna('HC', inplace=True)
 
         # rename the column to 'pathologyID'
-        df.rename(columns={'pathology_M0': 'pathologyID'}, inplace=True)
+        df.rename(columns={'phenotype_M0': 'pathologyID'}, inplace=True)
 
         for file in df['filename']: 
 
@@ -289,6 +298,9 @@ def create_df(dataset_path):
             except subprocess.CalledProcessError as e:
                 logger.error(f"Error in downloading {file} from git-annex: {e}")
     
+    elif dataset_name == 'spider-challenge-2023':
+        df['pathologyID'] = 'LBP'
+
     else:
         # load the participants.tsv file
         df_participants = pd.read_csv(os.path.join(dataset_path, 'participants.tsv'), sep='\t')
@@ -299,12 +311,24 @@ def create_df(dataset_path):
 
             # rename the column to 'pathologyID'
             df.rename(columns={'pathology': 'pathologyID'}, inplace=True)
+
+        elif 'sci' in dataset_name:
+            # sci-zurich and sci-colorado do not have a 'pathology' column in their participants.tsv file
+            df['pathologyID'] = 'SCI'
         
-        else: 
+        elif dataset_name == 'lumbar-epfl':
+            # lumbar-epfl does not have a 'pathology' column in their participants.tsv file
+            df['pathologyID'] = 'HC'
+        
+        else:
             df['pathologyID'] = 'n/a'
-         
+
+    # get image stats
+    df['shape'], df['imgOrientation'], df['spacing'] = zip(*df['filename'].map(get_image_stats))
+
     # refactor to move filename and filesegname to the end of the dataframe
-    df = df[['datasetName', 'subjectID', 'sessionID', 'orientationID', 'contrastID', 'pathologyID', 'filename']] #, 'filesegname']]
+    df = df[['datasetName', 'subjectID', 'sessionID', 'orientationID', 'contrastID', 'pathologyID', 
+        'shape', 'imgOrientation', 'spacing', 'filename']]
 
     return df
 
@@ -483,7 +507,10 @@ def main():
         df['filename'] = df['filename'].replace(file, os.path.basename(file))
 
     # reorder the columns
-    df = df[['datasetName', 'subjectID', 'sessionID', 'orientationID', 'contrastID', 'pathologyID', 'split', 'filename']] #, 'filesegname']]
+    df = df[['datasetName', 'subjectID', 'sessionID', 'orientationID', 'contrastID', 'pathologyID', 'shape', 'imgOrientation', 'spacing', 'split', 'filename']]
+    # sort the dataframe based on subjectID
+    df = df.sort_values(by=['subjectID'], ascending=True)
+    # save the dataframe to a csv file
     df.to_csv(os.path.join(args.path_out, f"df_{dataset_name}_seed{args.seed}.csv"), index=False)
 
     final_json = json.dumps(params, indent=4, sort_keys=True)

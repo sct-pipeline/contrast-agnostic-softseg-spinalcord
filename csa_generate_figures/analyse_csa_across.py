@@ -13,16 +13,16 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 # Setting the hue order as specified
-# HUE_ORDER = ["softseg_bin", "deepseg_2d", "nnunet", "monai", "mednext", "swinunetr", "swinpretrained", "ensemble"]
+HUE_ORDER = ["softseg_bin", "deepseg", "plain_320", "plain_384", "resencM"]
 # HUE_ORDER = ["softseg_bin", "deepseg_2d", "monai_single", "monai_7datasets", "swinunetr_7datasets"]
-HUE_ORDER = ["softseg_bin", "monai_v21", "monai_v23", "monai_v2x"]
+# HUE_ORDER = ["softseg_bin", "monai_v21", "monai_v23", "monai_v2x"]
 HUE_ORDER_THR = ["GT", "15", "1", "05", "01", "005"]
 HUE_ORDER_RES = ["1mm", "05mm", "15mm", "3mm", "2mm"]
 CONTRAST_ORDER = ["DWI", "MTon", "MToff", "T1w", "T2star", "T2w"]
 
 FONTSIZE = 12
-# XTICKS = ["GT", "DeepSeg2D", "C-A\nv2.1", "C-A\nv2.3", "C-A\nv2.x"] 
-XTICKS = ["GT", "contrast-agnostic\nv2.1", "contrast-agnostic\nv2.3", "contrast-agnostic\nv2.x"] 
+XTICKS = ["GT", "DeepSeg2D", "C-A\nplain_320", "C-A\nplain_384", "C-A\nresencM"]
+# XTICKS = ["GT", "contrast-agnostic\nv2.1", "contrast-agnostic\nv2.3", "contrast-agnostic\nv2.x"] 
 
 
 def save_figure(file_path, save_fname):
@@ -61,8 +61,8 @@ def extract_contrast_and_details(filename, across="Method"):
     if across == "Method":
         # pattern = r'.*_(DWI|MTon|MToff|T1w|T2star|T2w).*_(softseg_bin|deepseg_2d|soft_input|bin_input).*'
         # pattern = r'.*_(DWI|MTon|MToff|T1w|T2star|T2w).*_(softseg_bin|deepseg_2d|nnunet|monai|mednext|swinunetr|swinpretrained|ensemble).*'
-        # pattern = r'.*_(DWI|MTon|MToff|T1w|T2star|T2w).*_(softseg_bin|deepseg_2d|monai_single|monai_7datasets|swinunetr_7datasets).*'
-        pattern = r'.*_(DWI|MTon|MToff|T1w|T2star|T2w).*_(softseg_bin|monai_v21|monai_v23|monai_v2x).*'
+        pattern = r'.*_(DWI|MTon|MToff|T1w|T2star|T2w).*_(softseg_bin|deepseg|plain_320|plain_384|resencM).*'
+        # pattern = r'.*_(DWI|MTon|MToff|T1w|T2star|T2w).*_(softseg_bin|monai_v21|monai_v23|monai_v2x).*'
         match = re.search(pattern, filename)
         if match:
             return match.group(1), match.group(2)

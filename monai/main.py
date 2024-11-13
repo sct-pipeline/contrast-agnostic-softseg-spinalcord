@@ -4,6 +4,7 @@ from datetime import datetime
 from loguru import logger
 import yaml
 import json
+import time
 
 import numpy as np
 import wandb
@@ -24,15 +25,12 @@ from monai.networks.nets import UNETR, SwinUNETR
 from monai.data import (ThreadDataLoader, CacheDataset, load_decathlon_datalist, decollate_batch, set_track_meta)
 from monai.transforms import (Compose, EnsureType, EnsureTyped, Invertd, SaveImage)
 
-# mednext
-from nnunet_mednext import MedNeXt
-
 # list of contrasts and their possible various names in the datasets
 CONTRASTS = {
     "t1map": ["T1map"],
     "mp2rage": ["inv-1_part-mag_MP2RAGE", "inv-2_part-mag_MP2RAGE"],
-    "t1w": ["T1w", "space-other_T1w"],
-    "t2w": ["T2w", "space-other_T2w"],
+    "t1w": ["T1w", "space-other_T1w", "acq-lowresSag_T1w"],
+    "t2w": ["T2w", "space-other_T2w", "acq-lowresSag_T2w", "acq-highresSag_T2w"],
     "t2star": ["T2star", "space-other_T2star"],
     "dwi": ["rec-average_dwi", "acq-dwiMean_dwi"],
     "mt-on": ["flip-1_mt-on_space-other_MTS", "acq-MTon_MTR"],
@@ -46,9 +44,9 @@ def get_args():
     parser = argparse.ArgumentParser(description='Script for training contrast-agnositc SC segmentation model.')
 
     # arguments for model
-    parser.add_argument('-m', '--model', choices=['nnunet-plain', 'nnunet-resencM', 'mednext', 'swinunetr'],
+    parser.add_argument('-m', '--model', choices=['nnunet-plain', 'nnunet-resencM', 'swinunetr'],
                         default='nnunet', type=str,
-                        help='Model type to be used. Options: nnunet, mednext, swinunetr.')
+                        help='Model type to be used. Options: nnunet, swinunetr.')
     # path to the config file
     parser.add_argument("--config", type=str, default="./config.json",
                         help="Path to the config file containing all training details.")
@@ -164,9 +162,9 @@ class Model(pl.LightningModule):
             test_files = test_files[:6]
 
         train_cache_rate = 0.5 # 0.25 if args.model == 'swinunetr' else 0.5
-        self.train_ds = CacheDataset(data=train_files, transform=transforms_train, cache_rate=train_cache_rate, num_workers=4,
+        self.train_ds = CacheDataset(data=train_files, transform=transforms_train, cache_rate=train_cache_rate, num_workers=12,
                                      copy_cache=False)
-        self.val_ds = CacheDataset(data=val_files, transform=transforms_val, cache_rate=0.25, num_workers=4,
+        self.val_ds = CacheDataset(data=val_files, transform=transforms_val, cache_rate=0.25, num_workers=12,
                                    copy_cache=False)
 
         # define test transforms
@@ -181,7 +179,7 @@ class Model(pl.LightningModule):
                     meta_keys=["pred_meta_dict", "label_meta_dict"],
                     nearest_interp=False, to_tensor=True),
             ])
-        self.test_ds = CacheDataset(data=test_files, transform=transforms_test, cache_rate=0.1, num_workers=4,
+        self.test_ds = CacheDataset(data=test_files, transform=transforms_test, cache_rate=0.1, num_workers=8,
                                     copy_cache=False)
 
         # # avoid the computation of meta information in random transforms
@@ -191,15 +189,15 @@ class Model(pl.LightningModule):
     # DATA LOADERS
     # --------------------------------
     def train_dataloader(self):
-        return ThreadDataLoader(self.train_ds, batch_size=self.cfg["opt"]["batch_size"], shuffle=True, num_workers=16,
+        return ThreadDataLoader(self.train_ds, batch_size=self.cfg["opt"]["batch_size"], shuffle=True, num_workers=8,
                             pin_memory=True, persistent_workers=True)
 
     def val_dataloader(self):
-        return ThreadDataLoader(self.val_ds, batch_size=1, shuffle=False, num_workers=16, pin_memory=True,
+        return ThreadDataLoader(self.val_ds, batch_size=1, shuffle=False, num_workers=8, pin_memory=True,
                           persistent_workers=True)
 
     def test_dataloader(self):
-        return ThreadDataLoader(self.test_ds, batch_size=1, shuffle=False, num_workers=8, pin_memory=True)
+        return ThreadDataLoader(self.test_ds, batch_size=1, shuffle=False, num_workers=4, pin_memory=True)
 
 
     # --------------------------------
@@ -236,7 +234,7 @@ class Model(pl.LightningModule):
         output = self.forward(inputs)   # logits
         # print(f"labels.shape: {labels.shape} \t output.shape: {output.shape}")
 
-        if args.model in ["nnunet-plain", "nnunet-resencM", "mednext"] and self.cfg['model'][args.model]["enable_deep_supervision"]:
+        if args.model in ["nnunet-plain", "nnunet-resencM"] and self.cfg['model'][args.model]["enable_deep_supervision"]:
 
             # calculate dice loss for each output
             loss, train_soft_dice = 0.0, 0.0
@@ -335,7 +333,7 @@ class Model(pl.LightningModule):
         outputs = sliding_window_inference(inputs, self.inference_roi_size, mode="gaussian",
                                            sw_batch_size=4, predictor=self.forward, overlap=0.5,)
         # outputs shape: (B, C, <original H x W x D>)
-        if args.model in ["nnunet-plain", "nnunet-resencM", "mednext"] and self.cfg['model'][args.model]["enable_deep_supervision"]:
+        if args.model in ["nnunet-plain", "nnunet-resencM"] and self.cfg['model'][args.model]["enable_deep_supervision"]:
             # we only need the output with the highest resolution
             outputs = outputs[0]
 
@@ -432,7 +430,7 @@ class Model(pl.LightningModule):
         batch["pred"] = sliding_window_inference(test_input, self.inference_roi_size,
                                                  sw_batch_size=4, predictor=self.forward, overlap=0.5)
 
-        if args.model in ["nnunet-plain", "nnunet-resencM", "mednext"] and self.cfg['model'][args.model]["enable_deep_supervision"]:
+        if args.model in ["nnunet-plain", "nnunet-resencM"] and self.cfg['model'][args.model]["enable_deep_supervision"]:
             # we only need the output with the highest resolution
             batch["pred"] = batch["pred"][0]
 
@@ -631,45 +629,9 @@ def main(args):
         # save experiment id
         save_exp_id = f"{args.model}_seed={config['seed']}_" \
                         f"ndata={n_datasets}_ncont={n_contrasts}_" \
-                        f"nf={config['model']['nnunet-plain']['features_per_stage'][0]}_" \
+                        f"nf={config['model']['nnunet-plain']['features_per_stage'][-1]}_" \
                         f"opt={config['opt']['name']}_lr={config['opt']['lr']}_AdapW_" \
                         f"bs={config['opt']['batch_size']}" \
-
-        if args.debug:
-            save_exp_id = f"DEBUG_{save_exp_id}"
-
-    elif args.model == "mednext":
-        # NOTE: the S, B models in the paper don't fit as-is for this data, gpu
-        # hence tweaking the models
-        logger.info(f"Using MedNext model tweaked ...")
-        net = MedNeXt(
-            in_channels=config["model"]["mednext"]["num_input_channels"],
-            n_channels=config["model"]["mednext"]["base_num_features"],
-            n_classes=config["model"]["mednext"]["num_classes"],
-            exp_r=[2,3,4,4,4,4,4,3,2],
-            kernel_size=config["model"]["mednext"]["kernel_size"],
-            deep_supervision=config["model"]["mednext"]["enable_deep_supervision"],
-            do_res=True,
-            do_res_up_down=True,
-            checkpoint_style="outside_block",
-            block_counts=config["model"]["mednext"]["block_counts"],
-            norm_type='layer',
-        )
-
-        # variable for saving patch size in the experiment id (same as crop_pad_size)
-        patch_size = f"{config['preprocessing']['crop_pad_size'][0]}x" \
-                        f"{config['preprocessing']['crop_pad_size'][1]}x" \
-                        f"{config['preprocessing']['crop_pad_size'][2]}"
-        # count number of 2s in the block_counts list
-        num_two_blocks = config["model"]["mednext"]["block_counts"].count(2)
-        norm_type = 'LN' if config["model"]["mednext"]["norm_type"] == 'layer' else 'GN'
-        # save experiment id
-        save_exp_id = f"{args.model}_seed={config['seed']}_" \
-                        f"{config['dataset']['contrast']}_{config['dataset']['label_type']}_" \
-                        f"nf={config['model']['mednext']['base_num_features']}_" \
-                        f"expR=base_bcs={num_two_blocks}_{norm_type}_" \
-                        f"opt={config['opt']['name']}_lr={config['opt']['lr']}_AdapW_" \
-                        f"bs={config['opt']['batch_size']}_{patch_size}" \
 
         if args.debug:
             save_exp_id = f"DEBUG_{save_exp_id}"
@@ -737,6 +699,7 @@ def main(args):
         num_model_params = count_parameters(model=net)
         logger.info(f"Number of Trainable model parameters: {(num_model_params / 1e6):.3f}M")
 
+        start_time = time.time()
         logger.info(f"Starting training from scratch ...")
         # wandb logger
         exp_logger = pl.loggers.WandbLogger(
@@ -746,11 +709,11 @@ def main(args):
                             log_model=True, # save best model using checkpoint callback
                             project='contrast-agnostic',
                             entity='naga-karthik',
-                            config=config)
+                            config=config,
+                            mode="disabled")
 
         # Saving training script to wandb
         wandb.save("main.py")
-        wandb.save("transforms.py")
 
         # Enable TF32 on matmul and on cuDNN
         # torch._dynamo.config.verbose = True
@@ -768,13 +731,17 @@ def main(args):
             # NOTE: Each epoch takes a looot of time with the aggregated dataset, so limiting the number of training batches
             # per epoch. Turns out that we don't need to go through all the training samples within an epoch for good performance.
             # nnunet hardcodes 250 training steps per epoch and we all know how it performs :)
-            limit_train_batches=0.5,  # use 1.0 for full training
+            # limit_train_batches=0.5,  # use 1.0 for full training
             enable_progress_bar=True)
             # profiler="simple",)     # to profile the training time taken for each step
 
         # Train!
         trainer.fit(pl_model)
         logger.info(f" Training Done!")
+        end_time = time.time()
+
+        duration = (end_time - start_time)
+        logger.info(f"Total training time: {duration / 3600}hrs {(duration / 60) % 60}mins {(duration) % 60}secs")
 
     else:
         logger.info(f" Resuming training from the latest checkpoint! ")
