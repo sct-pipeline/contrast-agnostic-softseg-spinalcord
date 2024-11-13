@@ -77,6 +77,10 @@ elif [[ $QC_DATASET == "spider-challenge-2023" ]]; then
     contrasts="acq-lowresSag_T1w acq-lowresSag_T2w acq-highresSag_T2w"
     label_suffix="label-SC_seg"
 
+elif [[ $QC_DATASET == "bavaria-quebec-spine-ms-unstitched" ]]; then
+    contrasts="acq-ax_chunk-1_T2w"
+    label_suffix="seg-manual"
+
 fi
 
 PATH_DERIVATIVES="${PATH_DATA}/derivatives/labels/./${SUBJECT}/anat"
@@ -87,6 +91,7 @@ for contrast in ${contrasts}; do
     
     # NOTE: this replacement is cool because it automatically takes care of 'ses-XX' for longitudinal data
     file="${SUBJECT//[\/]/_}_${contrast}"
+    echo "Processing file: ${file}"
 
     # check if label exists in the dataset
     if [[ ! -f ${PATH_DERIVATIVES}/${file}_${label_suffix}.nii.gz ]]; then
