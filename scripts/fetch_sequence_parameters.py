@@ -24,7 +24,6 @@ Adapted by: Naga Karthik
 
 import os
 import re
-import glob
 import json
 import argparse
 from tqdm import tqdm
@@ -32,6 +31,7 @@ from tqdm import tqdm
 import numpy as np
 import pandas as pd
 import nibabel as nib
+from loguru import logger
 
 LIST_OF_PARAMETERS = [
     'MagneticFieldStrength',
@@ -141,7 +141,7 @@ def fetch_participant_details(input_string):
     else:
         # TODO: add more contrasts as needed
         # contrast_pattern =  r'.*_(T1w|T2w|T2star|PSIR|STIR|UNIT1|acq-MTon_MTR|acq-dwiMean_dwi|acq-b0Mean_dwi|acq-T1w_MTR).*'
-        contrast_pattern =  r'.*_(T1w|T2w|T2star|PSIR|STIR|UNIT1|T1map|inv-1_part-mag_MP2RAGE|inv-2_part-mag_MP2RAGE|acq-MTon_MTR|acq-dwiMean_dwi|acq-T1w_MTR).*'
+        contrast_pattern =  r'.*_(T1w|acq-lowresSag_T1w|T2w|acq-lowresSag_T2w|acq-highresSag_T2w|T2star|PSIR|STIR|UNIT1|T1map|inv-1_part-mag_MP2RAGE|inv-2_part-mag_MP2RAGE|acq-MTon_MTR|acq-dwiMean_dwi|acq-T1w_MTR).*'
     contrast = re.search(contrast_pattern, input_string)
     contrast_id = contrast.group(1) if contrast else ""
 
@@ -158,12 +158,15 @@ def main():
     out_path = os.path.join(args.path_datalists, 'sequence_parameters')
     if not os.path.exists(out_path):
         os.makedirs(out_path, exist_ok=True)
+    
+    logger.add(os.path.join(out_path, 'sequence_params.log'), rotation='10 MB', level='INFO')
+    logger.info(f"Saving parsed data to {out_path}")
 
     for datalist in datalists:
         dataset_name = datalist.split('/')[-1].split('_')[1]
 
         if not os.path.exists(datalist):
-            print(f'ERROR: {datalist} does not exist. Run create_msd_data.py script first.')
+            logger.info(f'ERROR: {datalist} does not exist. Run create_msd_data.py script first.')
 
         # load json file
         with open(datalist, 'r') as f:
@@ -193,28 +196,33 @@ def main():
 
         # Save the DataFrame to a CSV file
         df.to_csv(os.path.join(out_path, f'{dataset_name}_parsed_data.csv'), index=False)
-        print(f"Parsed data saved to {os.path.join(out_path, f'{dataset_name}_parsed_data.csv')}")
+        logger.info(f"Parsed data saved to {os.path.join(out_path, f'{dataset_name}_parsed_data.csv')}")
 
-    # # For sci-paris, we do not have JSON sidecars --> we can fetch only PixDim and SliceThickness from nii header
-    # if 'sci-paris' in dir_path:
-    #     # Print the min and max values of the PixDim, and SliceThickness
-    #     print(df[['PixDim', 'SliceThickness']].agg([np.min, np.max]))
-    # else:
-    #     # Remove rows with n/a values for MagneticFieldStrength
-    #     df = df[df['MagneticFieldStrength'] != 'n/a']
+        # # For sci-paris, we do not have JSON sidecars --> we can fetch only PixDim and SliceThickness from nii header
+        # if 'sci-paris' in dir_path:
+        #     # Print the min and max values of the PixDim, and SliceThickness
+        #     print(df[['PixDim', 'SliceThickness']].agg([np.min, np.max]))
+        # else:
 
-    #     # Convert MagneticFieldStrength to float
-    #     df['MagneticFieldStrength'] = df['MagneticFieldStrength'].astype(float)
+        logger.info(f"Dataset: {dataset_name}")
 
-    #     # Print the min and max values of the MagneticFieldStrength, PixDim, and SliceThickness
-    #     print(df[['MagneticFieldStrength', 'PixDim', 'SliceThickness']].agg([np.min, np.max]))
+        # Remove rows with n/a values for MagneticFieldStrength
+        df = df[df['MagneticFieldStrength'] != 'n/a']
 
-    #     # Print unique values of the Manufacturer and ManufacturerModelName
-    #     print(df[['Manufacturer', 'ManufacturerModelName']].drop_duplicates())
-    #     # Print number of filenames for unique values of the Manufacturer
-    #     print(df.groupby('Manufacturer')['filename'].nunique())
-    #     # Print number of filenames for unique values of the MagneticFieldStrength
-    #     print(df.groupby('MagneticFieldStrength')['filename'].nunique())
+        # Convert MagneticFieldStrength to float
+        df['MagneticFieldStrength'] = df['MagneticFieldStrength'].astype(float)
+
+        # Print the min and max values of the MagneticFieldStrength, PixDim, and SliceThickness
+        logger.info(f"\n{df[['MagneticFieldStrength', 'PixDim', 'SliceThickness']].agg(['min', 'max'])}")
+
+        # Print unique values of the Manufacturer and ManufacturerModelName
+        logger.info(f"\n{df[['Manufacturer', 'ManufacturerModelName']].drop_duplicates()}")
+        # # Print number of filenames for unique values of the Manufacturer
+        # print(df.groupby('Manufacturer')['filename'].nunique())
+        # # Print number of filenames for unique values of the MagneticFieldStrength
+        # print(df.groupby('MagneticFieldStrength')['filename'].nunique())
+
+        logger.info('')
 
 
 if __name__ == '__main__':
