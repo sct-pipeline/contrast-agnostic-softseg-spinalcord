@@ -8,7 +8,7 @@ import matplotlib.patches as mpatches
 import seaborn as sns
 
 #plt.style.use('seaborn')
-plt.style.use('seaborn-ticks')
+#plt.style.use('seaborn-ticks')
 
 
 
