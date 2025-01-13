@@ -106,7 +106,7 @@ def get_parser():
                         help='Dataset name used for storing on git-annex. For region-based metrics, '
                              'append "-region" to the dataset name. Default: spine-generic')
     parser.add_argument('--method', required=True, type=str, default='monai', 
-                        choices=['monai', 'deepseg2d', 'deepseg3d', 'propseg'],
+                        choices=['monai', 'synthseg', 'deepseg2d', 'deepseg3d', 'propseg'],
                         help='Segmentation method to compute metrics for. Default: monai')
 
     return parser
@@ -117,19 +117,20 @@ def get_test_metrics_by_dataset(pred_folder, output_folder, anima_binaries_path,
     Computes the test metrics given folders containing nifti images of test predictions 
     and GT images by running the "animaSegPerfAnalyzer" command
     """
-    
+    pred_suffix = 'synthseg_sc' # '_pred.nii.gz' 
+    gt_suffix = 'seg-manual' # '_softseg_gt.nii.gz'
     if data_set in STANDARD_DATASETS:
         # glob all the predictions and GTs and get the last three digits of the filename
-        pred_files = sorted(glob.glob(f"{pred_folder}/**/*_pred.nii.gz"))
-        gt_files = sorted(glob.glob(f"{pred_folder}/**/*_softseg_gt.nii.gz"))
+        pred_files = sorted(glob.glob(f"{pred_folder}/**/*_{pred_suffix}.nii.gz"))
+        gt_files = sorted(glob.glob(f"{pred_folder}/**/*_{gt_suffix}.nii.gz"))
 
         # dataset_name_nnunet = fetch_filename_details(pred_files[0])[0]
 
         # loop over the predictions and compute the metrics
         for pred_file, gt_file in zip(pred_files, gt_files):
             
-            subject_contrast_pred = pred_file.split('/')[-1].replace('_pred.nii.gz', '')
-            subject_contrast_gt = gt_file.split('/')[-1].replace('_softseg_gt.nii.gz', '')
+            subject_contrast_pred = pred_file.split('/')[-1].replace(f'_{pred_suffix}.nii.gz', '')
+            subject_contrast_gt = gt_file.split('/')[-1].replace(f'_{gt_suffix}.nii.gz', '')
 
             # make sure the subject and session IDs match
             print(f"Subject_Contrast for Preds and GTs: {subject_contrast_pred}, {subject_contrast_gt}")
@@ -196,7 +197,7 @@ def main():
     print(f"Saving ANIMA performance metrics to {output_folder}")
 
     # Get all XML filepaths where ANIMA performance metrics are saved for each hold-out subject
-    if method == 'monai':
+    if method in ['monai', 'synthseg']:
         subject_filepaths = get_test_metrics_by_dataset(pred_folder, output_folder, anima_binaries_path, 
                                                         data_set=dataset_name)
     elif method in ['deepseg2d', 'deepseg3d', 'propseg']:
