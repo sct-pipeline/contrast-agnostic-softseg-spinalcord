@@ -8,15 +8,12 @@ import pandas as pd
 import re
 import importlib
 import pkgutil
-from batchgenerators.utilities.file_and_folder_operations import *
 from image import Image
 
 
 CONTRASTS = {
-    "t1map": ["T1map"],
-    "mp2rage": ["inv-1_part-mag_MP2RAGE", "inv-2_part-mag_MP2RAGE"],
-    "t1w": ["T1w", "space-other_T1w", "acq-lowresSag_T1w"],
-    "t2w": ["T2w", "space-other_T2w", "acq-lowresSag_T2w", "acq-highresSag_T2w"],
+    "t1w": ["T1w", "space-other_T1w"],
+    "t2w": ["T2w", "space-other_T2w"],
     "t2star": ["T2star", "space-other_T2star"],
     "dwi": ["rec-average_dwi", "acq-dwiMean_dwi"],
     "mt-on": ["flip-1_mt-on_space-other_MTS", "acq-MTon_MTR"],
@@ -108,7 +105,6 @@ def plot_contrast_wise_pathology(df, path_save):
         'MS': '#2B4373',
         'RRMS': '#6A89C8',
         'PPMS': '#88A1E0',
-        'SPMS': '#3B5A92',
         'RIS': '#4C72B0',
         'DCM': '#DD8452',
         'SCI': '#C44E52',
@@ -218,9 +214,6 @@ def get_datasets_stats(datalists_root, contrasts_dict, path_save):
     # save the originals as the csv
     unified_df.to_csv(os.path.join(path_save, 'dataset_contrast_agnostic.csv'), index=False)
 
-    # dropna
-    unified_df = unified_df.dropna(subset=['pathologyID'])
-
     contrasts_final = list(contrasts_dict.keys())
     # rename the contrasts column as per contrasts_final
     for c in unified_df['contrastID'].unique():
@@ -321,7 +314,6 @@ def get_datasets_stats(datalists_root, contrasts_dict, path_save):
         # concatenate the dataframes for different orientations on columns
         df_mega = pd.concat([df_mega, df_res], axis=0)
     
-
     # get the subject-wise pathology split
     pathology_subjects, pathology_contrasts = get_pathology_wise_split(unified_df)
     df_pathology = pd.DataFrame.from_dict(pathology_subjects, orient='index', columns=['Number of Subjects'])
@@ -403,7 +395,7 @@ def recursive_find_python_class(folder: str, class_name: str, current_module: st
         for importer, modname, ispkg in pkgutil.iter_modules([folder]):
             if ispkg:
                 next_current_module = current_module + "." + modname
-                tr = recursive_find_python_class(join(folder, modname), class_name, current_module=next_current_module)
+                tr = recursive_find_python_class(os.path.join(folder, modname), class_name, current_module=next_current_module)
             if tr is not None:
                 break
     return tr
@@ -553,7 +545,7 @@ if __name__ == "__main__":
     # tr_ix, val_tx, te_ix, fold = names_list[0]
     # print(len(tr_ix), len(val_tx), len(te_ix))
 
-    datalists_root = "/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/datalists/v2-final-aggregation-20241022"
+    datalists_root = "/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/datalists/20250115-v21PtrAll"
     get_datasets_stats(datalists_root, contrasts_dict=CONTRASTS, path_save=datalists_root)
     # get_pathology_wise_split(datalists_root, path_save=datalists_root)
 
