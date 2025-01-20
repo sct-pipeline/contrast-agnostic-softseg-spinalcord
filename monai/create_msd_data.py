@@ -33,7 +33,6 @@ FILESEG_SUFFIXES = {
     "dcm-zurich-lesions-20231115": ["labels", "label-SC_mask-manual"],
     "lumbar-epfl": ["labels", "seg-manual"],
     "lumbar-vanderbilt": ["labels", "label-SC_seg"],
-    "nih-ms-mp2rage": ["labels", "label-SC_seg"],
     "sci-colorado": ["labels", "seg-manual"],
     "sci-paris": ["labels", "seg-manual"],
     "sci-zurich": ["labels", "seg-manual"],
@@ -43,7 +42,7 @@ FILESEG_SUFFIXES = {
 }
 
 # add abbreviations of pathologies in sct-testing-large and other datasets to be included in the aggregated dataset
-PATHOLOGIES = ["ALS", "DCM", "NMO", "MS", "SYR", "SCI", "LBP"]
+PATHOLOGIES = ["ALS", "DCM", "NMO", "MS", "SYR", "SCI"]
 
 
 def get_parser():
@@ -111,7 +110,7 @@ def fetch_subject_nifti_details(filename_path):
     else:
         # TODO: add more contrasts as needed
         # contrast_pattern =  r'.*_(T1w|T2w|T2star|PSIR|STIR|UNIT1|acq-MTon_MTR|acq-dwiMean_dwi|acq-b0Mean_dwi|acq-T1w_MTR).*'
-        contrast_pattern =  r'.*_(T1w|acq-lowresSag_T1w|T2w|acq-lowresSag_T2w|acq-highresSag_T2w|T2star|PSIR|STIR|UNIT1|T1map|inv-1_part-mag_MP2RAGE|inv-2_part-mag_MP2RAGE|acq-MTon_MTR|acq-dwiMean_dwi|acq-T1w_MTR).*'
+        contrast_pattern =  r'.*_(T1w|T2w|acq-sagthor_T2w|acq-sagcerv_T2w|acq-sagstir_T2w|acq-ax_T2w|T2star|PSIR|STIR|UNIT1|acq-MTon_MTR|acq-dwiMean_dwi|acq-T1w_MTR).*'
     contrast = re.search(contrast_pattern, filename_path)
     contrastID = contrast.group(1) if contrast else ""
 
@@ -390,7 +389,7 @@ def main():
     branch, commit = get_git_branch_and_commit(data_root)
     dataset_commits[dataset_name] = f"git-{branch}-{commit}"
 
-    if dataset_name in ['data-multi-subject', 'canproco']:    
+    if dataset_name in ['data-multi-subject']: #, 'canproco']:    
         # NOTE: we need to have the same spine-generic test set across for all new datasets we're adding
         train_ratio, val_ratio, test_ratio = 0.65, 0.15, 0.2
     else:
@@ -462,7 +461,11 @@ def main():
                         # NOTE: but for other datasets, we are getting them from the lesion filenames
                         fname_label = df[df['subjectID'] == subject]['filename'].values[idx]
                         fname_image = fname_label.replace(f'/derivatives/{labels_folder}', '').replace(f'_{labels_suffix}.nii.gz', '.nii.gz')
-                                    
+
+                    # # use when creating a balanced dataset
+                    # temp_data["image"] = df[(df['subjectID'] == subject) & (df['split'] == name)].iloc[idx]['fname_image']
+                    # temp_data["label"] = df[(df['subjectID'] == subject) & (df['split'] == name)].iloc[idx]['fname_label']
+
                     temp_data["image"] = fname_image
                     temp_data["label"] = fname_label
 
