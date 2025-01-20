@@ -69,7 +69,7 @@ def get_pathology_wise_split(unified_df):
         pathology_subjects[pathology] = len(unified_df[unified_df['pathologyID'] == pathology]['subjectID'].unique())
 
     # merge MildCompression, DCM, MildCompression/DCM into DCM
-    pathology_subjects['DCM'] = pathology_subjects['MildCompression'] + pathology_subjects['MildCompression/DCM'] + pathology_subjects['DCM']
+    pathology_subjects['DCM'] = pathology_subjects['MildCompression'] + pathology_subjects['DCM'] + pathology_subjects['MildCompression/DCM']
     pathology_subjects.pop('MildCompression', None)
     pathology_subjects.pop('MildCompression/DCM', None)
 
@@ -87,7 +87,7 @@ def get_pathology_wise_split(unified_df):
 
     # merge MildCompression, DCM, MildCompression/DCM into DCM
     for contrast in pathology_contrasts.keys():
-        pathology_contrasts[contrast]['DCM'] = pathology_contrasts[contrast]['MildCompression'] + pathology_contrasts[contrast]['MildCompression/DCM'] + pathology_contrasts[contrast]['DCM']
+        pathology_contrasts[contrast]['DCM'] = pathology_contrasts[contrast]['MildCompression'] + pathology_contrasts[contrast]['DCM'] + pathology_contrasts[contrast]['MildCompression/DCM']
         pathology_contrasts[contrast].pop('MildCompression', None)
         pathology_contrasts[contrast].pop('MildCompression/DCM', None)
 
@@ -111,7 +111,7 @@ def plot_contrast_wise_pathology(df, path_save):
         'NMO': '#937860',
         'SYR': '#b3b3b3',
         'ALS': '#DA8BC3',
-        'LBP': '#CCB974'
+        'AcuteSCI': '#CCB974'
     }
 
     contrasts = df.index.tolist()
@@ -123,12 +123,12 @@ def plot_contrast_wise_pathology(df, path_save):
         df_contrast = df.loc[[contrast]].T
         # reorder the columsn to put 'ALS' between 'HC' and 'MS'
         if contrast in ['dwi']:
-            df_contrast = df_contrast.reindex(['ALS', 'HC', 'MS', 'DCM', 'SCI', 'NMO', 'RRMS', 'PPMS', 'SPMS', 'RIS', 'LBP', 'SYR'])
-        elif contrast in ['unit1']:
+            df_contrast = df_contrast.reindex(['ALS', 'HC', 'MS', 'DCM', 'SCI', 'NMO', 'RRMS', 'PPMS', 'RIS', 'SYR'])
+        elif contrast in ['t1w']:
             # reorder the columsn to put 'PPMS' between 'MS' and 'RRMS'
-            df_contrast = df_contrast.reindex(['HC', 'MS', 'PPMS', 'RRMS', 'SPMS', 'RIS', 'DCM', 'SCI', 'NMO', 'ALS', 'LBP', 'SYR'])
+            df_contrast = df_contrast.reindex(['HC', 'MS', 'PPMS', 'RRMS', 'RIS', 'NMO', 'DCM', 'SCI', 'ALS', 'SYR'])
         elif contrast in ['t2star']:
-            df_contrast = df_contrast.reindex(['HC', 'ALS', 'MS', 'DCM', 'SCI', 'NMO', 'RRMS', 'PPMS', 'SPMS', 'RIS', 'LBP', 'SYR'])
+            df_contrast = df_contrast.reindex(['HC', 'ALS', 'MS', 'DCM', 'SCI', 'NMO', 'RRMS', 'PPMS', 'RIS', 'SYR'])
 
         # for the given contrast, remove columns (pathologies) with 0 images
         df_contrast = df_contrast[df_contrast[contrast] != 0]
@@ -159,10 +159,6 @@ def plot_contrast_wise_pathology(df, path_save):
             # bold font
             kw["fontweight"] = 'bold'
 
-            # Skip annotation for 'SYR'
-            if df_contrast.index[i] == 'SYR':
-                continue
-
             # Push small labels further away from pie
             distance = 1.1
             # for dwi contrast and sci pathology, plot the annotation to the left
@@ -171,7 +167,7 @@ def plot_contrast_wise_pathology(df, path_save):
                 horizontalalignment = 'right'
             if df_contrast.index[i] == 'ALS':
                 distance = 1.2
-                horizontalalignment = 'left'                
+                horizontalalignment = 'right'                
             if contrast == 't2w' and df_contrast.index[i] in ['RIS', 'ALS', 'PPMS']:
                 if df_contrast.index[i] != 'PPMS':
                     distance = 1.4
@@ -179,9 +175,9 @@ def plot_contrast_wise_pathology(df, path_save):
                 else:
                     distance = 1
                     horizontalalignment = 'right'
-            if contrast == 't1w' and df_contrast.index[i] == 'LBP':
-                distance = 1.3
-                horizontalalignment = 'left'
+            if df_contrast.index[i] == 'NMO':
+                distance = 1.1
+                horizontalalignment = 'right'
                 
             # Annotate with number of images per pathology
             text = f"{df_contrast.index[i]} (n={df_contrast.iloc[i, 0]})"
