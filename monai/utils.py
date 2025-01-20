@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from torch.optim.lr_scheduler import _LRScheduler
 import torch
+import torch.nn.functional as F
 import subprocess
 import os
 import pandas as pd
@@ -374,6 +375,153 @@ def get_datasets_stats(datalists_root, contrasts_dict, path_save):
         f.write(df_mega.to_markdown(index=False))
         f.write("\n\n")
 
+
+def compute_gradcam(model, input_image, target_layer):
+    """
+    Computes Grad-CAM heatmap for 3D U-Net segmentation model.
+    """
+    # Ensure input is a tensor with gradients
+    if hasattr(input_image, 'as_tensor'):
+        input_image = input_image.as_tensor()
+    
+    # Create a new tensor that requires gradients
+    input_tensor = input_image.clone().detach().requires_grad_(True)
+    
+    # Hooks for capturing activations and gradients
+    activations = []
+    gradients = []
+    
+    def forward_hook(module, input, output):
+        activations.append(output)
+    
+    def backward_hook(module, grad_input, grad_output):
+        gradients.append(grad_output[0])
+    
+    # Register hooks
+    forward_handle = target_layer.register_forward_hook(forward_hook)
+    backward_handle = target_layer.register_backward_hook(backward_hook)
+    
+    try:
+        # Forward pass
+        model.zero_grad()
+        output = model(input_tensor)[0]
+        
+        # Ensure output is a standard tensor
+        if hasattr(output, 'as_tensor'):
+            output = output.as_tensor()
+        
+        # Create a tensor for gradient computation
+        seg_output = output[0, 0]
+        target_score = torch.sum(seg_output)  # Sum of all voxel activations
+        
+        # Backward pass with gradient computation
+        model.zero_grad()
+        target_score.backward()
+        
+        # Compute Grad-CAM weights
+        grad_weights = torch.mean(gradients[0], dim=(2, 3, 4), keepdim=True)
+        
+        # Compute weighted activations
+        gradcam_map = torch.sum(grad_weights * activations[0], dim=1).squeeze()
+        
+        # Normalize and apply ReLU
+        gradcam_map = F.relu(gradcam_map)
+        gradcam_map -= gradcam_map.min()
+        gradcam_map /= (gradcam_map.max() + 1e-8)
+        
+        # Resize to input size
+        gradcam_map = F.interpolate(
+            gradcam_map.unsqueeze(0).unsqueeze(0),
+            size=input_tensor.shape[2:],
+            mode="trilinear",
+            align_corners=False
+        ).squeeze()
+        
+        return gradcam_map
+    
+    finally:
+        forward_handle.remove()
+        backward_handle.remove()
+
+    return None
+
+
+def visualize_feature_maps(input_img, model, layer_names, slice_axis=2, num_cols=4):
+    """
+    Visualize feature activation maps for specified layers of a 3D CNN.
+    
+    Args:
+        model (torch.nn.Module): Trained CNN model
+        nifti_path (str): Path to NIfTI image
+        layer_names (list): Names of layers to visualize
+        slice_axis (int): Axis to slice for 2D visualization (0, 1, or 2)
+        num_cols (int): Number of columns in output visualization grid
+    
+    Returns:
+        matplotlib figure with feature map visualizations
+    """
+    
+    # convert input_img from a metaTensor to a tensor
+    input_img = input_img.as_tensor()
+    
+    # Create feature extraction hook
+    feature_maps = {}
+    def hook_fn(module, input, output):
+        feature_maps[module] = output.detach().cpu()
+    
+    # Register hooks for specified layers
+    hooks = []
+    for name, module in model.named_modules():
+        if name in layer_names:
+            hooks.append(module.register_forward_hook(hook_fn))
+    
+    # Forward pass
+    with torch.no_grad():
+        model(input_img)
+    
+    # Remove hooks
+    for hook in hooks:
+        hook.remove()
+    
+    # Create visualization
+    fig, axes = plt.subplots(
+        nrows=len(layer_names), 
+        ncols=num_cols, 
+        figsize=(4*num_cols, 4*len(layer_names))
+    )
+    
+    for i, layer_name in enumerate(layer_names):
+        # print(dict(model.named_modules()).keys())
+        # Get feature maps for this layer
+        layer_features = feature_maps.get(dict(model.named_modules())[layer_name], None)
+        
+        if layer_features is None:
+            continue
+        
+        # Select subset of feature maps to visualize
+        num_feature_maps = min(layer_features.shape[1], num_cols)
+        
+        for j in range(num_feature_maps):
+            # Select middle slice along specified axis
+            feature_slice = layer_features[0, j].numpy()
+            mid_slice_idx = feature_slice.shape[slice_axis] // 2
+            
+            if slice_axis == 0:
+                slice_2d = feature_slice[mid_slice_idx, :, :]
+            elif slice_axis == 1:
+                slice_2d = feature_slice[:, mid_slice_idx, :]
+            else:  # slice_axis == 2
+                slice_2d = feature_slice[:, :, mid_slice_idx]
+            
+            # Plot in appropriate subplot
+            ax = axes[i, j] if len(layer_names) > 1 else axes[j]
+            im = ax.imshow(slice_2d, cmap='viridis')
+            ax.set_title(f'{layer_name} - Map {j}')
+            ax.axis('off')
+            plt.colorbar(im, ax=ax, shrink=0.8)
+    
+    plt.tight_layout()
+    return fig
 
 
 # Taken from: https://github.com/MIC-DKFZ/nnUNet/blob/master/nnunetv2/utilities/find_class_by_name.py
