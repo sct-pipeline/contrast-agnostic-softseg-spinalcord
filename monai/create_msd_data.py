@@ -232,11 +232,27 @@ def create_df(dataset_path):
         # remove only files where contrastID is "" (i.e. acq-b0Mean_dwi, acq-MocoMean_dwi, etc.)
         df = df[~df['contrastID'].str.len().eq(0)]
 
+        # NOTE: the acq-dwiMean_dwi images are not good (i.e. very weird shapes); GTs are okay in some 
+        # cases but it seems more like noise than actual data. Hence, we're excluding them
+        df = df[~df['contrastID'].str.contains('acq-dwiMean_dwi')]
+
         # only include subjects with pathology included in the PATHOLOGIES list
         df = df[df['subjectID'].isin(sct_testing_large_patho_subjects)]
 
         # NOTE: sub-xuanwuChenxi002 is causing issues with the git-annex get command, so we're excluding it
         df = df[~df['subjectID'].str.contains('sub-xuanwuChenxi002')]
+
+        # include yaml path
+        path_yaml = "/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/new_datasets_to_include/sct-testing-large/qc_fail_t2s_mton.yml"
+        with open(path_yaml, 'r') as file:
+            files_to_include = yaml.safe_load(file)['FILES_SEG']
+            # split the files_to_include to keep only basename
+            files_to_include = [os.path.basename(file) for file in files_to_include]
+
+        # create a temp column to store the basename of the filename
+        df['fname_temp'] = df['filename'].apply(lambda x: os.path.basename(x))
+        df = df[df['fname_temp'].isin(files_to_include)]
+        df.drop(columns=['fname_temp'], inplace=True)
 
         # store the pathology info by merging the "pathology_M0" colume from df_participants to the df dataframe
         df = pd.merge(df, df_participants[['participant_id', 'pathology']], left_on='subjectID', right_on='participant_id', how='left')
@@ -400,9 +416,27 @@ def main():
     # during the dataloading process of training the contrast-agnostic model
 
     all_subjects = df['subjectID'].unique()
-    train_subjects, test_subjects = train_test_split(all_subjects, test_size=test_ratio)
-    # Use the training split to further split into training and validation splits
-    train_subjects, val_subjects = train_test_split(train_subjects, test_size=val_ratio / (train_ratio + val_ratio))
+    if dataset_name == 'sct-testing-large':
+        train_subjects, test_subjects, val_subjects = [], [], []
+        for sub in all_subjects:
+            if sub.startswith('sub-vanderbilt') or sub.startswith('sub-milan'):
+                test_subjects.append(sub)
+            else:
+                train_subjects.append(sub)
+        
+        train_subjects, val_subjects = train_test_split(train_subjects, test_size=val_ratio / (train_ratio + val_ratio))
+
+    elif dataset_name in ['site_006', 'site_007']:
+        train_subjects = all_subjects.copy()
+        test_subjects = [all_subjects[0]]    # only to keep the dataloader happy; we're not using the test set
+        # because we're evaluating out-of-distribution on other praxis sites
+        
+        train_subjects, val_subjects = train_test_split(train_subjects, test_size=val_ratio / (train_ratio + val_ratio))
+
+    else:
+        train_subjects, test_subjects = train_test_split(all_subjects, test_size=test_ratio)
+        # Use the training split to further split into training and validation splits
+        train_subjects, val_subjects = train_test_split(train_subjects, test_size=val_ratio / (train_ratio + val_ratio))
     
     # sort the subjects
     train_subjects, val_subjects, test_subjects = sorted(train_subjects), sorted(val_subjects), sorted(test_subjects)
