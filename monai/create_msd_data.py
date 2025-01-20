@@ -38,7 +38,8 @@ FILESEG_SUFFIXES = {
     "sci-paris": ["labels", "seg-manual"],
     "sci-zurich": ["labels", "seg-manual"],
     "sct-testing-large": ["labels", "seg-manual"],
-    "spider-challenge-2023": ["labels", "label-SC_seg"]
+    "site_006": ["labels", "label-SC_seg"],     # from PRAXIS SCI dataset; Montreal site
+    "site_007": ["labels", "label-SC_seg"],     # from PRAXIS SCI dataset; Vancouver site
 }
 
 # add abbreviations of pathologies in sct-testing-large and other datasets to be included in the aggregated dataset
@@ -298,8 +299,28 @@ def create_df(dataset_path):
             except subprocess.CalledProcessError as e:
                 logger.error(f"Error in downloading {file} from git-annex: {e}")
     
-    elif dataset_name == 'spider-challenge-2023':
-        df['pathologyID'] = 'LBP'
+    elif dataset_name in ['site_006', 'site_007']:
+
+        # include yaml path
+        path_yaml = "/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/new_datasets_to_include/data-praxis-sci/qc_fail_praxis_jan_corrected_seg_mon_van_sites.yml"
+        with open(path_yaml, 'r') as file:
+            yaml_content = yaml.safe_load(file)
+            try:
+                files_to_include = yaml_content['FILES_SEG']
+            except KeyError:
+                files_to_include = yaml_content['FILES_LESION']
+
+            # split the files_to_include to keep only basename
+            files_to_include = [os.path.basename(file) for file in files_to_include]
+            # add label_suffix to the files_to_include
+            files_to_include = [file.replace('.nii.gz', f'_{labels_suffix}.nii.gz') for file in files_to_include]
+
+        # create a temp column to store the basename of the filename
+        df['fname_temp'] = df['filename'].apply(lambda x: os.path.basename(x))
+        df = df[df['fname_temp'].isin(files_to_include)]
+        df.drop(columns=['fname_temp'], inplace=True)
+
+        df['pathologyID'] = 'AcuteSCI'
 
     else:
         # load the participants.tsv file
