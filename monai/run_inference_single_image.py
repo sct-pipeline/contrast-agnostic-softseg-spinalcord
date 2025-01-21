@@ -13,21 +13,16 @@ import warnings
 from loguru import logger
 import torch.nn.functional as F
 import torch
-import torch.nn as nn
 import json
+import glob
 from time import time
-import yaml
 from scipy import ndimage
 
 from monai.inferers import sliding_window_inference
 from monai.data import (DataLoader, Dataset, decollate_batch)
-from monai.networks.nets import SwinUNETR
 import monai.transforms as transforms
 
-# ---------------------------- Imports for nnUNet's Model -----------------------------
-from batchgenerators.utilities.file_and_folder_operations import join
-from utils import recursive_find_python_class
-
+from utils import recursive_find_python_class, visualize_feature_maps
 
 nnunet_plans = {
     "arch_class_name": "dynamic_network_architectures.architectures.unet.PlainConvUNet",
@@ -78,7 +73,7 @@ def get_parser():
                         ' Default: 64x192x-1')
     parser.add_argument('--device', default="gpu", type=str, choices=["gpu", "cpu"],
                         help='Device to run inference on. Default: cpu')
-    parser.add_argument('--model', default="monai", type=str, choices=["monai", "monai-resencM", "swinunetr", "swinpretrained"], 
+    parser.add_argument('--model', default="monai", type=str, choices=["monai", "monai-resencM", "swinunetr", "meunet"], 
                         help='Model to use for inference. Default: monai')
     parser.add_argument('--pred-type', default="soft", type=str, choices=["soft", "hard"],
                         help='Type of prediction to output/save. `soft` outputs soft segmentation masks with a threshold of 0.1'
@@ -154,7 +149,7 @@ def create_nnunet_from_plans(plans, input_channels, output_channels, allow_init 
         
         import dynamic_network_architectures
         
-        nw_class = recursive_find_python_class(join(dynamic_network_architectures.__path__[0], "architectures"),
+        nw_class = recursive_find_python_class(os.path.join(dynamic_network_architectures.__path__[0], "architectures"),
                                                network_class.split(".")[-1],
                                                'dynamic_network_architectures.architectures')
         if nw_class is not None:
@@ -243,7 +238,8 @@ def main():
     # define root path for finding datalists
     path_image = args.path_img
     results_path = args.path_out
-    chkp_path = os.path.join(args.chkp_path, "best_model.ckpt")
+    # assumes that the checkpoint is under "<results-folder>/<any-folder>/best_model.ckpt"
+    chkp_path = glob.glob(os.path.join(args.chkp_path, '**', "*.ckpt"))[0]
 
     # save terminal outputs to a file
     logger.add(os.path.join(results_path, "logs.txt"), rotation="10 MB", level="INFO")
@@ -264,35 +260,50 @@ def main():
     # models have 384 max features
     nnunet_plans["arch_kwargs"]["features_per_stage"] = [32, 64, 128, 256, args.max_feat, args.max_feat]
 
-    # define model
-    if args.model == "monai":
-        net = create_nnunet_from_plans(plans=nnunet_plans, input_channels=1, 
-                                       output_channels=1, deep_supervision=True)
-    elif args.model == "monai-resencM":
-        net = create_nnunet_from_plans(plans=nnunet_plans_resencM, input_channels=1,
-                                       output_channels=1, deep_supervision=True)    
-    
-    elif args.model in ["swinunetr", "swinpretrained"]:
-        # load config file
-        config_path = os.path.join(args.chkp_path, "config.yaml")
-        with open(config_path, "r") as f:
-            config = yaml.safe_load(f)
-        
-        net = SwinUNETR(
-            spatial_dims=config["model"]["swinunetr"]["spatial_dims"],
-            in_channels=1, out_channels=1, 
-            img_size=config["preprocessing"]["crop_pad_size"],
-            depths=config["model"]["swinunetr"]["depths"],
-            feature_size=config["model"]["swinunetr"]["feature_size"], 
-            num_heads=config["model"]["swinunetr"]["num_heads"])
-        
+    if "monai" in args.model:
+        # define model
+        if args.model == "monai":
+            net = create_nnunet_from_plans(plans=nnunet_plans, input_channels=1, 
+                                        output_channels=1, deep_supervision=True)
+        elif args.model == "monai-resencM":
+            net = create_nnunet_from_plans(plans=nnunet_plans_resencM, input_channels=1,
+                                        output_channels=1, deep_supervision=True)        
+    # elif args.model == "meunet":
+    #     net = MultiEncoderUNet(
+    #         num_contrasts=9, in_channels=1, feature_maps=[32, 64, 128, 256], fusion_type="gated", norm_type="l2"
+    #         )
+
     else:
         raise ValueError("Model not recognized. Please choose from: nnunet, swinunetr")
-
 
     # define list to collect the test metrics
     test_step_outputs = []
     test_summary = {}
+
+    # # do model merging of v2.4 and v2.5 models
+    # net_v24 = "/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/saved_models/lifelong/nnunet_seed=50_ndata=7_ncont=9_pad=zero_nf=32_opt=adam_lr=0.001_AdapW_bs=2_20240425-170840"
+    # net_v25 = "/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/saved_models/lifelong/nnunet-plain_seed=50_ndata=14_ncont=11_newprob=0_nf=384_opt=adam_lr=0.001_AdapW_bs=2_20240930-1002"
+    # net_v24_theta = torch.load(os.path.join(net_v24, 'model', 'best_model.ckpt'), map_location=torch.device(DEVICE))["state_dict"]
+    # net_v25_theta = torch.load(os.path.join(net_v25, 'best_model.ckpt'), map_location=torch.device(DEVICE))["state_dict"]
+
+    # # linearly interpoloate only those keys that are common between the two models
+    # alpha = 0.5
+    # for key in net_v25_theta.keys():
+    #     # if the shape of the tensor is different, then do not interpolate
+    #     if net_v24_theta[key].shape != net_v25_theta[key].shape:
+    #         print(f"Skipping key: {key} because of shape mismatch")
+    #         continue
+    #     net_v25_theta[key] = alpha * net_v24_theta[key] + (1 - alpha) * net_v25_theta[key]
+    
+    # # delete the net. prefix from the keys because of how the model was initialized in lightning
+    # # https://discuss.pytorch.org/t/missing-keys-unexpected-keys-in-state-dict-when-loading-self-trained-model/22379/14
+    # for key in list(net_v25_theta.keys()):
+    #     if 'net.' in key:
+    #         net_v25_theta[key.replace('net.', '')] = net_v25_theta[key]
+    #         del net_v25_theta[key]
+    
+    # # load the trained model weights
+    # net.load_state_dict(net_v25_theta)
         
     # iterate over the dataset and compute metrics
     with torch.no_grad():
@@ -318,7 +329,15 @@ def main():
             net.to(DEVICE)
             net.eval()
 
-            # run inference            
+            # fig = visualize_feature_maps(
+            #     input_img=test_input, 
+            #     model=net,
+            #     layer_names=['encoder.stages.5.0.convs.1.all_modules']
+            # )
+            # fig.savefig(os.path.join(results_path, "feature_maps.png"), dpi=300)
+            # exit()
+
+            # run inference
             batch["pred"] = sliding_window_inference(test_input, inference_roi_size, mode="gaussian",
                                                     sw_batch_size=4, predictor=net, overlap=0.5, progress=False)
 

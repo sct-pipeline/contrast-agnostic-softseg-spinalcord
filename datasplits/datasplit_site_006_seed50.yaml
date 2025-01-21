@@ -1,0 +1,34 @@
+test:
+- sub-mon111
+train:
+- sub-mon025
+- sub-mon032
+- sub-mon072
+- sub-mon103
+- sub-mon110
+- sub-mon111
+- sub-mon133
+- sub-mon173
+- sub-mon184
+- sub-mon188
+- sub-mon192
+- sub-mon207
+- sub-mon208
+- sub-mon241
+- sub-mon266
+- sub-mon274
+- sub-mon299
+- sub-mon312
+- sub-mon314
+- sub-mon336
+- sub-mon342
+- sub-mon351
+- sub-mon358
+- sub-mon411
+- sub-mon434
+- sub-mon438
+val:
+- sub-mon003
+- sub-mon031
+- sub-mon130
+- sub-mon170

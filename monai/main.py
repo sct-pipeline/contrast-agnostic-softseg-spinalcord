@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 from utils import dice_score, PolyLRScheduler, check_empty_patch, count_parameters, get_datasets_stats
 from losses import AdapWingLoss
 from transforms import train_transforms, val_transforms
-from models import create_nnunet_from_plans, load_pretrained_swinunetr
+from models import create_nnunet_from_plans, load_pretrained_weights, load_pretrained_swinunetr
 
 from monai.apps import download_url
 from monai.utils import set_determinism
@@ -28,7 +28,6 @@ from monai.transforms import (Compose, EnsureType, EnsureTyped, Invertd, SaveIma
 # list of contrasts and their possible various names in the datasets
 CONTRASTS = {
     "t1map": ["T1map"],
-    "mp2rage": ["inv-1_part-mag_MP2RAGE", "inv-2_part-mag_MP2RAGE"],
     "t1w": ["T1w", "space-other_T1w", "acq-lowresSag_T1w"],
     "t2w": ["T2w", "space-other_T2w", "acq-lowresSag_T2w", "acq-highresSag_T2w"],
     "t2star": ["T2star", "space-other_T2star"],
@@ -44,7 +43,7 @@ def get_args():
     parser = argparse.ArgumentParser(description='Script for training contrast-agnositc SC segmentation model.')
 
     # arguments for model
-    parser.add_argument('-m', '--model', choices=['nnunet-plain', 'nnunet-resencM', 'swinunetr'],
+    parser.add_argument('-m', '--model', choices=['nnunet-plain', 'nnunet-resencM', 'swinunetr', 'meunet'],
                         default='nnunet', type=str,
                         help='Model type to be used. Options: nnunet, swinunetr.')
     # path to the config file
@@ -57,7 +56,9 @@ def get_args():
     # temporaray arg
     parser.add_argument('--pad-mode', type=str, default="zero", help="Padding mode for the images.")
     parser.add_argument('--input-label', type=str, default="soft", choices=["soft", "bin"],
-                        help="Type of label input to the model.")
+                        help="Type of label input to the model. 'soft' for the SoftSeg approach, 'bin' for binarize labels after SoftSeg (data-aug).")
+    # path to the folder containing pre-trained weights
+    parser.add_argument('--pretrained-path', type=str, default=None, help="Path to the folder containing pre-trained weights.")
 
     args = parser.parse_args()
 
@@ -627,17 +628,47 @@ def main(args):
                         f"{config['preprocessing']['crop_pad_size'][1]}x" \
                         f"{config['preprocessing']['crop_pad_size'][2]}"
         # save experiment id
-        save_exp_id = f"{args.model}_seed={config['seed']}_" \
+        save_exp_id = f"{args.model}_seed={config['seed']}_WithPraxNoSCT_" \
                         f"ndata={n_datasets}_ncont={n_contrasts}_" \
                         f"nf={config['model']['nnunet-plain']['features_per_stage'][-1]}_" \
                         f"opt={config['opt']['name']}_lr={config['opt']['lr']}_AdapW_" \
                         f"bs={config['opt']['batch_size']}" \
+                        
+        # if pre-trained weights are provided, load them
+        if args.pretrained_path is not None:
+            logger.info(f"Loading pre-trained weights from {args.pretrained_path} ...")
+            path_pretrained = os.path.join(args.pretrained_path, "best_model.ckpt")
+            net = load_pretrained_weights(path_pretrained, net)
+            save_exp_id = f"{save_exp_id}_ptrV21"
+        else:
+            logger.info(f"No input for pretrained weights. Starting training from scratch ...")
 
         if args.debug:
             save_exp_id = f"DEBUG_{save_exp_id}"
 
+    # elif args.model in ["meunet"]:
+    #     logger.info(f"Using MultiEncoderUNet model with {n_contrasts} contrasts ...")
+    #     # define model
+    #     net = MultiEncoderUNet(
+    #         num_contrasts=n_contrasts, in_channels=1, 
+    #         feature_maps=config["model"]["meunet"]["features_per_stage"],
+    #         fusion_type=config["model"]["meunet"]["fusion_type"],
+    #         norm_type=config["model"]["meunet"]["feat_norm_type"],
+    #     )
+
+    #     # save experiment id
+    #     save_exp_id = f"{args.model}_seed={config['seed']}_" \
+    #                     f"ndata={n_datasets}_ncont={n_contrasts}_" \
+    #                     f"nf={config['model']['meunet']['features_per_stage'][-1]}_" \
+    #                     f"ft={config['model']['meunet']['fusion_type']}_" \
+    #                     f"opt={config['opt']['name']}_lr={config['opt']['lr']}_AdapW_" \
+    #                     f"bs={config['opt']['batch_size']}" \
+        
+        if args.debug:
+            save_exp_id = f"DEBUG_{save_exp_id}"
+
     timestamp = datetime.now().strftime(f"%Y%m%d-%H%M")   # prints in YYYYMMDD-HHMMSS format
-    save_exp_id = f"{save_exp_id}_{timestamp}"
+    save_exp_id = f"{timestamp}_{save_exp_id}"
 
     # save output to a log file
     logger.add(os.path.join(config["directories"]["models_dir"], f"{save_exp_id}", "logs.txt"), rotation="10 MB", level="INFO")
@@ -700,7 +731,6 @@ def main(args):
         logger.info(f"Number of Trainable model parameters: {(num_model_params / 1e6):.3f}M")
 
         start_time = time.time()
-        logger.info(f"Starting training from scratch ...")
         # wandb logger
         exp_logger = pl.loggers.WandbLogger(
                             name=save_exp_id,
@@ -731,7 +761,7 @@ def main(args):
             # NOTE: Each epoch takes a looot of time with the aggregated dataset, so limiting the number of training batches
             # per epoch. Turns out that we don't need to go through all the training samples within an epoch for good performance.
             # nnunet hardcodes 250 training steps per epoch and we all know how it performs :)
-            # limit_train_batches=0.5,  # use 1.0 for full training
+            limit_train_batches=0.75,  # use 1.0 for full training
             enable_progress_bar=True)
             # profiler="simple",)     # to profile the training time taken for each step
 
@@ -741,7 +771,7 @@ def main(args):
         end_time = time.time()
 
         duration = (end_time - start_time)
-        logger.info(f"Total training time: {duration / 3600}hrs {(duration / 60) % 60}mins {(duration) % 60}secs")
+        logger.info(f"Total training time: {round((duration / 3600), 2)}hrs {(duration / 60) % 60}mins {(duration) % 60}secs")
 
     else:
         logger.info(f" Resuming training from the latest checkpoint! ")

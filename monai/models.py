@@ -1,4 +1,5 @@
 import pydoc
+import os
 import warnings
 import torch
 import torch.nn as nn
@@ -8,7 +9,6 @@ from loguru import logger
 from collections import OrderedDict
 
 # ---------------------------- Imports for nnUNet's Model -----------------------------
-from batchgenerators.utilities.file_and_folder_operations import join
 from utils import recursive_find_python_class
 
 # ======================================================================================================
@@ -82,7 +82,7 @@ def create_nnunet_from_plans(plans, input_channels, output_channels, allow_init 
         
         import dynamic_network_architectures
         
-        nw_class = recursive_find_python_class(join(dynamic_network_architectures.__path__[0], "architectures"),
+        nw_class = recursive_find_python_class(os.path.join(dynamic_network_architectures.__path__[0], "architectures"),
                                                network_class.split(".")[-1],
                                                'dynamic_network_architectures.architectures')
         if nw_class is not None:
@@ -158,11 +158,67 @@ def load_pretrained_swinunetr(model, path_pretrained_weights: str):
 
     return model
 
+
+def load_pretrained_weights(path_chkpt, model, verbose=False):
+    """
+    Transfers all weights between matching keys in state_dicts. matching is done by name and we only transfer if the
+    shape is also the same. Segmentation layers (the 1x1(x1) layers that produce the segmentation maps)
+    identified by keys ending with '.seg_layers') are not transferred!
+
+    """
+    # print(f"Loading Weights from the Path {path_chkpt}")
+    saved_model = torch.load(path_chkpt)
+    pretrained_dict = saved_model['state_dict']
+    # remove net. prefix from the keys
+    pretrained_dict = {k.replace("net.", ""): v for k, v in pretrained_dict.items()}
+
+    skip_strings_in_pretrained = [
+        '.seg_layers.',
+    ]
+
+    mod = model  # randomly initialized model (whose weights are to be replaced)
+
+    model_dict = mod.state_dict()
+    # verify that all but the segmentation layers have the same shape
+    for key, _ in model_dict.items():
+        if all([i not in key for i in skip_strings_in_pretrained]):
+            assert key in pretrained_dict, \
+                f"Key {key} is missing in the pretrained model weights. The pretrained weights do not seem to be " \
+                f"compatible with your network."
+            assert model_dict[key].shape == pretrained_dict[key].shape, \
+                f"The shape of the parameters of key {key} is not the same. Pretrained model: " \
+                f"{pretrained_dict[key].shape}; your network: {model_dict[key]}. The pretrained model " \
+                f"does not seem to be compatible with your network."
+
+    # fun fact: in principle this allows loading from parameters that do not cover the entire network. For example pretrained
+    # encoders. Not supported by this function though (see assertions above)
+
+    # commenting out this abomination of a dict comprehension for preservation in the archives of 'what not to do'
+    # pretrained_dict = {'module.' + k if is_ddp else k: v
+    #                    for k, v in pretrained_dict.items()
+    #                    if (('module.' + k if is_ddp else k) in model_dict) and
+    #                    all([i not in k for i in skip_strings_in_pretrained])}
+
+    pretrained_dict = {k: v for k, v in pretrained_dict.items()
+                       if k in model_dict.keys() and all([i not in k for i in skip_strings_in_pretrained])}
+
+    model_dict.update(pretrained_dict)
+
+    mod.load_state_dict(model_dict)
+
+    return mod  # return the model with pretrained weights
+
+
 if __name__ == "__main__":
 
     enable_deep_supervision = True
-    model = create_nnunet_from_plans(nnunet_plans, 1, 1, deep_supervision=enable_deep_supervision)
-    input = torch.randn(1, 1, 160, 224, 96)
+    # initialize the model
+    model_init = create_nnunet_from_plans(nnunet_plans, 1, 1, deep_supervision=enable_deep_supervision)
+    
+    path_pretrained_weights = "~/contrast-agnostic/saved_models/lifelong/nnunet-plain_seed=50_newCLumb_ndata=5_ncont=9_nf=384_opt=adam_lr=0.001_AdapW_bs=2_20241210-1255/best_model.ckpt"
+    model = load_pretrained_weights(path_pretrained_weights, model_init)
+    
+    input = torch.randn(1, 1, 64, 192, 320)
     output = model(input)
     if enable_deep_supervision:
         for i in range(len(output)):

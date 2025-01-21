@@ -9,17 +9,18 @@ SEED=50
 PATH_SCRIPT="/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/contrast-agnostic-softseg-spinalcord"
 
 # list of datasets to train on
-DATASETS=("basel-mp2rage" "canproco" "data-multi-subject" \ 
-            "dcm-brno" "dcm-zurich" "dcm-zurich-lesions" "dcm-zurich-lesions-20231115" \
-            "lumbar-epfl" "lumbar-vanderbilt" "nih-ms-mp2rage" \ 
-            "sci-colorado" "sci-paris" "sci-zurich" \
-            "sct-testing-large" "spider-challenge-2023")
+# NOTE: not using nih-ms-mp2rage (bad GT)
+DATASETS=("data-multi-subject" "basel-mp2rage" "canproco" \
+            "lumbar-epfl" "lumbar-vanderbilt" "dcm-brno" "dcm-zurich" "dcm-zurich-lesions" "dcm-zurich-lesions-20231115" \
+            "sci-paris" "sci-zurich" "sci-colorado" \
+            "data-praxis-sci/site_006" "data-praxis-sci/site_007"
+            )
 
 # base root path for the datasets
 PATH_DATA_BASE="/home/GRAMES.POLYMTL.CA/u114716/datasets"
 
 # output path
-folder_name=v2-final-aggregation-$(date +"%Y%m%d")
+folder_name=$(date +"%Y%m%d")-v21PtrWithPraxNoSCT
 PATH_OUTPUT="/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/datalists/${folder_name}"
 
 # create datalists!

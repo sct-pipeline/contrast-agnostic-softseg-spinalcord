@@ -2,21 +2,19 @@ import numpy as np
 import matplotlib.pyplot as plt
 from torch.optim.lr_scheduler import _LRScheduler
 import torch
+import torch.nn.functional as F
 import subprocess
 import os
 import pandas as pd
 import re
 import importlib
 import pkgutil
-from batchgenerators.utilities.file_and_folder_operations import *
 from image import Image
 
 
 CONTRASTS = {
-    "t1map": ["T1map"],
-    "mp2rage": ["inv-1_part-mag_MP2RAGE", "inv-2_part-mag_MP2RAGE"],
-    "t1w": ["T1w", "space-other_T1w", "acq-lowresSag_T1w"],
-    "t2w": ["T2w", "space-other_T2w", "acq-lowresSag_T2w", "acq-highresSag_T2w"],
+    "t1w": ["T1w", "space-other_T1w"],
+    "t2w": ["T2w", "space-other_T2w"],
     "t2star": ["T2star", "space-other_T2star"],
     "dwi": ["rec-average_dwi", "acq-dwiMean_dwi"],
     "mt-on": ["flip-1_mt-on_space-other_MTS", "acq-MTon_MTR"],
@@ -72,7 +70,7 @@ def get_pathology_wise_split(unified_df):
         pathology_subjects[pathology] = len(unified_df[unified_df['pathologyID'] == pathology]['subjectID'].unique())
 
     # merge MildCompression, DCM, MildCompression/DCM into DCM
-    pathology_subjects['DCM'] = pathology_subjects['MildCompression'] + pathology_subjects['MildCompression/DCM'] + pathology_subjects['DCM']
+    pathology_subjects['DCM'] = pathology_subjects['MildCompression'] + pathology_subjects['DCM'] + pathology_subjects['MildCompression/DCM']
     pathology_subjects.pop('MildCompression', None)
     pathology_subjects.pop('MildCompression/DCM', None)
 
@@ -90,7 +88,7 @@ def get_pathology_wise_split(unified_df):
 
     # merge MildCompression, DCM, MildCompression/DCM into DCM
     for contrast in pathology_contrasts.keys():
-        pathology_contrasts[contrast]['DCM'] = pathology_contrasts[contrast]['MildCompression'] + pathology_contrasts[contrast]['MildCompression/DCM'] + pathology_contrasts[contrast]['DCM']
+        pathology_contrasts[contrast]['DCM'] = pathology_contrasts[contrast]['MildCompression'] + pathology_contrasts[contrast]['DCM'] + pathology_contrasts[contrast]['MildCompression/DCM']
         pathology_contrasts[contrast].pop('MildCompression', None)
         pathology_contrasts[contrast].pop('MildCompression/DCM', None)
 
@@ -108,14 +106,13 @@ def plot_contrast_wise_pathology(df, path_save):
         'MS': '#2B4373',
         'RRMS': '#6A89C8',
         'PPMS': '#88A1E0',
-        'SPMS': '#3B5A92',
         'RIS': '#4C72B0',
         'DCM': '#DD8452',
         'SCI': '#C44E52',
         'NMO': '#937860',
         'SYR': '#b3b3b3',
         'ALS': '#DA8BC3',
-        'LBP': '#CCB974'
+        'AcuteSCI': '#CCB974'
     }
 
     contrasts = df.index.tolist()
@@ -127,12 +124,12 @@ def plot_contrast_wise_pathology(df, path_save):
         df_contrast = df.loc[[contrast]].T
         # reorder the columsn to put 'ALS' between 'HC' and 'MS'
         if contrast in ['dwi']:
-            df_contrast = df_contrast.reindex(['ALS', 'HC', 'MS', 'DCM', 'SCI', 'NMO', 'RRMS', 'PPMS', 'SPMS', 'RIS', 'LBP', 'SYR'])
-        elif contrast in ['unit1']:
+            df_contrast = df_contrast.reindex(['ALS', 'HC', 'MS', 'DCM', 'SCI', 'NMO', 'RRMS', 'PPMS', 'RIS', 'SYR'])
+        elif contrast in ['t1w']:
             # reorder the columsn to put 'PPMS' between 'MS' and 'RRMS'
-            df_contrast = df_contrast.reindex(['HC', 'MS', 'PPMS', 'RRMS', 'SPMS', 'RIS', 'DCM', 'SCI', 'NMO', 'ALS', 'LBP', 'SYR'])
+            df_contrast = df_contrast.reindex(['HC', 'MS', 'PPMS', 'RRMS', 'RIS', 'NMO', 'DCM', 'SCI', 'ALS', 'SYR'])
         elif contrast in ['t2star']:
-            df_contrast = df_contrast.reindex(['HC', 'ALS', 'MS', 'DCM', 'SCI', 'NMO', 'RRMS', 'PPMS', 'SPMS', 'RIS', 'LBP', 'SYR'])
+            df_contrast = df_contrast.reindex(['HC', 'ALS', 'MS', 'DCM', 'SCI', 'NMO', 'RRMS', 'PPMS', 'RIS', 'SYR'])
 
         # for the given contrast, remove columns (pathologies) with 0 images
         df_contrast = df_contrast[df_contrast[contrast] != 0]
@@ -163,10 +160,6 @@ def plot_contrast_wise_pathology(df, path_save):
             # bold font
             kw["fontweight"] = 'bold'
 
-            # Skip annotation for 'SYR'
-            if df_contrast.index[i] == 'SYR':
-                continue
-
             # Push small labels further away from pie
             distance = 1.1
             # for dwi contrast and sci pathology, plot the annotation to the left
@@ -175,7 +168,7 @@ def plot_contrast_wise_pathology(df, path_save):
                 horizontalalignment = 'right'
             if df_contrast.index[i] == 'ALS':
                 distance = 1.2
-                horizontalalignment = 'left'                
+                horizontalalignment = 'right'                
             if contrast == 't2w' and df_contrast.index[i] in ['RIS', 'ALS', 'PPMS']:
                 if df_contrast.index[i] != 'PPMS':
                     distance = 1.4
@@ -183,9 +176,9 @@ def plot_contrast_wise_pathology(df, path_save):
                 else:
                     distance = 1
                     horizontalalignment = 'right'
-            if contrast == 't1w' and df_contrast.index[i] == 'LBP':
-                distance = 1.3
-                horizontalalignment = 'left'
+            if df_contrast.index[i] == 'NMO':
+                distance = 1.1
+                horizontalalignment = 'right'
                 
             # Annotate with number of images per pathology
             text = f"{df_contrast.index[i]} (n={df_contrast.iloc[i, 0]})"
@@ -217,9 +210,6 @@ def get_datasets_stats(datalists_root, contrasts_dict, path_save):
 
     # save the originals as the csv
     unified_df.to_csv(os.path.join(path_save, 'dataset_contrast_agnostic.csv'), index=False)
-
-    # dropna
-    unified_df = unified_df.dropna(subset=['pathologyID'])
 
     contrasts_final = list(contrasts_dict.keys())
     # rename the contrasts column as per contrasts_final
@@ -321,7 +311,6 @@ def get_datasets_stats(datalists_root, contrasts_dict, path_save):
         # concatenate the dataframes for different orientations on columns
         df_mega = pd.concat([df_mega, df_res], axis=0)
     
-
     # get the subject-wise pathology split
     pathology_subjects, pathology_contrasts = get_pathology_wise_split(unified_df)
     df_pathology = pd.DataFrame.from_dict(pathology_subjects, orient='index', columns=['Number of Subjects'])
@@ -387,6 +376,153 @@ def get_datasets_stats(datalists_root, contrasts_dict, path_save):
         f.write("\n\n")
 
 
+def compute_gradcam(model, input_image, target_layer):
+    """
+    Computes Grad-CAM heatmap for 3D U-Net segmentation model.
+    """
+    # Ensure input is a tensor with gradients
+    if hasattr(input_image, 'as_tensor'):
+        input_image = input_image.as_tensor()
+    
+    # Create a new tensor that requires gradients
+    input_tensor = input_image.clone().detach().requires_grad_(True)
+    
+    # Hooks for capturing activations and gradients
+    activations = []
+    gradients = []
+    
+    def forward_hook(module, input, output):
+        activations.append(output)
+    
+    def backward_hook(module, grad_input, grad_output):
+        gradients.append(grad_output[0])
+    
+    # Register hooks
+    forward_handle = target_layer.register_forward_hook(forward_hook)
+    backward_handle = target_layer.register_backward_hook(backward_hook)
+    
+    try:
+        # Forward pass
+        model.zero_grad()
+        output = model(input_tensor)[0]
+        
+        # Ensure output is a standard tensor
+        if hasattr(output, 'as_tensor'):
+            output = output.as_tensor()
+        
+        # Create a tensor for gradient computation
+        seg_output = output[0, 0]
+        target_score = torch.sum(seg_output)  # Sum of all voxel activations
+        
+        # Backward pass with gradient computation
+        model.zero_grad()
+        target_score.backward()
+        
+        # Compute Grad-CAM weights
+        grad_weights = torch.mean(gradients[0], dim=(2, 3, 4), keepdim=True)
+        
+        # Compute weighted activations
+        gradcam_map = torch.sum(grad_weights * activations[0], dim=1).squeeze()
+        
+        # Normalize and apply ReLU
+        gradcam_map = F.relu(gradcam_map)
+        gradcam_map -= gradcam_map.min()
+        gradcam_map /= (gradcam_map.max() + 1e-8)
+        
+        # Resize to input size
+        gradcam_map = F.interpolate(
+            gradcam_map.unsqueeze(0).unsqueeze(0),
+            size=input_tensor.shape[2:],
+            mode="trilinear",
+            align_corners=False
+        ).squeeze()
+        
+        return gradcam_map
+    
+    finally:
+        forward_handle.remove()
+        backward_handle.remove()
+
+    return None
+
+
+def visualize_feature_maps(input_img, model, layer_names, slice_axis=2, num_cols=4):
+    """
+    Visualize feature activation maps for specified layers of a 3D CNN.
+    
+    Args:
+        model (torch.nn.Module): Trained CNN model
+        nifti_path (str): Path to NIfTI image
+        layer_names (list): Names of layers to visualize
+        slice_axis (int): Axis to slice for 2D visualization (0, 1, or 2)
+        num_cols (int): Number of columns in output visualization grid
+    
+    Returns:
+        matplotlib figure with feature map visualizations
+    """
+    
+    # convert input_img from a metaTensor to a tensor
+    input_img = input_img.as_tensor()
+    
+    # Create feature extraction hook
+    feature_maps = {}
+    def hook_fn(module, input, output):
+        feature_maps[module] = output.detach().cpu()
+    
+    # Register hooks for specified layers
+    hooks = []
+    for name, module in model.named_modules():
+        if name in layer_names:
+            hooks.append(module.register_forward_hook(hook_fn))
+    
+    # Forward pass
+    with torch.no_grad():
+        model(input_img)
+    
+    # Remove hooks
+    for hook in hooks:
+        hook.remove()
+    
+    # Create visualization
+    fig, axes = plt.subplots(
+        nrows=len(layer_names), 
+        ncols=num_cols, 
+        figsize=(4*num_cols, 4*len(layer_names))
+    )
+    
+    for i, layer_name in enumerate(layer_names):
+        # print(dict(model.named_modules()).keys())
+        # Get feature maps for this layer
+        layer_features = feature_maps.get(dict(model.named_modules())[layer_name], None)
+        
+        if layer_features is None:
+            continue
+        
+        # Select subset of feature maps to visualize
+        num_feature_maps = min(layer_features.shape[1], num_cols)
+        
+        for j in range(num_feature_maps):
+            # Select middle slice along specified axis
+            feature_slice = layer_features[0, j].numpy()
+            mid_slice_idx = feature_slice.shape[slice_axis] // 2
+            
+            if slice_axis == 0:
+                slice_2d = feature_slice[mid_slice_idx, :, :]
+            elif slice_axis == 1:
+                slice_2d = feature_slice[:, mid_slice_idx, :]
+            else:  # slice_axis == 2
+                slice_2d = feature_slice[:, :, mid_slice_idx]
+            
+            # Plot in appropriate subplot
+            ax = axes[i, j] if len(layer_names) > 1 else axes[j]
+            im = ax.imshow(slice_2d, cmap='viridis')
+            ax.set_title(f'{layer_name} - Map {j}')
+            ax.axis('off')
+            plt.colorbar(im, ax=ax, shrink=0.8)
+    
+    plt.tight_layout()
+    return fig
+
 
 # Taken from: https://github.com/MIC-DKFZ/nnUNet/blob/master/nnunetv2/utilities/find_class_by_name.py
 def recursive_find_python_class(folder: str, class_name: str, current_module: str):
@@ -403,7 +539,7 @@ def recursive_find_python_class(folder: str, class_name: str, current_module: st
         for importer, modname, ispkg in pkgutil.iter_modules([folder]):
             if ispkg:
                 next_current_module = current_module + "." + modname
-                tr = recursive_find_python_class(join(folder, modname), class_name, current_module=next_current_module)
+                tr = recursive_find_python_class(os.path.join(folder, modname), class_name, current_module=next_current_module)
             if tr is not None:
                 break
     return tr
@@ -553,7 +689,7 @@ if __name__ == "__main__":
     # tr_ix, val_tx, te_ix, fold = names_list[0]
     # print(len(tr_ix), len(val_tx), len(te_ix))
 
-    datalists_root = "/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/datalists/v2-final-aggregation-20241022"
+    datalists_root = "/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/datalists/20250115-v21PtrAll"
     get_datasets_stats(datalists_root, contrasts_dict=CONTRASTS, path_save=datalists_root)
     # get_pathology_wise_split(datalists_root, path_save=datalists_root)
 

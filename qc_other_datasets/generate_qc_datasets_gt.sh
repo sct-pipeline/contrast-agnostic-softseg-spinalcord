@@ -53,20 +53,28 @@ sct_check_dependencies -short
 # Go to folder where data will be copied and processed
 cd $PATH_DATA_PROCESSED
 
-if [[ $QC_DATASET == "lumbar-epfl" ]]; then
-    contrasts=("T2w")
-    label_suffix="seg-manual"
+if [[ $QC_DATASET == "basel-mp2rage" ]]; then
+    contrasts=("UNIT1")
+    label_suffix="desc-softseg_label-SC_seg" #"label-SC_seg"
 
 elif [[ $QC_DATASET == "lumbar-vanderbilt" ]]; then
     contrasts=("acq-axial_T2star")
     label_suffix="label-SC_seg"
+
+elif [[ $QC_DATASET == "dcm-zurich" ]]; then
+    contrasts=("acq-axial_T2w")
+    label_suffix="label-SC_mask-manual"
+
+elif [[ $QC_DATASET == "sci-paris" ]]; then
+    contrasts=("T2w")
+    label_suffix="seg-manual"
 
 elif [[ $QC_DATASET == "nih-ms-mp2rage" ]]; then
     contrasts=("UNIT1")
     label_suffix="label-SC_seg"
 
 elif [[ $QC_DATASET == "sct-testing-large" ]]; then
-    contrasts="T1w T2star T2w acq-MTon_MTR"
+    contrasts="acq-dwiMean_dwi" #"T1w T2star T2w acq-MTon_MTR"
     label_suffix="seg-manual"
 
 elif [[ $QC_DATASET == "canproco" ]]; then
@@ -112,6 +120,7 @@ for contrast in ${contrasts}; do
             sct_qc -i ${PATH_DATA_PROCESSED}/${SUBJECT}/anat/${file}.nii.gz -s ${PATH_DATA_PROCESSED}/${SUBJECT}/anat/${file}_${label_suffix}.nii.gz -d ${PATH_DATA_PROCESSED}/${SUBJECT}/anat/${file}_${label_suffix}.nii.gz -p sct_deepseg_lesion -plane sagittal -qc ${PATH_QC} -qc-subject ${SUBJECT}
         else 
             sct_qc -i ${PATH_DATA_PROCESSED}/${SUBJECT}/anat/${file}.nii.gz -s ${PATH_DATA_PROCESSED}/${SUBJECT}/anat/${file}_${label_suffix}.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
+            # sct_qc -i ${PATH_DATA_PROCESSED}/${SUBJECT}/dwi/${file}.nii.gz -s ${PATH_DATA_PROCESSED}/${SUBJECT}/dwi/${file}_${label_suffix}.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
         fi
     fi
 

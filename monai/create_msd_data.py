@@ -33,16 +33,16 @@ FILESEG_SUFFIXES = {
     "dcm-zurich-lesions-20231115": ["labels", "label-SC_mask-manual"],
     "lumbar-epfl": ["labels", "seg-manual"],
     "lumbar-vanderbilt": ["labels", "label-SC_seg"],
-    "nih-ms-mp2rage": ["labels", "label-SC_seg"],
     "sci-colorado": ["labels", "seg-manual"],
     "sci-paris": ["labels", "seg-manual"],
     "sci-zurich": ["labels", "seg-manual"],
     "sct-testing-large": ["labels", "seg-manual"],
-    "spider-challenge-2023": ["labels", "label-SC_seg"]
+    "site_006": ["labels", "label-SC_seg"],     # from PRAXIS SCI dataset; Montreal site
+    "site_007": ["labels", "label-SC_seg"],     # from PRAXIS SCI dataset; Vancouver site
 }
 
 # add abbreviations of pathologies in sct-testing-large and other datasets to be included in the aggregated dataset
-PATHOLOGIES = ["ALS", "DCM", "NMO", "MS", "SYR", "SCI", "LBP"]
+PATHOLOGIES = ["ALS", "DCM", "NMO", "MS", "SYR", "SCI"]
 
 
 def get_parser():
@@ -110,7 +110,7 @@ def fetch_subject_nifti_details(filename_path):
     else:
         # TODO: add more contrasts as needed
         # contrast_pattern =  r'.*_(T1w|T2w|T2star|PSIR|STIR|UNIT1|acq-MTon_MTR|acq-dwiMean_dwi|acq-b0Mean_dwi|acq-T1w_MTR).*'
-        contrast_pattern =  r'.*_(T1w|acq-lowresSag_T1w|T2w|acq-lowresSag_T2w|acq-highresSag_T2w|T2star|PSIR|STIR|UNIT1|T1map|inv-1_part-mag_MP2RAGE|inv-2_part-mag_MP2RAGE|acq-MTon_MTR|acq-dwiMean_dwi|acq-T1w_MTR).*'
+        contrast_pattern =  r'.*_(T1w|T2w|acq-sagthor_T2w|acq-sagcerv_T2w|acq-sagstir_T2w|acq-ax_T2w|T2star|PSIR|STIR|UNIT1|acq-MTon_MTR|acq-dwiMean_dwi|acq-T1w_MTR).*'
     contrast = re.search(contrast_pattern, filename_path)
     contrastID = contrast.group(1) if contrast else ""
 
@@ -136,10 +136,6 @@ def create_df(dataset_path):
         # get only the (preprocessed) subject files, which are in the `derivatives` folder
         path_files = os.path.join(dataset_path, 'derivatives', 'data_preprocessed', 'sub-*', '**', f'*.nii.gz')
     
-    elif dataset_name == "nih-ms-mp2rage":
-        # NOTE: exception for this dataset, we're taking the files from the root folder of the dataset
-        path_files = os.path.join(dataset_path, 'sub-*', '**', f'*.nii.gz')
-
     elif dataset_name == 'sct-testing-large':
         path_files = os.path.join(dataset_path, 'derivatives', labels_folder, 'sub-*', '**', f'*_{labels_suffix}.nii.gz')
 
@@ -187,44 +183,6 @@ def create_df(dataset_path):
             else:
                 df.loc[df['subjectID'] == subject, 'pathologyID'] = 'MS'
 
-    elif dataset_name == 'nih-ms-mp2rage':
-        exclude_subs_nih_ms = ["sub-nih002", "sub-nih003", "sub-nih004", "sub-nih005", "sub-nih012", "sub-nih013", "sub-nih014", 
-                               "sub-nih016", "sub-nih018", "sub-nih020", "sub-nih021", "sub-nih022", "sub-nih024", "sub-nih025", 
-                               "sub-nih028", "sub-nih029", "sub-nih031", "sub-nih032", "sub-nih034", "sub-nih037", "sub-nih039", 
-                               "sub-nih040", "sub-nih041", "sub-nih043", "sub-nih045", "sub-nih047", "sub-nih048", "sub-nih049", 
-                               "sub-nih050", "sub-nih052", "sub-nih054", "sub-nih058", "sub-nih062", "sub-nih065", "sub-nih067", 
-                               "sub-nih069", "sub-nih071", "sub-nih077", "sub-nih080", "sub-nih083", "sub-nih084", "sub-nih087", 
-                               "sub-nih088", "sub-nih089", "sub-nih091", "sub-nih092", "sub-nih094", "sub-nih095", "sub-nih097", 
-                               "sub-nih098", "sub-nih101", "sub-nih102", "sub-nih103", "sub-nih105", "sub-nih106", "sub-nih107", 
-                               "sub-nih109", "sub-nih111", "sub-nih112", "sub-nih113", "sub-nih115", "sub-nih118", "sub-nih119", 
-                               "sub-nih121", "sub-nih123", "sub-nih124", "sub-nih125", "sub-nih127", "sub-nih133", "sub-nih134", 
-                               "sub-nih136", "sub-nih137", "sub-nih140", "sub-nih141", "sub-nih142", "sub-nih143", "sub-nih144", 
-                               "sub-nih145", "sub-nih146", "sub-nih147", "sub-nih149", "sub-nih151", "sub-nih153", "sub-nih155",
-                               "sub-nih156", "sub-nih159", "sub-nih161", "sub-nih162", "sub-nih163", "sub-nih164", "sub-nih165", 
-                               "sub-nih166", "sub-nih167", "sub-nih169", "sub-nih173", "sub-nih174", "sub-nih177", "sub-nih178", 
-                               "sub-nih179", "sub-nih181", "sub-nih182", "sub-nih183", "sub-nih184", "sub-nih186", "sub-nih187", 
-                               "sub-nih190", "sub-nih192", "sub-nih194", "sub-nih196", "sub-nih197"]
-        
-        # remove files where 'desc-denoised_UNIT1' is present in the filename
-        # removing because it's 'very' similar to UNIT1 and we don't want unnecessary duplicates
-        df = df[~df['filename'].str.contains('desc-denoised_UNIT1')]
-
-        # remove subjects from the exclude list
-        df = df[~df['subjectID'].isin(exclude_subs_nih_ms)]
-
-        # load the participants.tsv file
-        df_participants = pd.read_csv(os.path.join(dataset_path, 'participants.tsv'), sep='\t')
-
-        # NOTE: participant_id are like sub-NIH001, sub-NIH002, etc. but the subjectIDs are like sub-nih001, sub-nih002, etc.
-        # convert participant_id to lower case
-        df_participants['participant_id'] = df_participants['participant_id'].str.lower()
-
-        # store the phenotype info by merging the "phenotype" colume from df_participants to the df dataframe
-        df = pd.merge(df, df_participants[['participant_id', 'phenotype']], left_on='subjectID', right_on='participant_id', how='left')
-
-        # rename phenotype to pathologyID
-        df.rename(columns={'phenotype': 'pathologyID'}, inplace=True)
-
     elif dataset_name == 'sct-testing-large':
 
         df_participants = pd.read_csv(os.path.join(dataset_path, 'participants.tsv'), sep='\t')
@@ -232,11 +190,27 @@ def create_df(dataset_path):
         # remove only files where contrastID is "" (i.e. acq-b0Mean_dwi, acq-MocoMean_dwi, etc.)
         df = df[~df['contrastID'].str.len().eq(0)]
 
+        # NOTE: the acq-dwiMean_dwi images are not good (i.e. very weird shapes); GTs are okay in some 
+        # cases but it seems more like noise than actual data. Hence, we're excluding them
+        df = df[~df['contrastID'].str.contains('acq-dwiMean_dwi')]
+
         # only include subjects with pathology included in the PATHOLOGIES list
         df = df[df['subjectID'].isin(sct_testing_large_patho_subjects)]
 
         # NOTE: sub-xuanwuChenxi002 is causing issues with the git-annex get command, so we're excluding it
         df = df[~df['subjectID'].str.contains('sub-xuanwuChenxi002')]
+
+        # include yaml path
+        path_yaml = "/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/new_datasets_to_include/sct-testing-large/qc_fail_t2s_mton.yml"
+        with open(path_yaml, 'r') as file:
+            files_to_include = yaml.safe_load(file)['FILES_SEG']
+            # split the files_to_include to keep only basename
+            files_to_include = [os.path.basename(file) for file in files_to_include]
+
+        # create a temp column to store the basename of the filename
+        df['fname_temp'] = df['filename'].apply(lambda x: os.path.basename(x))
+        df = df[df['fname_temp'].isin(files_to_include)]
+        df.drop(columns=['fname_temp'], inplace=True)
 
         # store the pathology info by merging the "pathology_M0" colume from df_participants to the df dataframe
         df = pd.merge(df, df_participants[['participant_id', 'pathology']], left_on='subjectID', right_on='participant_id', how='left')
@@ -298,8 +272,28 @@ def create_df(dataset_path):
             except subprocess.CalledProcessError as e:
                 logger.error(f"Error in downloading {file} from git-annex: {e}")
     
-    elif dataset_name == 'spider-challenge-2023':
-        df['pathologyID'] = 'LBP'
+    elif dataset_name in ['site_006', 'site_007']:
+
+        # include yaml path
+        path_yaml = "/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/new_datasets_to_include/data-praxis-sci/qc_fail_praxis_jan_corrected_seg_mon_van_sites.yml"
+        with open(path_yaml, 'r') as file:
+            yaml_content = yaml.safe_load(file)
+            try:
+                files_to_include = yaml_content['FILES_SEG']
+            except KeyError:
+                files_to_include = yaml_content['FILES_LESION']
+
+            # split the files_to_include to keep only basename
+            files_to_include = [os.path.basename(file) for file in files_to_include]
+            # add label_suffix to the files_to_include
+            files_to_include = [file.replace('.nii.gz', f'_{labels_suffix}.nii.gz') for file in files_to_include]
+
+        # create a temp column to store the basename of the filename
+        df['fname_temp'] = df['filename'].apply(lambda x: os.path.basename(x))
+        df = df[df['fname_temp'].isin(files_to_include)]
+        df.drop(columns=['fname_temp'], inplace=True)
+
+        df['pathologyID'] = 'AcuteSCI'
 
     else:
         # load the participants.tsv file
@@ -369,7 +363,7 @@ def main():
     branch, commit = get_git_branch_and_commit(data_root)
     dataset_commits[dataset_name] = f"git-{branch}-{commit}"
 
-    if dataset_name in ['data-multi-subject', 'canproco']:    
+    if dataset_name in ['data-multi-subject']: #, 'canproco']:    
         # NOTE: we need to have the same spine-generic test set across for all new datasets we're adding
         train_ratio, val_ratio, test_ratio = 0.65, 0.15, 0.2
     else:
@@ -380,9 +374,27 @@ def main():
     # during the dataloading process of training the contrast-agnostic model
 
     all_subjects = df['subjectID'].unique()
-    train_subjects, test_subjects = train_test_split(all_subjects, test_size=test_ratio)
-    # Use the training split to further split into training and validation splits
-    train_subjects, val_subjects = train_test_split(train_subjects, test_size=val_ratio / (train_ratio + val_ratio))
+    if dataset_name == 'sct-testing-large':
+        train_subjects, test_subjects, val_subjects = [], [], []
+        for sub in all_subjects:
+            if sub.startswith('sub-vanderbilt') or sub.startswith('sub-milan'):
+                test_subjects.append(sub)
+            else:
+                train_subjects.append(sub)
+        
+        train_subjects, val_subjects = train_test_split(train_subjects, test_size=val_ratio / (train_ratio + val_ratio))
+
+    elif dataset_name in ['site_006', 'site_007']:
+        train_subjects = all_subjects.copy()
+        test_subjects = [all_subjects[0]]    # only to keep the dataloader happy; we're not using the test set
+        # because we're evaluating out-of-distribution on other praxis sites
+        
+        train_subjects, val_subjects = train_test_split(train_subjects, test_size=val_ratio / (train_ratio + val_ratio))
+
+    else:
+        train_subjects, test_subjects = train_test_split(all_subjects, test_size=test_ratio)
+        # Use the training split to further split into training and validation splits
+        train_subjects, val_subjects = train_test_split(train_subjects, test_size=val_ratio / (train_ratio + val_ratio))
     
     # sort the subjects
     train_subjects, val_subjects, test_subjects = sorted(train_subjects), sorted(val_subjects), sorted(test_subjects)
@@ -429,19 +441,15 @@ def main():
                         fname_image = df[df['subjectID'] == subject]['filename'].values[idx]
                         fname_label = fname_image.replace('data_preprocessed', labels_folder).replace('.nii.gz', f'_{labels_suffix}.nii.gz')
                     
-                    elif df['datasetName'].values[0] == 'nih-ms-mp2rage':
-                        # NOTE: the SC mask only exists for UNIT1 contrast, but since all other contrasts are in the
-                        # same space, we're reusing the common GT for all contrasts
-                        fname_image = df[df['subjectID'] == subject]['filename'].values[idx]
-                        contrast = df[df['subjectID'] == subject]['contrastID'].values[idx]
-                        fname_label = fname_image.replace(f'_{contrast}.nii.gz', f'_UNIT1_{labels_suffix}.nii.gz')
-                        fname_label = fname_label.replace(os.path.join(data_root, subject), os.path.join(data_root, 'derivatives', labels_folder, subject))
-
                     else: 
                         # NOTE: but for other datasets, we are getting them from the lesion filenames
                         fname_label = df[df['subjectID'] == subject]['filename'].values[idx]
                         fname_image = fname_label.replace(f'/derivatives/{labels_folder}', '').replace(f'_{labels_suffix}.nii.gz', '.nii.gz')
-                                    
+
+                    # # use when creating a balanced dataset
+                    # temp_data["image"] = df[(df['subjectID'] == subject) & (df['split'] == name)].iloc[idx]['fname_image']
+                    # temp_data["label"] = df[(df['subjectID'] == subject) & (df['split'] == name)].iloc[idx]['fname_label']
+
                     temp_data["image"] = fname_image
                     temp_data["label"] = fname_label
 

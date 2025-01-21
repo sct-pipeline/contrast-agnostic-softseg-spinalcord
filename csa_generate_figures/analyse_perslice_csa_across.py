@@ -13,15 +13,16 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 # Setting the hue order as specified
-HUE_ORDER = ["softseg_bin", "deepseg", "plain_320", "plain_384", "resencM"]
-# HUE_ORDER = ["softseg_bin", "deepseg_2d", "monai_single", "monai_7datasets", "swinunetr_7datasets"]
-# HUE_ORDER = ["softseg_bin", "monai_v21", "monai_v23", "monai_v2x"]
+# HUE_ORDER = ["softseg_bin", "deepseg", "plain_320", "plain_384", "resencM"]
+HUE_ORDER = ["softseg_bin", "v21", "deepseg", "vPtrV21-allNoPraxNoSCT", "vPtrV21-allWithPraxWithSCT"]
+# HUE_ORDER = ["softseg_bin", "v20", "v21", "v23", "v24", "v25", "deepseg", "vPtrV21noPrax"]
 HUE_ORDER_RES = ["1mm", "05mm", "15mm", "3mm", "2mm"]
 CONTRAST_ORDER = ["DWI", "MTon", "MToff", "T1w", "T2star", "T2w"]
 
 FONTSIZE = 12
-XTICKS = ["GT", "DeepSeg2D", "C-A\nplain_320", "C-A\nplain_384", "C-A\nresencM"]
-# XTICKS = ["GT", "contrast-agnostic\nv2.1", "contrast-agnostic\nv2.3", "contrast-agnostic\nv2.x"] 
+XTICKS = ["GT", "C-A\nv2.1", "deepseg_sc\n2D", "C-A-vPtr2.1\nallNoPraxNoSCT", "C-A-vPtr2.1\nallWithPraxWithSCT"]
+# XTICKS = ["GT", "contrast-agnostic\nv2.0", "contrast-agnostic\nv2.1", "contrast-agnostic\nv2.3",
+#             "contrast-agnostic\nv2.4", "contrast-agnostic\nv2.5", "deepseg_sc\n2D", "contrast-agnostic\nvPtrV21noPrax"]
 
 
 def save_figure(file_path, save_fname):
@@ -59,9 +60,9 @@ def extract_contrast_and_details(filename, across="Method"):
     # pattern = r'.*iso-(\d+mm).*_(propseg|deepseg_2d|nnunet_3d_fullres|monai).*'
     if across == "Method":
         # pattern = r'.*_(DWI|MTon|MToff|T1w|T2star|T2w).*_(softseg_bin|deepseg_2d|soft_input|bin_input).*'
-        pattern = r'.*_(DWI|MTon|MToff|T1w|T2star|T2w).*_(softseg_bin|deepseg|plain_320|plain_384|resencM).*'
-        # pattern = r'.*_(DWI|MTon|MToff|T1w|T2star|T2w).*_(softseg_bin|deepseg_2d|monai_single|monai_7datasets|swinunetr_7datasets).*'
-        # pattern = r'.*_(DWI|MTon|MToff|T1w|T2star|T2w).*_(softseg_bin|monai_v21|monai_v23|monai_v2x).*'
+        # pattern = r'.*_(DWI|MTon|MToff|T1w|T2star|T2w).*_(softseg_bin|deepseg|plain_320|plain_384|resencM).*'
+        # pattern = r'.*_(DWI|MTon|MToff|T1w|T2star|T2w).*_(softseg_bin|deepseg_2d|monai_s/ingle|monai_7datasets|swinunetr_7datasets).*'
+        pattern = r'.*_(DWI|MTon|MToff|T1w|T2star|T2w).*_(softseg_bin|deepseg|v20|v21|v23|v24|v25|vPtrV21-allNoPraxNoSCT|vPtrV21-allWithPraxWithSCT).*'
         match = re.search(pattern, filename)
         if match:
             return match.group(1), match.group(2)
@@ -161,6 +162,7 @@ def generate_figure_abs_csa_error(folder_path, data, hue_order=None):
 
             # subtract the mean CSA of the ground truth from the mean CSA of the model based on Slice (I->S)
             df_temp['abs_error_per_slice'] = abs(df_temp['MEAN(area)_gt'] - df_temp['MEAN(area)_model'])
+            # df_temp['abs_error_per_slice'] = df_temp['MEAN(area)_model'] - df_temp['MEAN(area)_gt']
 
             # compute mean of the absolute error per slice for each participant
             df_error_contrast[contrast] = df_temp.groupby('Participant')['abs_error_per_slice'].mean()
@@ -194,6 +196,11 @@ def generate_figure_abs_csa_error(folder_path, data, hue_order=None):
               fontweight='bold' ,fontsize=FONTSIZE)
     # Add horizontal dashed grid
     plt.grid(axis='y', alpha=0.5, linestyle='dashed')
+
+    # draw line connecting the means of the violin plots
+    for i in range(len(hue_new)-1):
+        plt.plot([i, i+1], [df[df['Method'] == hue_new[i]]['abs_error_mean'].mean(),
+                           df[df['Method'] == hue_new[i+1]]['abs_error_mean'].mean()], 'm--', lw=0.75)
 
     # rename the x-axis ticks as per XTICKS
     plt.xticks(range(len(hue_new)), XTICKS[1:], fontsize=FONTSIZE)
@@ -257,6 +264,7 @@ def generate_figure_abs_csa_error_per_contrast(file_path, data, method=None, thr
     df['Participant'] = df1['Participant']
     for contrast in CONTRAST_ORDER:
         df[contrast] = abs(df1[contrast] - df2[contrast])
+        # df[contrast] = df2[contrast] - df1[contrast]
     
     # reshape the dataframe to have a single column for the contrast and a single column for the absolute error
     df = df.melt(id_vars=['Participant'], value_vars=CONTRAST_ORDER, var_name='Contrast', value_name='abs_error')
@@ -334,15 +342,15 @@ def main(args, analysis_type="methods"):
 
         # concatenate the dataframes
         df_final = pd.concat([df_final, data_new])
-            
+                
     # Apply the function to extract method and the corresponding analysis details
     if analysis_type == "methods":
         # Generate violinplot showing absolute CSA error across participants for each method
         generate_figure_abs_csa_error(args.i_folder, df_final, hue_order=HUE_ORDER)
 
-        # # Generate violinplot showing absolute CSA error for each contrast for a given method
-        # for method in HUE_ORDER[1:]:
-        #     generate_figure_abs_csa_error_per_contrast(file_path, data, method=method, threshold=None)
+        # Generate violinplot showing absolute CSA error for each contrast for a given method
+        for method in HUE_ORDER[1:]:
+            generate_figure_abs_csa_error_per_contrast(args.i_folder, df_final, method=method, threshold=None)
 
     elif analysis_type == "resolutions":
         

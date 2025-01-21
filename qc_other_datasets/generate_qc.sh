@@ -45,25 +45,17 @@ echo "PATH_QC: ${PATH_QC}"
 
 SUBJECT=$1
 QC_DATASET=$2           # dataset name to generate QC for
-PATH_NNUNET_SCRIPT=$3   # path to the nnUNet contrast-agnostic run_inference_single_subject.py
-PATH_NNUNET_MODEL=$4    # path to the nnUNet contrast-agnostic model
-PATH_MONAI_SCRIPT=$5    # path to the MONAI contrast-agnostic run_inference_single_subject.py
-# PATH_SWIN_MODEL=$7
-# PATH_MEDNEXT_MODEL=$8
-PATH_MONAI_MODEL_1=$6     
-PATH_MONAI_MODEL_2=$7     
-PATH_MONAI_MODEL_3=$8     
+# PATH_NNUNET_SCRIPT=$3   # path to the nnUNet contrast-agnostic run_inference_single_subject.py
+# PATH_NNUNET_MODEL=$4    # path to the nnUNet contrast-agnostic model
+PATH_MONAI_SCRIPT=$3    # path to the MONAI contrast-agnostic run_inference_single_subject.py
+PATH_MONAI_MODEL=$4     
 
 echo "SUBJECT: ${SUBJECT}"
 echo "QC_DATASET: ${QC_DATASET}"
-echo "PATH_NNUNET_SCRIPT: ${PATH_NNUNET_SCRIPT}"
-echo "PATH_NNUNET_MODEL: ${PATH_NNUNET_MODEL}"
+# echo "PATH_NNUNET_SCRIPT: ${PATH_NNUNET_SCRIPT}"
+# echo "PATH_NNUNET_MODEL: ${PATH_NNUNET_MODEL}"
 echo "PATH_MONAI_SCRIPT: ${PATH_MONAI_SCRIPT}"
-echo "PATH_MONAI_MODEL_1: ${PATH_MONAI_MODEL_1}"
-echo "PATH_MONAI_MODEL_2: ${PATH_MONAI_MODEL_2}"
-echo "PATH_MONAI_MODEL_3: ${PATH_MONAI_MODEL_3}"
-# echo "PATH_SWIN_MODEL: ${PATH_SWIN_MODEL}"
-# echo "PATH_MEDNEXT_MODEL: ${PATH_MEDNEXT_MODEL}"
+echo "PATH_MONAI_MODEL: ${PATH_MONAI_MODEL}"
 
 # ------------------------------------------------------------------------------
 # CONVENIENCE FUNCTIONS
@@ -105,11 +97,16 @@ copy_gt_seg(){
   if [[ -e $FILESEG ]]; then
       echo "Found! Copying ..."
       rsync -avzh $FILESEG ${file}_seg-manual.nii.gz
-      # rsync -avzh ${FILESEG/.nii.gz/.json} ${file}_seg-manual.json
+      # check if json file exists
+      if [[ -e ${FILESEG/.nii.gz/.json} ]]; then
+          rsync -avzh ${FILESEG/.nii.gz/.json} ${file}_seg-manual.json
+      else
+          echo "${FILESEG/.nii.gz/.json} does not exist" >> ${PATH_LOG}/missing_files.log
+      fi
   else
       echo "File ${FILESEG}.nii.gz does not exist" >> ${PATH_LOG}/missing_files.log
       echo "ERROR: Manual Segmentation ${FILESEG} does not exist. Exiting."
-      exit 1
+      # exit 1
   fi
 }
 
@@ -189,6 +186,8 @@ segment_sc_MONAI(){
   local file="$1"
   # local label_type="$2"     # soft or soft_bin
   local model="$2"     # monai, swinunetr, mednext
+  local models_384="v25 vPtrVNSLSciDcm_ColZurLes vPtrNewSeqLSciDcm"
+  local models_320="v21 vPtrV21-allNoPraxNoSCT vPtrV21-allNoPraxWithSCT vPtrV21-allWithPraxNoSCT vPtrV21-allWithPraxWithSCT"
 
 	# if [[ $label_type == 'soft' ]]; then
 	# 	FILEPRED="${file}_seg_monai_soft_input"
@@ -199,20 +198,37 @@ segment_sc_MONAI(){
 	# 	PATH_MODEL=${PATH_MONAI_MODEL_BIN}
 	
 	# fi
-	if [[ $model == 'v2x' ]]; then
-		FILEPRED="${file}_seg_${model}"
-		PATH_MODEL=${PATH_MONAI_MODEL_1}
+	if [[ " ${models_384[@]} " =~ " ${model} " ]]; then
+		# FILEPRED="${file}_seg_${model}"
+    # PATH_MODEL=${PATH_MONAI_MODEL}
+    if [[ $model == 'v25' ]]; then
+      PATH_MODEL="/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/sct_deployed_models/model_v25"
+      FILEPRED="${file}_seg_${model}"
+    elif [[ $model == 'vPtrNewSeqLSciDcm' ]]; then
+      PATH_MODEL="/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/sct_deployed_models/model_vPtrNewSeqLSciDcm"
+    elif [[ $model == 'vPtrVNSLSciDcm_ColZurLes' ]]; then
+      PATH_MODEL="/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/sct_deployed_models/model_vPtrVNSLSciDcm_ColZurLes"
+      FILEPRED="${file}_seg_M2"
+    fi
+    echo "Model: ${model};  Using model checkpoint in: ${PATH_MODEL}"
+    max_feat=384
+  
+  elif [[ " ${models_320[@]} " =~ " ${model} " ]]; then
+    # FILEPRED="${file}_seg_${model}"
+    # PATH_MODEL=${PATH_MONAI_MODEL}
+    PATH_MODEL="/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/sct_deployed_models/model_${model}"
+    if [[ $model == 'v21' ]]; then
+      FILEPRED="${file}_seg_${model}"
+    elif [[ $model == 'vPtrV21-allNoPraxNoSCT' ]]; then
+      FILEPRED="${file}_seg_M2prime"
+    elif [[ $model == 'vPtrV21-allNoPraxWithSCT' ]]; then
+      FILEPRED="${file}_seg_M3prime"
+    elif [[ $model == 'vPtrV21-allWithPraxNoSCT' ]]; then
+      FILEPRED="${file}_seg_M4prime"
+    elif [[ $model == 'vPtrV21-allWithPraxWithSCT' ]]; then
+      FILEPRED="${file}_seg_M5prime"
+    fi
     max_feat=320
-  
-  elif [[ $model == 'v2x_contour' ]]; then
-    FILEPRED="${file}_seg_${model}"
-    PATH_MODEL=${PATH_MONAI_MODEL_2}
-    max_feat=384
-  
-  elif [[ $model == 'v2x_contour_dcm' ]]; then
-    FILEPRED="${file}_seg_${model}"
-    PATH_MODEL=${PATH_MONAI_MODEL_3}
-    max_feat=384
 	
 	# elif [[ $model == 'swinunetr' ]]; then
   #   FILEPRED="${file}_seg_swinunetr"
@@ -241,9 +257,9 @@ segment_sc_MONAI(){
 
   # Generate QC report 
   sct_qc -i ${file}.nii.gz -s ${FILEPRED}.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
-
-  # compute ANIMA metrics
-  compute_anima_metrics ${FILEPRED} ${file}_seg-manual
+  # sct_qc -i ${file}.nii.gz -s ${FILEPRED}.nii.gz -d ${FILEPRED}.nii.gz -p sct_deepseg_lesion -plane sagittal -qc ${PATH_QC} -qc-subject ${SUBJECT}
+  # # compute ANIMA metrics
+  # compute_anima_metrics ${FILEPRED} ${file}_seg-manual
 
 }
 
@@ -277,15 +293,32 @@ elif [[ $QC_DATASET == "dcm-zurich" ]]; then
   label_suffix="label-SC_mask-manual"
   deepseg_input_c="t2"
 
-elif [[ $QC_DATASET == "lumbar-epfl" ]]; then
-  contrast="T2w"
+elif [[ $QC_DATASET == "ms-basel-2020" ]]; then
+  contrasts="acq-sagCervTSE_PD"
   label_suffix="seg-manual"
   deepseg_input_c="t2"
 
 elif [[ $QC_DATASET == "canproco" ]]; then
-  contrast="PSIR"
+  contrasts="PSIR STIR"
   label_suffix="seg-manual"
   deepseg_input_c="t2"
+
+elif [[ $QC_DATASET == "sct-testing-large" ]]; then
+  contrasts="T2star acq-MTon_MTR acq-dwiMean_dwi"
+  label_suffix="seg-manual"
+  deepseg_input_c="t2"
+
+elif [[ $QC_DATASET == "whole-spine" ]]; then
+  contrasts="T1w T2w"
+  label_suffix="label-SC_seg"
+
+elif [[ $QC_DATASET == "data-single-subject-from-duke" ]]; then
+  contrasts="rec-average_dwi"
+  label_suffix="label-SC_seg"
+
+elif [[ $QC_DATASET == "difficult-cases" ]]; then
+  contrasts="T1w T2w T2star flip-1_mt-on_MTS flip-2_mt-off_MTS rec-average_dwi"
+  label_suffix="label-SC_seg"
 
 else
   echo "ERROR: Dataset ${QC_DATASET} not recognized. Exiting."
@@ -293,77 +326,104 @@ else
 
 fi
 
-echo "Contrast: ${contrast}"
 
-# Copy source images
-# check if the file exists
-# if [[ ! -e ${PATH_DATA}/./${SUBJECT}/anat/${SUBJECT//[\/]/_}*${contrast}.nii.gz ]]; then
-#     echo "${PATH_DATA}/./${SUBJECT}/anat/${SUBJECT//[\/]/_}*${contrast}.nii.gz"
-#     echo "File ${PATH_DATA}/./${SUBJECT}/anat/${SUBJECT//[\/]/_}*${contrast}.* does not exist" >> ${PATH_LOG}/missing_files.log
-#     echo "ERROR: File ${PATH_DATA}/./${SUBJECT}/anat/${SUBJECT//[\/]/_}*${contrast}.* does not exist. Exiting."
-#     exit 1
-# else 
-rsync -Ravzh ${PATH_DATA}/./${SUBJECT}/anat/${SUBJECT//[\/]/_}*${contrast}.* .
-# fi
+# Loop across contrasts
+for contrast in ${contrasts}; do
+    
+  echo "Contrast: ${contrast}"
 
-# Go to the folder where the data is
-cd ${PATH_DATA_PROCESSED}/${SUBJECT}/anat
+  if [[ $contrast == "rec-average_dwi" ]]; then
+    fldr="dwi"
+  else
+    fldr="anat"
+  fi
 
-# Get file name
-file="${SUBJECT}_${contrast}"
+  PATH_DERIVATIVES="${PATH_DATA}/derivatives/labels/./${SUBJECT}/${fldr}"
+  PATH_IMAGES="${PATH_DATA}/./${SUBJECT}/${fldr}"
 
-# Check if file exists
-if [[ ! -e ${file}.nii.gz ]]; then
-    echo "File ${file}.nii.gz does not exist" >> ${PATH_LOG}/missing_files.log
-    echo "ERROR: File ${file}.nii.gz does not exist. Exiting."
-    exit 1
-fi
+  # # find all the files ending with the contrast name (IF GT labels exist)
+  # mapfile -t files < <(find ${PATH_DERIVATIVES} -name "*${contrast}_${label_suffix}.nii.gz")
+  
+  # find all the files ending with the contrast name (IF GT labels DO NOT exist)
+  mapfile -t files < <(find ${PATH_IMAGES} -name "*${contrast}.nii.gz")
 
-# Copy GT spinal cord segmentation
-copy_gt_seg "${file}" "${label_suffix}"
+  for label_file in "${files[@]}"; do
+    # Process each file
+    echo "$label_file"
 
-# Generate QC report the GT spinal cord segmentation
-sct_qc -i ${file}.nii.gz -s ${file}_seg-manual.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
+    # NOTE: this replacement is cool because it automatically takes care of 'ses-XX' for longitudinal data
+    file="${SUBJECT//[\/]/_}_*${contrast}"
 
-# Segment SC using different methods, binarize at 0.5 and compute QC
-CUDA_VISIBLE_DEVICES=2 segment_sc_MONAI ${file} 'v2x'
-CUDA_VISIBLE_DEVICES=2 segment_sc_MONAI ${file} 'v2x_contour'
-CUDA_VISIBLE_DEVICES=3 segment_sc_MONAI ${file} 'v2x_contour_dcm'
-# segment_sc_MONAI ${file} 'monai'
-# segment_sc_MONAI ${file} 'swinunetr'
+    # check if label exists in the dataset
+    if [[ ! -f ${label_file} ]]; then
+        echo "Label File ${label_file} does not exist" >> ${PATH_LOG}/missing_files.log
+        continue
 
-# CUDA_VISIBLE_DEVICES=2 segment_sc_nnUNet ${file} '3d_fullres'
-segment_sc ${file} 'deepseg' ${deepseg_input_c}
+    else
+        echo "Label File ${label_file} exists. Proceeding..."
+        
+        # # copy labels
+        # rsync -Ravzh ${PATH_DERIVATIVES}/${file}_${label_suffix}.nii.gz .
+        # file=$(basename ${label_file} | sed "s/_${label_suffix}.nii.gz//")
+        file=$(basename ${label_file} | sed "s/.nii.gz//")    # (IF copying only images)
+        # copy source images
+        rsync -Ravzh ${PATH_IMAGES}/${file}.nii.gz .
+    fi
+    
+    cd ${PATH_DATA_PROCESSED}/${SUBJECT}/${fldr}
 
-# Create new "_clean" folder with BIDS-updated derivatives filenames
-date_time=$(date +"%Y-%m-%d %H:%M:%S")
-json_dict='{
-  "GeneratedBy": [
-    {
-      "Name": "contrast-agnostic-softseg-spinalcord",
-      "Version": "2.3",
-      "Date": "'$date_time'"
-    }
-  ]
-}'
+    # # Copy GT spinal cord segmentation
+    # copy_gt_seg "${file}" "${label_suffix}"
 
-# PATH_DATA_PROCESSED_CLEAN="${PATH_DATA_PROCESSED}_clean"
-# # create new folder and copy only the predictions
-# mkdir -p ${PATH_DATA_PROCESSED_CLEAN}/derivatives/labels_softseg_bin/${SUBJECT}/anat
+    # # Generate QC report the GT spinal cord segmentation
+    # # sct_qc -i ${file}.nii.gz -s ${file}_seg-manual.nii.gz -d ${file}_seg-manual.nii.gz -p sct_deepseg_lesion -plane sagittal -qc ${PATH_QC} -qc-subject ${SUBJECT}
+    # sct_qc -i ${file}.nii.gz -s ${file}_seg-manual.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
 
-# rsync -avzh ${file}_seg_soft_monai_4datasets.nii.gz ${PATH_DATA_PROCESSED_CLEAN}/derivatives/labels_softseg_bin/${SUBJECT}/anat/${file%%_*}_space-other_${contrast}_desc-softseg_label-SC_seg.nii.gz
-# rsync -avzh ${file}_seg-manual.json ${PATH_DATA_PROCESSED_CLEAN}/derivatives/labels_softseg_bin/${SUBJECT}/anat/${file%%_*}_space-other_${contrast}_desc-softseg_label-SC_seg.json
+    # Segment SC using different methods, binarize at 0.5 and compute QC
+    # CUDA_VISIBLE_DEVICES=0 segment_sc_MONAI ${file} 'v21'
+    CUDA_VISIBLE_DEVICES=0 segment_sc_MONAI ${file} 'v25'
+    CUDA_VISIBLE_DEVICES=1 segment_sc_MONAI ${file} 'vPtrV21-allNoPraxNoSCT'              # model M2prime
+    CUDA_VISIBLE_DEVICES=0 segment_sc_MONAI ${file} 'vPtrV21-allWithPraxWithSCT'           # model M5prime
+    # CUDA_VISIBLE_DEVICES=2 segment_sc_nnUNet ${file} '3d_fullres'
+    # segment_sc ${file} 'deepseg' ${deepseg_input_c}
 
-# # create json file
-# echo $json_dict > ${PATH_DATA_PROCESSED_CLEAN}/derivatives/labels_softseg_bin/${SUBJECT}/anat/${file%%_*}_space-other_${contrast}_desc-softseg_label-SC_seg.json
-# # re-save json files with indentation
-# python -c "import json;
-# json_file = '${PATH_DATA_PROCESSED_CLEAN}/derivatives/labels_softseg_bin/${SUBJECT}/anat/${file%%_*}_space-other_${contrast}_desc-softseg_label-SC_seg.json'
-# with open(json_file, 'r') as f:
-#     data = json.load(f)
-#     json.dump(data, open(json_file, 'w'), indent=4)
+#     # Create new "_clean" folder with BIDS-updated derivatives filenames
+#     date_time=$(date +"%Y-%m-%d %H:%M:%S")
+#     json_dict='{
+#       "GeneratedBy": [
+#         {
+#           "Name": "contrast-agnostic-softseg-spinalcord",
+#           "Version": "vPtrV21noSCT",
+#           "Date": "'$date_time'"
+#         }
+#       ]
+#     }'
+
+#     PATH_DATA_PROCESSED_CLEAN="${PATH_DATA_PROCESSED}_clean"
+#     # create new folder and copy only the predictions
+#     mkdir -p ${PATH_DATA_PROCESSED_CLEAN}/derivatives/labels_softseg_bin/${SUBJECT}/anat
+
+#     # rsync -avzh ${file}_seg_v25.nii.gz ${PATH_DATA_PROCESSED_CLEAN}/derivatives/labels_softseg_bin/${SUBJECT}/anat/${file%%_*}_space-other_${contrast}_desc-softseg_label-SC_seg.nii.gz
+#     # rsync -avzh ${file}_seg_v25.nii.gz ${PATH_DATA_PROCESSED_CLEAN}/derivatives/labels_softseg_bin/${SUBJECT}/anat/${file%%_*}_${contrast}_desc-softseg_label-SC_seg.nii.gz
+#     rsync -avzh ${file}_seg_M2prime.nii.gz ${PATH_DATA_PROCESSED_CLEAN}/derivatives/labels_softseg_bin/${SUBJECT}/anat/${file}_desc-softseg_label-SC_seg.nii.gz
+#     rsync -avzh ${file}_seg-manual.json ${PATH_DATA_PROCESSED_CLEAN}/derivatives/labels_softseg_bin/${SUBJECT}/anat/${file}_desc-softseg_label-SC_seg.json
+
+#     # create json file
+#     # echo $json_dict > ${PATH_DATA_PROCESSED_CLEAN}/derivatives/labels_softseg_bin/${SUBJECT}/anat/${file%%_*}_${contrast}_desc-softseg_label-SC_seg.json
+#     echo $json_dict > ${PATH_DATA_PROCESSED_CLEAN}/derivatives/labels_softseg_bin/${SUBJECT}/anat/${file}_desc-softseg_label-SC_seg.json
+#     # re-save json files with indentation
+#     python -c "import json; 
+# json_file = '${PATH_DATA_PROCESSED_CLEAN}/derivatives/labels_softseg_bin/${SUBJECT}/anat/${file}_desc-softseg_label-SC_seg.json';
+# with open(json_file, 'r') as f: 
+#   data = json.load(f);
+#   json.dump(data, open(json_file, 'w'), indent=4);
 # "
 
+  cd ${PATH_DATA_PROCESSED}
+  
+  done
+
+done
 # ------------------------------------------------------------------------------
 # End
 # ------------------------------------------------------------------------------

@@ -186,22 +186,42 @@ segment_sc_nnUNet(){
 # Segment spinal cord using the MONAI contrast-agnostic model
 segment_sc_MONAI(){
   local file="$1"
-  local label_type="$2"     # soft or soft_bin
-
-	if [[ $label_type == 'soft' ]]; then
-		FILEPRED="${file}_seg_monai_soft"
-		PATH_MONAI_MODEL=${PATH_MONAI_MODEL_SOFT}
-	
-	elif [[ $label_type == 'soft_bin' ]]; then
-    FILEPRED="${file}_seg_monai_bin"
-		PATH_MONAI_MODEL=${PATH_MONAI_MODEL_SOFTBIN}
-	
+  # local label_type="$2"     # soft or soft_bin
+  local model="$2"     # soft or soft_bin
+  
+  # PATH_MONAI_MODEL=${PATH_MONAI_MODEL_SOFT}
+  PATH_MONAI_MODEL="/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/sct_deployed_models/model_${model}"
+  if [[ $model == 'v21' ]]; then
+    FILEPRED="${file}_seg_${model}"
+    max_feat=320
+  elif [[ $model == 'vPtrV21-allNoPraxNoSCT' ]]; then
+    FILEPRED="${file}_seg_M2prime"
+    max_feat=320
+  elif [[ $model == 'vPtrV21-allNoPraxWithSCT' ]]; then
+    FILEPRED="${file}_seg_M3prime"
+    max_feat=320
+  elif [[ $model == 'vPtrV21-allWithPraxNoSCT' ]]; then
+    FILEPRED="${file}_seg_M4prime"
+    max_feat=320
+  elif [[ $model == 'vPtrV21-allWithPraxWithSCT' ]]; then
+    FILEPRED="${file}_seg_M5prime"
+    max_feat=320
+	elif [[ $model == 'v25' ]]; then
+		FILEPRED="${file}_seg_${model}"
+    max_feat=384
+	elif [[ $model == 'vPtrVNSLSciDcm_ColZurLes' ]]; then
+		# FILEPRED="${file}_seg_${model}"
+    FILEPRED="${file}_seg_M2"
+    PATH_MONAI_MODEL="/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/sct_deployed_models/model_vPtrVNSLSciDcm_ColZurLes"
+    max_feat=384	
 	fi
+
+  echo "Segmenting SC using MONAI model version: ${model} at ${PATH_MONAI_MODEL}"
 
   # Get the start time
   start_time=$(date +%s)
   # Run SC segmentation
-  python ${PATH_MONAI_SCRIPT} --path-img ${file}.nii.gz --path-out . --chkp-path ${PATH_MONAI_MODEL} --device gpu
+  python ${PATH_MONAI_SCRIPT} --path-img ${file}.nii.gz --path-out . --chkp-path ${PATH_MONAI_MODEL} --device gpu --model monai --pred-type soft --pad-mode edge --max-feat ${max_feat}
   # Rename MONAI output
   mv ${file}_pred.nii.gz ${FILEPRED}.nii.gz
   # Get the end time
@@ -216,8 +236,8 @@ segment_sc_MONAI(){
   # Generate QC report with soft prediction
   sct_qc -i ${file}.nii.gz -s ${FILEPRED}.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
 
-  # compute ANIMA metrics
-  compute_anima_metrics ${FILEPRED} ${file}_seg-manual
+  # # compute ANIMA metrics
+  # compute_anima_metrics ${FILEPRED} ${file}_seg-manual
 
 }
 
@@ -261,8 +281,10 @@ fi
 copy_gt_seg "${file}" "${label_suffix}"
 
 # Segment SC using different methods, binarize at 0.5 and compute QC
-segment_sc_MONAI ${file} 'soft'
-segment_sc_MONAI ${file} 'soft_bin'
+CUDA_VISIBLE_DEVICES=0 segment_sc_MONAI ${file} 'v21'
+CUDA_VISIBLE_DEVICES=1 segment_sc_MONAI ${file} 'v25'
+CUDA_VISIBLE_DEVICES=2 segment_sc_MONAI ${file} 'vPtrV21-allNoPraxNoSCT'              # model M2prime
+CUDA_VISIBLE_DEVICES=1 segment_sc_MONAI ${file} 'vPtrV21-allWithPraxWithSCT'           # model M5prime
 
 # segment_sc_nnUNet ${file} '3d_fullres' "${file}_seg-manual" ${contrast}
 # # TODO: run on deep/progseg after fixing the contrasts for those
