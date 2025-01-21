@@ -279,6 +279,31 @@ def main():
     # define list to collect the test metrics
     test_step_outputs = []
     test_summary = {}
+
+    # # do model merging of v2.4 and v2.5 models
+    # net_v24 = "/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/saved_models/lifelong/nnunet_seed=50_ndata=7_ncont=9_pad=zero_nf=32_opt=adam_lr=0.001_AdapW_bs=2_20240425-170840"
+    # net_v25 = "/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/saved_models/lifelong/nnunet-plain_seed=50_ndata=14_ncont=11_newprob=0_nf=384_opt=adam_lr=0.001_AdapW_bs=2_20240930-1002"
+    # net_v24_theta = torch.load(os.path.join(net_v24, 'model', 'best_model.ckpt'), map_location=torch.device(DEVICE))["state_dict"]
+    # net_v25_theta = torch.load(os.path.join(net_v25, 'best_model.ckpt'), map_location=torch.device(DEVICE))["state_dict"]
+
+    # # linearly interpoloate only those keys that are common between the two models
+    # alpha = 0.5
+    # for key in net_v25_theta.keys():
+    #     # if the shape of the tensor is different, then do not interpolate
+    #     if net_v24_theta[key].shape != net_v25_theta[key].shape:
+    #         print(f"Skipping key: {key} because of shape mismatch")
+    #         continue
+    #     net_v25_theta[key] = alpha * net_v24_theta[key] + (1 - alpha) * net_v25_theta[key]
+    
+    # # delete the net. prefix from the keys because of how the model was initialized in lightning
+    # # https://discuss.pytorch.org/t/missing-keys-unexpected-keys-in-state-dict-when-loading-self-trained-model/22379/14
+    # for key in list(net_v25_theta.keys()):
+    #     if 'net.' in key:
+    #         net_v25_theta[key.replace('net.', '')] = net_v25_theta[key]
+    #         del net_v25_theta[key]
+    
+    # # load the trained model weights
+    # net.load_state_dict(net_v25_theta)
         
     # iterate over the dataset and compute metrics
     with torch.no_grad():
