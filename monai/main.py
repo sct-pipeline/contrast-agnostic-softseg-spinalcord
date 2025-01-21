@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 from utils import dice_score, PolyLRScheduler, check_empty_patch, count_parameters, get_datasets_stats
 from losses import AdapWingLoss
 from transforms import train_transforms, val_transforms
-from models import create_nnunet_from_plans, load_pretrained_weights
+from models import create_nnunet_from_plans, load_pretrained_weights, load_pretrained_swinunetr
 
 from monai.apps import download_url
 from monai.utils import set_determinism
@@ -43,7 +43,7 @@ def get_args():
     parser = argparse.ArgumentParser(description='Script for training contrast-agnositc SC segmentation model.')
 
     # arguments for model
-    parser.add_argument('-m', '--model', choices=['nnunet-plain', 'nnunet-resencM', 'swinunetr'],
+    parser.add_argument('-m', '--model', choices=['nnunet-plain', 'nnunet-resencM', 'swinunetr', 'meunet'],
                         default='nnunet', type=str,
                         help='Model type to be used. Options: nnunet, swinunetr.')
     # path to the config file
@@ -646,6 +646,24 @@ def main(args):
         if args.debug:
             save_exp_id = f"DEBUG_{save_exp_id}"
 
+    # elif args.model in ["meunet"]:
+    #     logger.info(f"Using MultiEncoderUNet model with {n_contrasts} contrasts ...")
+    #     # define model
+    #     net = MultiEncoderUNet(
+    #         num_contrasts=n_contrasts, in_channels=1, 
+    #         feature_maps=config["model"]["meunet"]["features_per_stage"],
+    #         fusion_type=config["model"]["meunet"]["fusion_type"],
+    #         norm_type=config["model"]["meunet"]["feat_norm_type"],
+    #     )
+
+    #     # save experiment id
+    #     save_exp_id = f"{args.model}_seed={config['seed']}_" \
+    #                     f"ndata={n_datasets}_ncont={n_contrasts}_" \
+    #                     f"nf={config['model']['meunet']['features_per_stage'][-1]}_" \
+    #                     f"ft={config['model']['meunet']['fusion_type']}_" \
+    #                     f"opt={config['opt']['name']}_lr={config['opt']['lr']}_AdapW_" \
+    #                     f"bs={config['opt']['batch_size']}" \
+        
         if args.debug:
             save_exp_id = f"DEBUG_{save_exp_id}"
 
