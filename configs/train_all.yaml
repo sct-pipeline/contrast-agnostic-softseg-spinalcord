@@ -14,7 +14,7 @@ dataset:
   # Dataset name (will be used as "group_name" for wandb logging)
   name: contrast-agnostic-v3
   # Path to the dataset directory containing all datalists (.json files)
-  root_dir: /home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/datalists/v2-final-aggregation-20241017
+  root_dir: /home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/datalists/20250115-v21PtrWithPraxNoSCT
 
 preprocessing:
   # Online resampling of images to the specified spacing.
@@ -26,10 +26,10 @@ preprocessing:
 opt:
   name: adam
   lr: 0.001    # 0.001
-  max_epochs: 250
+  max_epochs: 75
   batch_size: 2
   # Interval between validation checks in epochs
-  check_val_every_n_epochs: 50
+  check_val_every_n_epochs: 15
   # Early stopping patience (this is until patience * check_val_every_n_epochs)
   early_stopping_patience: 20
 
@@ -39,7 +39,7 @@ model:
   nnunet-plain:
     # NOTE: these info are typically taken from nnUNetPlans.json (if an nnUNet model is trained)
     n_stages: 6
-    features_per_stage: [32, 64, 128, 256, 384, 384]
+    features_per_stage: [32, 64, 128, 256, 320, 320]
     n_conv_per_stage: [2, 2, 2, 2, 2, 2]
     n_conv_per_stage_decoder: [2, 2, 2, 2, 2]
     strides: [
@@ -67,3 +67,8 @@ model:
       [1, 2, 2],
     ]
     enable_deep_supervision: True
+
+  meunet:   # multi-encoder unet
+    features_per_stage: [32, 64, 128, 256]
+    fusion_type: "gated"
+    feat_norm_type: "l2"
