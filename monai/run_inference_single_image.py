@@ -78,7 +78,7 @@ def get_parser():
                         ' Default: 64x192x-1')
     parser.add_argument('--device', default="gpu", type=str, choices=["gpu", "cpu"],
                         help='Device to run inference on. Default: cpu')
-    parser.add_argument('--model', default="monai", type=str, choices=["monai", "monai-resencM", "swinunetr", "swinpretrained"], 
+    parser.add_argument('--model', default="monai", type=str, choices=["monai", "monai-resencM", "swinunetr", "meunet"], 
                         help='Model to use for inference. Default: monai')
     parser.add_argument('--pred-type', default="soft", type=str, choices=["soft", "hard"],
                         help='Type of prediction to output/save. `soft` outputs soft segmentation masks with a threshold of 0.1'
@@ -243,7 +243,8 @@ def main():
     # define root path for finding datalists
     path_image = args.path_img
     results_path = args.path_out
-    chkp_path = os.path.join(args.chkp_path, "best_model.ckpt")
+    # assumes that the checkpoint is under "<results-folder>/<any-folder>/best_model.ckpt"
+    chkp_path = glob.glob(os.path.join(args.chkp_path, '**', "*.ckpt"))[0]
 
     # save terminal outputs to a file
     logger.add(os.path.join(results_path, "logs.txt"), rotation="10 MB", level="INFO")
@@ -264,31 +265,21 @@ def main():
     # models have 384 max features
     nnunet_plans["arch_kwargs"]["features_per_stage"] = [32, 64, 128, 256, args.max_feat, args.max_feat]
 
-    # define model
-    if args.model == "monai":
-        net = create_nnunet_from_plans(plans=nnunet_plans, input_channels=1, 
-                                       output_channels=1, deep_supervision=True)
-    elif args.model == "monai-resencM":
-        net = create_nnunet_from_plans(plans=nnunet_plans_resencM, input_channels=1,
-                                       output_channels=1, deep_supervision=True)    
-    
-    elif args.model in ["swinunetr", "swinpretrained"]:
-        # load config file
-        config_path = os.path.join(args.chkp_path, "config.yaml")
-        with open(config_path, "r") as f:
-            config = yaml.safe_load(f)
-        
-        net = SwinUNETR(
-            spatial_dims=config["model"]["swinunetr"]["spatial_dims"],
-            in_channels=1, out_channels=1, 
-            img_size=config["preprocessing"]["crop_pad_size"],
-            depths=config["model"]["swinunetr"]["depths"],
-            feature_size=config["model"]["swinunetr"]["feature_size"], 
-            num_heads=config["model"]["swinunetr"]["num_heads"])
-        
+    if "monai" in args.model:
+        # define model
+        if args.model == "monai":
+            net = create_nnunet_from_plans(plans=nnunet_plans, input_channels=1, 
+                                        output_channels=1, deep_supervision=True)
+        elif args.model == "monai-resencM":
+            net = create_nnunet_from_plans(plans=nnunet_plans_resencM, input_channels=1,
+                                        output_channels=1, deep_supervision=True)        
+    # elif args.model == "meunet":
+    #     net = MultiEncoderUNet(
+    #         num_contrasts=9, in_channels=1, feature_maps=[32, 64, 128, 256], fusion_type="gated", norm_type="l2"
+    #         )
+
     else:
         raise ValueError("Model not recognized. Please choose from: nnunet, swinunetr")
-
 
     # define list to collect the test metrics
     test_step_outputs = []
@@ -318,7 +309,7 @@ def main():
             net.to(DEVICE)
             net.eval()
 
-            # run inference            
+            # run inference
             batch["pred"] = sliding_window_inference(test_input, inference_roi_size, mode="gaussian",
                                                     sw_batch_size=4, predictor=net, overlap=0.5, progress=False)
 
