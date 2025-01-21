@@ -105,11 +105,16 @@ copy_gt_seg(){
   if [[ -e $FILESEG ]]; then
       echo "Found! Copying ..."
       rsync -avzh $FILESEG ${file}_seg-manual.nii.gz
-      # rsync -avzh ${FILESEG/.nii.gz/.json} ${file}_seg-manual.json
+      # check if json file exists
+      if [[ -e ${FILESEG/.nii.gz/.json} ]]; then
+          rsync -avzh ${FILESEG/.nii.gz/.json} ${file}_seg-manual.json
+      else
+          echo "${FILESEG/.nii.gz/.json} does not exist" >> ${PATH_LOG}/missing_files.log
+      fi
   else
       echo "File ${FILESEG}.nii.gz does not exist" >> ${PATH_LOG}/missing_files.log
       echo "ERROR: Manual Segmentation ${FILESEG} does not exist. Exiting."
-      exit 1
+      # exit 1
   fi
 }
 
