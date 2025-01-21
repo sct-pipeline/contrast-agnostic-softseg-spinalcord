@@ -334,7 +334,7 @@ def main(args, analysis_type="methods"):
 
         # concatenate the dataframes
         df_final = pd.concat([df_final, data_new])
-            
+                
     # Apply the function to extract method and the corresponding analysis details
     if analysis_type == "methods":
         # Generate violinplot showing absolute CSA error across participants for each method
