@@ -326,47 +326,66 @@ else
 
 fi
 
-echo "Contrast: ${contrast}"
 
-# Copy source images
-# check if the file exists
-# if [[ ! -e ${PATH_DATA}/./${SUBJECT}/anat/${SUBJECT//[\/]/_}*${contrast}.nii.gz ]]; then
-#     echo "${PATH_DATA}/./${SUBJECT}/anat/${SUBJECT//[\/]/_}*${contrast}.nii.gz"
-#     echo "File ${PATH_DATA}/./${SUBJECT}/anat/${SUBJECT//[\/]/_}*${contrast}.* does not exist" >> ${PATH_LOG}/missing_files.log
-#     echo "ERROR: File ${PATH_DATA}/./${SUBJECT}/anat/${SUBJECT//[\/]/_}*${contrast}.* does not exist. Exiting."
-#     exit 1
-# else 
-rsync -Ravzh ${PATH_DATA}/./${SUBJECT}/anat/${SUBJECT//[\/]/_}*${contrast}.* .
-# fi
+# Loop across contrasts
+for contrast in ${contrasts}; do
+    
+  echo "Contrast: ${contrast}"
 
-# Go to the folder where the data is
-cd ${PATH_DATA_PROCESSED}/${SUBJECT}/anat
+  if [[ $contrast == "rec-average_dwi" ]]; then
+    fldr="dwi"
+  else
+    fldr="anat"
+  fi
 
-# Get file name
-file="${SUBJECT}_${contrast}"
+  PATH_DERIVATIVES="${PATH_DATA}/derivatives/labels/./${SUBJECT}/${fldr}"
+  PATH_IMAGES="${PATH_DATA}/./${SUBJECT}/${fldr}"
 
-# Check if file exists
-if [[ ! -e ${file}.nii.gz ]]; then
-    echo "File ${file}.nii.gz does not exist" >> ${PATH_LOG}/missing_files.log
-    echo "ERROR: File ${file}.nii.gz does not exist. Exiting."
-    exit 1
-fi
+  # # find all the files ending with the contrast name (IF GT labels exist)
+  # mapfile -t files < <(find ${PATH_DERIVATIVES} -name "*${contrast}_${label_suffix}.nii.gz")
+  
+  # find all the files ending with the contrast name (IF GT labels DO NOT exist)
+  mapfile -t files < <(find ${PATH_IMAGES} -name "*${contrast}.nii.gz")
 
-# Copy GT spinal cord segmentation
-copy_gt_seg "${file}" "${label_suffix}"
+  for label_file in "${files[@]}"; do
+    # Process each file
+    echo "$label_file"
 
-# Generate QC report the GT spinal cord segmentation
-sct_qc -i ${file}.nii.gz -s ${file}_seg-manual.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
+    # NOTE: this replacement is cool because it automatically takes care of 'ses-XX' for longitudinal data
+    file="${SUBJECT//[\/]/_}_*${contrast}"
 
-# Segment SC using different methods, binarize at 0.5 and compute QC
-CUDA_VISIBLE_DEVICES=2 segment_sc_MONAI ${file} 'v2x'
-CUDA_VISIBLE_DEVICES=2 segment_sc_MONAI ${file} 'v2x_contour'
-CUDA_VISIBLE_DEVICES=3 segment_sc_MONAI ${file} 'v2x_contour_dcm'
-# segment_sc_MONAI ${file} 'monai'
-# segment_sc_MONAI ${file} 'swinunetr'
+    # check if label exists in the dataset
+    if [[ ! -f ${label_file} ]]; then
+        echo "Label File ${label_file} does not exist" >> ${PATH_LOG}/missing_files.log
+        continue
 
-# CUDA_VISIBLE_DEVICES=2 segment_sc_nnUNet ${file} '3d_fullres'
-segment_sc ${file} 'deepseg' ${deepseg_input_c}
+    else
+        echo "Label File ${label_file} exists. Proceeding..."
+        
+        # # copy labels
+        # rsync -Ravzh ${PATH_DERIVATIVES}/${file}_${label_suffix}.nii.gz .
+        # file=$(basename ${label_file} | sed "s/_${label_suffix}.nii.gz//")
+        file=$(basename ${label_file} | sed "s/.nii.gz//")    # (IF copying only images)
+        # copy source images
+        rsync -Ravzh ${PATH_IMAGES}/${file}.nii.gz .
+    fi
+    
+    cd ${PATH_DATA_PROCESSED}/${SUBJECT}/${fldr}
+
+    # # Copy GT spinal cord segmentation
+    # copy_gt_seg "${file}" "${label_suffix}"
+
+    # # Generate QC report the GT spinal cord segmentation
+    # # sct_qc -i ${file}.nii.gz -s ${file}_seg-manual.nii.gz -d ${file}_seg-manual.nii.gz -p sct_deepseg_lesion -plane sagittal -qc ${PATH_QC} -qc-subject ${SUBJECT}
+    # sct_qc -i ${file}.nii.gz -s ${file}_seg-manual.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
+
+    # Segment SC using different methods, binarize at 0.5 and compute QC
+    # CUDA_VISIBLE_DEVICES=0 segment_sc_MONAI ${file} 'v21'
+    CUDA_VISIBLE_DEVICES=0 segment_sc_MONAI ${file} 'v25'
+    CUDA_VISIBLE_DEVICES=1 segment_sc_MONAI ${file} 'vPtrV21-allNoPraxNoSCT'              # model M2prime
+    CUDA_VISIBLE_DEVICES=0 segment_sc_MONAI ${file} 'vPtrV21-allWithPraxWithSCT'           # model M5prime
+    # CUDA_VISIBLE_DEVICES=2 segment_sc_nnUNet ${file} '3d_fullres'
+    # segment_sc ${file} 'deepseg' ${deepseg_input_c}
 
 # Create new "_clean" folder with BIDS-updated derivatives filenames
 date_time=$(date +"%Y-%m-%d %H:%M:%S")
