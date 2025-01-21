@@ -162,6 +162,7 @@ def generate_figure_abs_csa_error(folder_path, data, hue_order=None):
 
             # subtract the mean CSA of the ground truth from the mean CSA of the model based on Slice (I->S)
             df_temp['abs_error_per_slice'] = abs(df_temp['MEAN(area)_gt'] - df_temp['MEAN(area)_model'])
+            # df_temp['abs_error_per_slice'] = df_temp['MEAN(area)_model'] - df_temp['MEAN(area)_gt']
 
             # compute mean of the absolute error per slice for each participant
             df_error_contrast[contrast] = df_temp.groupby('Participant')['abs_error_per_slice'].mean()
@@ -195,6 +196,11 @@ def generate_figure_abs_csa_error(folder_path, data, hue_order=None):
               fontweight='bold' ,fontsize=FONTSIZE)
     # Add horizontal dashed grid
     plt.grid(axis='y', alpha=0.5, linestyle='dashed')
+
+    # draw line connecting the means of the violin plots
+    for i in range(len(hue_new)-1):
+        plt.plot([i, i+1], [df[df['Method'] == hue_new[i]]['abs_error_mean'].mean(),
+                           df[df['Method'] == hue_new[i+1]]['abs_error_mean'].mean()], 'm--', lw=0.75)
 
     # rename the x-axis ticks as per XTICKS
     plt.xticks(range(len(hue_new)), XTICKS[1:], fontsize=FONTSIZE)
@@ -258,6 +264,7 @@ def generate_figure_abs_csa_error_per_contrast(file_path, data, method=None, thr
     df['Participant'] = df1['Participant']
     for contrast in CONTRAST_ORDER:
         df[contrast] = abs(df1[contrast] - df2[contrast])
+        # df[contrast] = df2[contrast] - df1[contrast]
     
     # reshape the dataframe to have a single column for the contrast and a single column for the absolute error
     df = df.melt(id_vars=['Participant'], value_vars=CONTRAST_ORDER, var_name='Contrast', value_name='abs_error')
@@ -341,9 +348,9 @@ def main(args, analysis_type="methods"):
         # Generate violinplot showing absolute CSA error across participants for each method
         generate_figure_abs_csa_error(args.i_folder, df_final, hue_order=HUE_ORDER)
 
-        # # Generate violinplot showing absolute CSA error for each contrast for a given method
-        # for method in HUE_ORDER[1:]:
-        #     generate_figure_abs_csa_error_per_contrast(file_path, data, method=method, threshold=None)
+        # Generate violinplot showing absolute CSA error for each contrast for a given method
+        for method in HUE_ORDER[1:]:
+            generate_figure_abs_csa_error_per_contrast(args.i_folder, df_final, method=method, threshold=None)
 
     elif analysis_type == "resolutions":
         
