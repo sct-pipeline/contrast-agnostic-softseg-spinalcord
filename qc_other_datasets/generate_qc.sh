@@ -45,25 +45,17 @@ echo "PATH_QC: ${PATH_QC}"
 
 SUBJECT=$1
 QC_DATASET=$2           # dataset name to generate QC for
-PATH_NNUNET_SCRIPT=$3   # path to the nnUNet contrast-agnostic run_inference_single_subject.py
-PATH_NNUNET_MODEL=$4    # path to the nnUNet contrast-agnostic model
-PATH_MONAI_SCRIPT=$5    # path to the MONAI contrast-agnostic run_inference_single_subject.py
-# PATH_SWIN_MODEL=$7
-# PATH_MEDNEXT_MODEL=$8
-PATH_MONAI_MODEL_1=$6     
-PATH_MONAI_MODEL_2=$7     
-PATH_MONAI_MODEL_3=$8     
+# PATH_NNUNET_SCRIPT=$3   # path to the nnUNet contrast-agnostic run_inference_single_subject.py
+# PATH_NNUNET_MODEL=$4    # path to the nnUNet contrast-agnostic model
+PATH_MONAI_SCRIPT=$3    # path to the MONAI contrast-agnostic run_inference_single_subject.py
+PATH_MONAI_MODEL=$4     
 
 echo "SUBJECT: ${SUBJECT}"
 echo "QC_DATASET: ${QC_DATASET}"
-echo "PATH_NNUNET_SCRIPT: ${PATH_NNUNET_SCRIPT}"
-echo "PATH_NNUNET_MODEL: ${PATH_NNUNET_MODEL}"
+# echo "PATH_NNUNET_SCRIPT: ${PATH_NNUNET_SCRIPT}"
+# echo "PATH_NNUNET_MODEL: ${PATH_NNUNET_MODEL}"
 echo "PATH_MONAI_SCRIPT: ${PATH_MONAI_SCRIPT}"
-echo "PATH_MONAI_MODEL_1: ${PATH_MONAI_MODEL_1}"
-echo "PATH_MONAI_MODEL_2: ${PATH_MONAI_MODEL_2}"
-echo "PATH_MONAI_MODEL_3: ${PATH_MONAI_MODEL_3}"
-# echo "PATH_SWIN_MODEL: ${PATH_SWIN_MODEL}"
-# echo "PATH_MEDNEXT_MODEL: ${PATH_MEDNEXT_MODEL}"
+echo "PATH_MONAI_MODEL: ${PATH_MONAI_MODEL}"
 
 # ------------------------------------------------------------------------------
 # CONVENIENCE FUNCTIONS
@@ -194,6 +186,8 @@ segment_sc_MONAI(){
   local file="$1"
   # local label_type="$2"     # soft or soft_bin
   local model="$2"     # monai, swinunetr, mednext
+  local models_384="v25 vPtrVNSLSciDcm_ColZurLes vPtrNewSeqLSciDcm"
+  local models_320="v21 vPtrV21-allNoPraxNoSCT vPtrV21-allNoPraxWithSCT vPtrV21-allWithPraxNoSCT vPtrV21-allWithPraxWithSCT"
 
 	# if [[ $label_type == 'soft' ]]; then
 	# 	FILEPRED="${file}_seg_monai_soft_input"
@@ -204,20 +198,37 @@ segment_sc_MONAI(){
 	# 	PATH_MODEL=${PATH_MONAI_MODEL_BIN}
 	
 	# fi
-	if [[ $model == 'v2x' ]]; then
-		FILEPRED="${file}_seg_${model}"
-		PATH_MODEL=${PATH_MONAI_MODEL_1}
+	if [[ " ${models_384[@]} " =~ " ${model} " ]]; then
+		# FILEPRED="${file}_seg_${model}"
+    # PATH_MODEL=${PATH_MONAI_MODEL}
+    if [[ $model == 'v25' ]]; then
+      PATH_MODEL="/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/sct_deployed_models/model_v25"
+      FILEPRED="${file}_seg_${model}"
+    elif [[ $model == 'vPtrNewSeqLSciDcm' ]]; then
+      PATH_MODEL="/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/sct_deployed_models/model_vPtrNewSeqLSciDcm"
+    elif [[ $model == 'vPtrVNSLSciDcm_ColZurLes' ]]; then
+      PATH_MODEL="/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/sct_deployed_models/model_vPtrVNSLSciDcm_ColZurLes"
+      FILEPRED="${file}_seg_M2"
+    fi
+    echo "Model: ${model};  Using model checkpoint in: ${PATH_MODEL}"
+    max_feat=384
+  
+  elif [[ " ${models_320[@]} " =~ " ${model} " ]]; then
+    # FILEPRED="${file}_seg_${model}"
+    # PATH_MODEL=${PATH_MONAI_MODEL}
+    PATH_MODEL="/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/sct_deployed_models/model_${model}"
+    if [[ $model == 'v21' ]]; then
+      FILEPRED="${file}_seg_${model}"
+    elif [[ $model == 'vPtrV21-allNoPraxNoSCT' ]]; then
+      FILEPRED="${file}_seg_M2prime"
+    elif [[ $model == 'vPtrV21-allNoPraxWithSCT' ]]; then
+      FILEPRED="${file}_seg_M3prime"
+    elif [[ $model == 'vPtrV21-allWithPraxNoSCT' ]]; then
+      FILEPRED="${file}_seg_M4prime"
+    elif [[ $model == 'vPtrV21-allWithPraxWithSCT' ]]; then
+      FILEPRED="${file}_seg_M5prime"
+    fi
     max_feat=320
-  
-  elif [[ $model == 'v2x_contour' ]]; then
-    FILEPRED="${file}_seg_${model}"
-    PATH_MODEL=${PATH_MONAI_MODEL_2}
-    max_feat=384
-  
-  elif [[ $model == 'v2x_contour_dcm' ]]; then
-    FILEPRED="${file}_seg_${model}"
-    PATH_MODEL=${PATH_MONAI_MODEL_3}
-    max_feat=384
 	
 	# elif [[ $model == 'swinunetr' ]]; then
   #   FILEPRED="${file}_seg_swinunetr"
@@ -246,9 +257,9 @@ segment_sc_MONAI(){
 
   # Generate QC report 
   sct_qc -i ${file}.nii.gz -s ${FILEPRED}.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
-
-  # compute ANIMA metrics
-  compute_anima_metrics ${FILEPRED} ${file}_seg-manual
+  # sct_qc -i ${file}.nii.gz -s ${FILEPRED}.nii.gz -d ${FILEPRED}.nii.gz -p sct_deepseg_lesion -plane sagittal -qc ${PATH_QC} -qc-subject ${SUBJECT}
+  # # compute ANIMA metrics
+  # compute_anima_metrics ${FILEPRED} ${file}_seg-manual
 
 }
 
@@ -282,15 +293,32 @@ elif [[ $QC_DATASET == "dcm-zurich" ]]; then
   label_suffix="label-SC_mask-manual"
   deepseg_input_c="t2"
 
-elif [[ $QC_DATASET == "lumbar-epfl" ]]; then
-  contrast="T2w"
+elif [[ $QC_DATASET == "ms-basel-2020" ]]; then
+  contrasts="acq-sagCervTSE_PD"
   label_suffix="seg-manual"
   deepseg_input_c="t2"
 
 elif [[ $QC_DATASET == "canproco" ]]; then
-  contrast="PSIR"
+  contrasts="PSIR STIR"
   label_suffix="seg-manual"
   deepseg_input_c="t2"
+
+elif [[ $QC_DATASET == "sct-testing-large" ]]; then
+  contrasts="T2star acq-MTon_MTR acq-dwiMean_dwi"
+  label_suffix="seg-manual"
+  deepseg_input_c="t2"
+
+elif [[ $QC_DATASET == "whole-spine" ]]; then
+  contrasts="T1w T2w"
+  label_suffix="label-SC_seg"
+
+elif [[ $QC_DATASET == "data-single-subject-from-duke" ]]; then
+  contrasts="rec-average_dwi"
+  label_suffix="label-SC_seg"
+
+elif [[ $QC_DATASET == "difficult-cases" ]]; then
+  contrasts="T1w T2w T2star flip-1_mt-on_MTS flip-2_mt-off_MTS rec-average_dwi"
+  label_suffix="label-SC_seg"
 
 else
   echo "ERROR: Dataset ${QC_DATASET} not recognized. Exiting."
