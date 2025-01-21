@@ -13,21 +13,16 @@ import warnings
 from loguru import logger
 import torch.nn.functional as F
 import torch
-import torch.nn as nn
 import json
+import glob
 from time import time
-import yaml
 from scipy import ndimage
 
 from monai.inferers import sliding_window_inference
 from monai.data import (DataLoader, Dataset, decollate_batch)
-from monai.networks.nets import SwinUNETR
 import monai.transforms as transforms
 
-# ---------------------------- Imports for nnUNet's Model -----------------------------
-from batchgenerators.utilities.file_and_folder_operations import join
-from utils import recursive_find_python_class
-
+from utils import recursive_find_python_class, visualize_feature_maps
 
 nnunet_plans = {
     "arch_class_name": "dynamic_network_architectures.architectures.unet.PlainConvUNet",
@@ -154,7 +149,7 @@ def create_nnunet_from_plans(plans, input_channels, output_channels, allow_init 
         
         import dynamic_network_architectures
         
-        nw_class = recursive_find_python_class(join(dynamic_network_architectures.__path__[0], "architectures"),
+        nw_class = recursive_find_python_class(os.path.join(dynamic_network_architectures.__path__[0], "architectures"),
                                                network_class.split(".")[-1],
                                                'dynamic_network_architectures.architectures')
         if nw_class is not None:
@@ -308,6 +303,14 @@ def main():
             net.load_state_dict(checkpoint)
             net.to(DEVICE)
             net.eval()
+
+            # fig = visualize_feature_maps(
+            #     input_img=test_input, 
+            #     model=net,
+            #     layer_names=['encoder.stages.5.0.convs.1.all_modules']
+            # )
+            # fig.savefig(os.path.join(results_path, "feature_maps.png"), dpi=300)
+            # exit()
 
             # run inference
             batch["pred"] = sliding_window_inference(test_input, inference_roi_size, mode="gaussian",
