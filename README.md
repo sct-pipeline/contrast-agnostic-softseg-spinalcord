@@ -317,7 +317,7 @@ sct_run_batch -jobs 32 -path-data ~/path-to-dataset/epi-stanford/ \
 ~~~
 
 
-## 8. Using contrast-agnostic model with nnUNet
+## 8. Transfer learning from contrast-agnostic model
 
 This section provides instructions on how to train nnUNet models with pre-trained weights of the contrast-agnostic model. Ideal use cases include using the 
 pretrained weights for training/finetuning on any spinal-cord-related segmentation task (e.g. lesions, rootlets, etc.). 
