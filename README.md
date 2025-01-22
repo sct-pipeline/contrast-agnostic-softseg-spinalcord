@@ -371,7 +371,7 @@ Provide the path to the downloaded pretrained weights:
 
 ```bash
 
-nnUNetv2_train <dataset_name_or_id> <configuration> <fold> -p nnUNetPlans_contrast_agnostic.json -pretrained_weights <path_to_pretrained_weights> -tr <nnUNetTrainer_Xepochs>
+nnUNetv2_train <dataset_name_or_id> <configuration> <fold> -p nnUNetPlans_contrast_agnostic -pretrained_weights <path_to_pretrained_weights> -tr <nnUNetTrainer_Xepochs>
 
 ```
 
