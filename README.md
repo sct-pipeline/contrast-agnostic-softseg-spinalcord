@@ -334,8 +334,7 @@ compatible with nnUNet.
 
 ### Step 2: Create a new plans file
 
-1. Create a copy of the original `nnUNetPlans.json` file (found under `$nnUNet_preprocessed/<dataset_name_or_id>`) and 
-rename it to `nnUNetPlans_contrast_agnostic.json`. 
+1. After running `nnUNetv2_plan_and_preprocess` (and before running `nnUNetv2_predict`), create a copy of the original `nnUNetPlans.json` file (found under `$nnUNet_preprocessed/<dataset_name_or_id>`) and  rename it to `nnUNetPlans_contrast_agnostic.json`. 
 2. In the `nnUNetPlans_contrast_agnostic.json`, modify the values of the following keys in the `3d_fullres` dict to be able to match the 
 values used for the contrast-agnostic model:
 
