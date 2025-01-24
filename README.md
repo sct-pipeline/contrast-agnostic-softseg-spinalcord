@@ -364,6 +364,9 @@ values used for the contrast-agnostic model:
 
 ```
 
+> [!IMPORTANT]  
+> * Note that the patch size does not have to be `[64, 192, 320]`. Any patch size can be used as long as the RL dimension is divisible by 16, AP and SI dimensions are divisible by 32. Examples of other patch sizes: `[16, 32, 32]`, `[32, 64, 96]`, `[64, 128, 64]`, `[64, 160, 192]`, `[64, 192, 256]` etc. For possibly best results, use the patch sizes that are close to original patch size in `nnUNetPlans.json`.
+
 ### Step 3: Train/Finetune the nnUNet model on your task
 
 Provide the path to the downloaded pretrained weights:
