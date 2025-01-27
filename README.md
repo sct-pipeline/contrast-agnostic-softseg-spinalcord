@@ -38,7 +38,7 @@ This repo contains all the code for data preprocessing, training and running inf
     * [7.1. Running QC on predictions from SCI-T2w dataset](#71-running-qc-on-predictions-from-sci-t2w-dataset)
     * [7.2. Running QC on predictions from MS-MP2RAGE dataset](#72-running-qc-on-predictions-from-ms-mp2rage-dataset)
     * [7.3. Running QC on predictions from Radiculopathy-EPI dataset](#73-running-qc-on-predictions-from-radiculopathy-epi-dataset)
-* [8. Using contrast-agnostic model with nnUNet](#8-use-contrast-agnostic-model-with-nnunet)
+* [8. Transfer learning from contrast-agnostic model](#8-transfer-learning-from-contrast-agnostic-model)
 
 ## 1. Main Dependencies
 
