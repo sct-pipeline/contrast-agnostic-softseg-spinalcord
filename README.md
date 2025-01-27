@@ -38,7 +38,7 @@ This repo contains all the code for data preprocessing, training and running inf
     * [7.1. Running QC on predictions from SCI-T2w dataset](#71-running-qc-on-predictions-from-sci-t2w-dataset)
     * [7.2. Running QC on predictions from MS-MP2RAGE dataset](#72-running-qc-on-predictions-from-ms-mp2rage-dataset)
     * [7.3. Running QC on predictions from Radiculopathy-EPI dataset](#73-running-qc-on-predictions-from-radiculopathy-epi-dataset)
-* [8. Active learning procedure](#8-active-learning-procedure-todo)
+* [8. Transfer learning from contrast-agnostic model](#8-transfer-learning-from-contrast-agnostic-model)
 
 ## 1. Main Dependencies
 
@@ -317,20 +317,76 @@ sct_run_batch -jobs 32 -path-data ~/path-to-dataset/epi-stanford/ \
 ~~~
 
 
-## 8. Active learning procedure (TODO)
+## 8. Transfer learning from contrast-agnostic model
 
-> **Note**
-> This section is still a work in progress.
+This section provides instructions on how to train nnUNet models with pre-trained weights of the contrast-agnostic model. Ideal use cases include using the 
+pretrained weights for training/finetuning on any spinal-cord-related segmentation task (e.g. lesions, rootlets, etc.). 
 
-To extend the training set to other contrasts and to pathologies, we applied the segmentation model to other datasets, manually corrected the segmentations and added them to the training set.
+### Step 1: Download the pretrained weights
 
-Here is the detailed procedure:
+Download the pretrained weights from the [latest release](https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord/releases) of the 
+contrast-agnostic model. This refers to the `.zip` file of the format `model_contrast_agnostic_<date>_nnunet_compatible.zip`. 
 
-1. Run inference on other datasets for the selected models and generate the QC report from prediction masks.
-2. Select ~20 interesting images per dataset (using the QC report).
-3. Correct the inference on the selected subjects if needed (you can use [`manual-correction`](https://github.com/spinalcordtoolbox/manual-correction) script).
-4. Add the inferred segmentations to the `derivatives/labels_contrast_agnostic` folder of each dataset.
-5. Add inferred segmentations to the training set (keep the same testing spine generic subjects) & retrain a model.
-6. Compute CSA on spine generic testing set and see STD vs before
+> [!WARNING]  
+> Only download the model with the `nnunet_compatible` suffix. If a release does not have this suffix, then that model weights are not directly 
+compatible with nnUNet.
+
+
+### Step 2: Create a new plans file
+
+1. After running `nnUNetv2_plan_and_preprocess` (and before running `nnUNetv2_predict`), create a copy of the original `nnUNetPlans.json` file (found under `$nnUNet_preprocessed/<dataset_name_or_id>`) and  rename it to `nnUNetPlans_contrast_agnostic.json`. 
+2. In the `nnUNetPlans_contrast_agnostic.json`, modify the values of the following keys in the `3d_fullres` dict to be able to match the 
+values used for the contrast-agnostic model:
+
+```json
+
+"patch_size": [64, 192, 320],
+"n_stages": 6,
+"features_per_stage": [32, 64, 128, 256, 320, 320],
+"n_conv_per_stage": [2, 2, 2, 2, 2, 2],
+"n_conv_per_stage_decoder": [2, 2, 2, 2, 2],
+"strides": [
+    [1, 1, 1],
+    [2, 2, 2],
+    [2, 2, 2],
+    [2, 2, 2],
+    [2, 2, 2],
+    [1, 2, 2]
+    ],
+"kernel_sizes":[
+    [3, 3, 3],
+    [3, 3, 3],
+    [3, 3, 3],
+    [3, 3, 3],
+    [3, 3, 3],
+    [3, 3, 3]
+    ],
+
+```
+
+> [!IMPORTANT]  
+> * Note that the patch size does not have to be `[64, 192, 320]`. Any patch size can be used as long as the RL dimension is divisible by 16, AP and SI dimensions are divisible by 32. Examples of other patch sizes: `[16, 32, 32]`, `[32, 64, 96]`, `[64, 128, 64]`, `[64, 160, 192]`, `[64, 192, 256]` etc. For possibly best results, use the patch sizes that are close to original patch size in `nnUNetPlans.json`.
+
+### Step 3: Train/Finetune the nnUNet model on your task
+
+Provide the path to the downloaded pretrained weights:
+
+```bash
+
+nnUNetv2_train <dataset_name_or_id> <configuration> <fold> -p nnUNetPlans_contrast_agnostic -pretrained_weights <path_to_pretrained_weights> -tr <nnUNetTrainer_Xepochs>
+
+```
+
+> [!IMPORTANT]  
+> * Training/finetuning with contrast-agnostic weights only works when for 3D nnUNet models. 
+> * Ensure that all images are in the RPI orientation before running `nnUNetv2_plan_and_preprocess`. This is because the updated 
+`patch_size` refers to patches in RPI orientation (if images are in different orientation, then the patch size might be sub-optimal).
+> * Ensure that `X` in `nnUNetTrainer_Xepochs` is set to a lower value than 1000. The idea is the finetuning does not require as 
+many epochs as training from scratch because the contrast-agnostic model has already been trained on a lot of spinal cord images 
+(so it might not require 1000 epochs to converge).
+> * The modified `nnUNetPlans_contrast_agnostic.json` might not have the same values for parameters such as `patch_size`, `strides`, 
+`n_stages`, etc. automatically set by nnUNet. As a result, the original (train-from-scratch) model might even perform better. 
+In such cases, training/finetuning with contrast-agnostic weights should just be considered as another baseline for your actual task.
+
 
 
