@@ -48,7 +48,9 @@ This repo contains all the code for data preprocessing, training and running inf
 ## 2. Dataset
 The source data can be found at [spine-generic multi-subject](https://github.com/spine-generic/data-multi-subject/).
 
-The preprocessed data are located at `duke:projects/ivadomed/contrast-agnostic-seg/data_processed_sg_2023-08-08_NO_CROP\data_processed_clean` (internal server)
+The preprocessed data are located at [spine-generic multi-subject/derivatives/data_preprocessed](https://github.com/spine-generic/data-multi-subject/tree/master/derivatives/data_preprocessed)
+
+The GT used for training are located at: [spine-generic multi-subject/derivatives/labels_softseg_bin](https://github.com/spine-generic/data-multi-subject/tree/master/derivatives/labels_softseg_bin)
 
 ## 3. Preprocessing
 Main preprocessing steps include:
