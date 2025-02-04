@@ -47,15 +47,16 @@ SUBJECT=$1
 # PATH_NNUNET_SCRIPT=$2   # path to the nnUNet contrast-agnostic run_inference_single_subject.py
 # PATH_NNUNET_MODEL=$3    # path to the nnUNet contrast-agnostic model
 PATH_MONAI_SCRIPT=$2    # path to the MONAI contrast-agnostic run_inference_single_subject.py
-PATH_MONAI_MODELS=$3
+PATH_NNUNET_SCRIPT=$3   # path to the nnUNet contrast-agnostic run_inference_single_subject.py
+PATH_MONAI_MODELS=$4
 # PATH_SWIN_MODEL=$5
 PATH_SWDICE_SCRIPT="/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/contrast-agnostic-softseg-spinalcord/monai/compute_slicewise_dice.py"
 
 echo "SUBJECT: ${SUBJECT}"
-# echo "PATH_NNUNET_SCRIPT: ${PATH_NNUNET_SCRIPT}"
+echo "PATH_NNUNET_SCRIPT: ${PATH_NNUNET_SCRIPT}"
 # echo "PATH_NNUNET_MODEL: ${PATH_NNUNET_MODEL}"
 echo "PATH_MONAI_SCRIPT: ${PATH_MONAI_SCRIPT}"
-echo "PATH_MONAI_MODELS: ${PATH_MONAI_MODELS}"
+# echo "PATH_MONAI_MODELS: ${PATH_MONAI_MODELS}"
 # echo "PATH_SWIN_MODEL: ${PATH_SWIN_MODEL}"
 
 # ------------------------------------------------------------------------------
@@ -210,27 +211,35 @@ segment_sc() {
 segment_sc_nnUNet(){
   local file="$1"
   local file_gt_vert_label="$2"
-  local kernel="$3"     # 2d or 3d
+  local model="$3"     # 2d or 3d
   local contrast="$4"   # used only for saving output file name
   local csv_fname="$5"   # used for saving output file name
+  local kernel="$6"    # 2d or 3d_fullres
 
-  FILESEG="${file%%_*}_${contrast}_seg_nnunet"
+  FILESEG="${file%%_*}_${contrast}_seg_${model}"
+	PATH_MODEL=${PATH_MONAI_MODELS}/model_${model}
+  # FILESEG="${file}_seg_nnunet${kernel}"
+  # PATH_MODEL="/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/sct_deployed_models/model_nnunet-AllRandInit${kernel}"
 
   # Get the start time
   start_time=$(date +%s)
   # Run SC segmentation
-  python ${PATH_NNUNET_SCRIPT} -i ${file}.nii.gz -o ${FILESEG}.nii.gz -path-model ${PATH_NNUNET_MODEL}/nnUNetTrainer__nnUNetPlans__${kernel} -pred-type sc -use-gpu
+  python ${PATH_NNUNET_SCRIPT} -i ${file}.nii.gz -o ${FILESEG}.nii.gz -path-model ${PATH_MODEL}/nnUNetTrainer__nnUNetPlans__${kernel} -pred-type sc -use-gpu -use-best-checkpoint
   # Get the end time
   end_time=$(date +%s)
   # Calculate the time difference
   execution_time=$(python3 -c "print($end_time - $start_time)")
   echo "${FILESEG},${execution_time}" >> ${PATH_RESULTS}/execution_time.csv
 
-  # # Generate QC report
-  # sct_qc -i ${file}.nii.gz -s ${FILESEG}.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
+  # Generate QC report
+  sct_qc -i ${file}.nii.gz -s ${FILESEG}.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
 
-  # Compute CSA from the prediction resampled back to native resolution using the GT vertebral labels
-  sct_process_segmentation -i ${FILESEG}.nii.gz -vert 2:3 -vertfile ${file_gt_vert_label}_labeled.nii.gz -o $PATH_RESULTS/${csv_fname}.csv -append 1
+  # Compute CSA averaged across all slices C2-C3 vertebral levels for plotting the STD across contrasts
+  # NOTE: this is per-level because not all contrasts have thes same FoV (C2-C3 is what all contrasts have in common)
+  sct_process_segmentation -i ${FILESEG}.nii.gz -vert 2:3 -vertfile ${file_gt_vert_label}_labeled.nii.gz -o $PATH_RESULTS/${csv_fname}_c2c3.csv -append 1
+
+  # Compute CSA "per slice" across _all_ slices in the SC for plotting the absolute CSA error across contrasts
+  sct_process_segmentation -i ${FILESEG}.nii.gz -perslice 1 -vertfile ${file_gt_vert_label}_labeled.nii.gz -o $PATH_RESULTS/${csv_fname}_${model}_perslice.csv -append 1
 
 }
 
@@ -429,16 +438,12 @@ for contrast in ${contrasts}; do
 
   # 3. Segment SC using different methods, binarize at 0.5 and compute CSA
 	# CUDA_VISIBLE_DEVICES=0 segment_sc_MONAI ${file} "${file}_seg-manual" 'v20' ${contrast} ${csv_fname}
-  # CUDA_VISIBLE_DEVICES=1 segment_sc_MONAI ${file} "${file}_seg-manual" 'v21' ${contrast} ${csv_fname}
-  CUDA_VISIBLE_DEVICES=2 segment_sc_MONAI ${file} "${file}_seg-manual" 'vPtrV21-allNoPraxNoSCT' ${contrast} ${csv_fname}
-  CUDA_VISIBLE_DEVICES=1 segment_sc_MONAI ${file} "${file}_seg-manual" 'vPtrV21-allWithPraxWithSCT' ${contrast} ${csv_fname}
-  # CUDA_VISIBLE_DEVICES=3 segment_sc_nnUNet ${file} "${file}_seg-manual" '3d_fullres' ${contrast} ${csv_fname}
-  segment_sc ${file} "${file}_seg-manual" 'deepseg' ${deepseg_input_c} ${contrast} ${csv_fname}
-  # TODO: run on deep/progseg after fixing the contrasts for those
-  # segment_sc ${file_res} 't2' 'propseg' '' "${file}_seg-manual" ${native_res}
-
-  # # 3.1 Ensemble the predictions from different models
-  # segment_sc_ensemble ${file} "${file}_seg-manual" ${contrast} ${csv_fname}
+  # CUDA_VISIBLE_DEVICES=0 segment_sc_MONAI ${file} "${file}_seg-manual" 'v25' ${contrast} ${csv_fname}
+  CUDA_VISIBLE_DEVICES=3 segment_sc_nnUNet ${file} "${file}_seg-manual" 'nnunet-AllRandInit2D' ${contrast} ${csv_fname} '2d'
+  CUDA_VISIBLE_DEVICES=2 segment_sc_nnUNet ${file} "${file}_seg-manual" 'nnunet-AllRandInit3D' ${contrast} ${csv_fname} '3d_fullres'
+  CUDA_VISIBLE_DEVICES=0 segment_sc_MONAI ${file} "${file}_seg-manual" 'vPtrV21-allWithPraxWithSCT' ${contrast} ${csv_fname}
+  # CUDA_VISIBLE_DEVICES=3 segment_sc_nnUNet ${file} "${file}_seg-manual" '3d' ${contrast} ${csv_fname}
+  # segment_sc ${file} "${file}_seg-manual" 'deepseg' ${deepseg_input_c} ${contrast} ${csv_fname}
 
 done
 
