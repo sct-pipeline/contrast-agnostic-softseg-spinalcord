@@ -48,16 +48,16 @@ QC_DATASET=$2           # dataset name to generate QC for
 # PATH_NNUNET_SCRIPT=$2   # path to the nnUNet contrast-agnostic run_inference_single_subject.py
 # PATH_NNUNET_MODEL=$3    # path to the nnUNet contrast-agnostic model
 PATH_MONAI_SCRIPT=$3    # path to the MONAI contrast-agnostic run_inference_single_subject.py
-PATH_MONAI_MODEL_SOFT=$4     # path to the MONAI contrast-agnostic model trained on soft labels
-PATH_MONAI_MODEL_SOFTBIN=$5     # path to the MONAI contrast-agnostic model trained on soft_bin labels
+PATH_NNUNET_SCRIPT=$4     # path to the MONAI contrast-agnostic model trained on soft labels
+# PATH_MONAI_MODEL_SOFTBIN=$5     # path to the MONAI contrast-agnostic model trained on soft_bin labels
 
 echo "SUBJECT: ${SUBJECT}"
 echo "QC_DATASET: ${QC_DATASET}"
-# echo "PATH_NNUNET_SCRIPT: ${PATH_NNUNET_SCRIPT}"
+echo "PATH_NNUNET_SCRIPT: ${PATH_NNUNET_SCRIPT}"
 # echo "PATH_NNUNET_MODEL: ${PATH_NNUNET_MODEL}"
 echo "PATH_MONAI_SCRIPT: ${PATH_MONAI_SCRIPT}"
-echo "PATH_MONAI_MODEL_SOFT: ${PATH_MONAI_MODEL_SOFT}"
-echo "PATH_MONAI_MODEL_SOFTBIN: ${PATH_MONAI_MODEL_SOFTBIN}"
+# echo "PATH_MONAI_MODEL_SOFT: ${PATH_MONAI_MODEL_SOFT}"
+# echo "PATH_MONAI_MODEL_SOFTBIN: ${PATH_MONAI_MODEL_SOFTBIN}"
 
 # ------------------------------------------------------------------------------
 # CONVENIENCE FUNCTIONS
@@ -158,28 +158,34 @@ segment_sc() {
 # Segment spinal cord using the contrast-agnostic nnUNet model
 segment_sc_nnUNet(){
   local file="$1"
-  local kernel="$2"     # 2d or 3d
-  local file_gt_vert_label="$3"
-  local contrast="$4"   # used only for saving output file name
+  local model="$2"     # monai, swinunetr, mednext
+  local kernel="$3"     # 2d or 3d
+
+  if [[ $kernel == '2D' ]]; then
+    kernel_fmt='2d'
+  elif [[ $kernel == '3D' ]]; then
+    kernel_fmt='3d_fullres'
+  fi
 
   # FILESEG="${file}_seg_nnunet_${kernel}"
-  FILESEG="${file%%_*}_${contrast}_seg_nnunet"
+  FILESEG="${file}_seg_${model}${kernel}"
+  PATH_MODEL="/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/sct_deployed_models/model_${model}${kernel}"
 
   # Get the start time
   start_time=$(date +%s)
   # Run SC segmentation
-  python ${PATH_NNUNET_SCRIPT} -i ${file}.nii.gz -o ${FILESEG}.nii.gz -path-model ${PATH_NNUNET_MODEL}/nnUNetTrainer__nnUNetPlans__${kernel} -pred-type sc -use-gpu
+  python ${PATH_NNUNET_SCRIPT} -i ${file}.nii.gz -o ${FILESEG}.nii.gz -path-model ${PATH_MODEL}/nnUNetTrainer__nnUNetPlans__${kernel_fmt} -pred-type sc -use-gpu -use-best-checkpoint
   # Get the end time
   end_time=$(date +%s)
   # Calculate the time difference
   execution_time=$(python3 -c "print($end_time - $start_time)")
   echo "${FILESEG},${execution_time}" >> ${PATH_RESULTS}/execution_time.csv
 
-  # # Generate QC report
-  # sct_qc -i ${file}.nii.gz -s ${FILESEG}.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
+  # Generate QC report
+  sct_qc -i ${file}.nii.gz -s ${FILESEG}.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
 
-  # Compute CSA from the prediction resampled back to native resolution using the GT vertebral labels
-  sct_process_segmentation -i ${FILESEG}.nii.gz -vert 2:4 -vertfile ${file_gt_vert_label}_labeled.nii.gz -o $PATH_RESULTS/csa_label_types_c24.csv -append 1
+  # # Compute CSA from the prediction resampled back to native resolution using the GT vertebral labels
+  # sct_process_segmentation -i ${FILESEG}.nii.gz -vert 2:4 -vertfile ${file_gt_vert_label}_labeled.nii.gz -o $PATH_RESULTS/csa_label_types_c24.csv -append 1
 
 }
 
@@ -281,10 +287,12 @@ fi
 copy_gt_seg "${file}" "${label_suffix}"
 
 # Segment SC using different methods, binarize at 0.5 and compute QC
-CUDA_VISIBLE_DEVICES=0 segment_sc_MONAI ${file} 'v21'
-CUDA_VISIBLE_DEVICES=1 segment_sc_MONAI ${file} 'v25'
-CUDA_VISIBLE_DEVICES=2 segment_sc_MONAI ${file} 'vPtrV21-allNoPraxNoSCT'              # model M2prime
+# CUDA_VISIBLE_DEVICES=0 segment_sc_MONAI ${file} 'v21'
+# CUDA_VISIBLE_DEVICES=1 segment_sc_MONAI ${file} 'v25'
+# CUDA_VISIBLE_DEVICES=2 segment_sc_MONAI ${file} 'vPtrV21-allNoPraxNoSCT'              # model M2prime
 CUDA_VISIBLE_DEVICES=1 segment_sc_MONAI ${file} 'vPtrV21-allWithPraxWithSCT'           # model M5prime
+CUDA_VISIBLE_DEVICES=2 segment_sc_nnUNet ${file} 'nnunet-AllRandInit' '2D'
+CUDA_VISIBLE_DEVICES=3 segment_sc_nnUNet ${file} 'nnunet-AllRandInit' '3D'
 
 # segment_sc_nnUNet ${file} '3d_fullres' "${file}_seg-manual" ${contrast}
 # # TODO: run on deep/progseg after fixing the contrasts for those
