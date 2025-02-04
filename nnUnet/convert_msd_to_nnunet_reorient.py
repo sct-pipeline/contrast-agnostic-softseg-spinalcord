@@ -19,8 +19,6 @@ import argparse
 import json
 from pathlib import Path
 import tqdm
-import nibabel as nib
-import numpy as np
 from collections import OrderedDict
 from monai.data import load_decathlon_datalist
 from multiprocessing import Pool, cpu_count
