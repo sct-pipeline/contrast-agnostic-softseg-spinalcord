@@ -14,14 +14,14 @@ import matplotlib.pyplot as plt
 
 # Setting the hue order as specified
 # HUE_ORDER = ["softseg_bin", "deepseg", "plain_320", "plain_384", "resencM"]
-HUE_ORDER = ["softseg_bin", "v21", "deepseg", "vPtrV21-allNoPraxNoSCT", "vPtrV21-allWithPraxWithSCT"]
+HUE_ORDER = ["softseg_bin", "nnunet-AllRandInit2D", "nnunet-AllRandInit3D", "vPtrV21-allWithPraxWithSCT"]
 # HUE_ORDER = ["softseg_bin", "v20", "v21", "v23", "v24", "v25", "deepseg", "vPtrV21noPrax"]
 HUE_ORDER_THR = ["GT", "15", "1", "05", "01", "005"]
 HUE_ORDER_RES = ["1mm", "05mm", "15mm", "3mm", "2mm"]
 CONTRAST_ORDER = ["DWI", "MTon", "MToff", "T1w", "T2star", "T2w"]
 
 FONTSIZE = 12
-XTICKS = ["GT", "contrast-agnostic\nv2.1", "deepseg_sc\n2D", "C-A-vPtr2.1\nallNoPraxNoSCT", "C-A-vPtr2.1\nallWithPraxWithSCT"]
+XTICKS = ["GT", "C-A\nnnunet-AllRandInit2D", "C-A\nnnunet-AllRandInit3D", "C-A-vPtr2.1\nM5prime"]
 # XTICKS = ["GT", "contrast-agnostic\nv2.0", "contrast-agnostic\nv2.1", "contrast-agnostic\nv2.3",
 #             "contrast-agnostic\nv2.4", "contrast-agnostic\nv2.5", "deepseg_sc\n2D", "contrast-agnostic\nvPtrV21noPrax",]
 
@@ -62,7 +62,7 @@ def extract_contrast_and_details(filename, across="Method"):
     if across == "Method":
         # pattern = r'.*_(DWI|MTon|MToff|T1w|T2star|T2w).*_(softseg_bin|deepseg_2d|nnunet|monai|mednext|swinunetr|swinpretrained|ensemble).*'
         # pattern = r'.*_(DWI|MTon|MToff|T1w|T2star|T2w).*_(softseg_bin|deepseg|plain_320|plain_384|resencM).*'
-        pattern = r'.*_(DWI|MTon|MToff|T1w|T2star|T2w).*_(softseg_bin|deepseg|v20|v21|v23|v24|v25|vPtrV21-allNoPraxNoSCT|vPtrV21-allWithPraxWithSCT).*'
+        pattern = r'.*_(DWI|MTon|MToff|T1w|T2star|T2w).*_(softseg_bin|deepseg|v20|v21|v23|v24|v25|nnunet-AllRandInit2D|nnunet-AllRandInit3D|vPtrV21-allWithPraxWithSCT).*'
         match = re.search(pattern, filename)
         if match:
             return match.group(1), match.group(2)
@@ -381,14 +381,9 @@ def compute_cov(data, file_path):
 def main(args, analysis_type="methods"):
     # Load the CSV file containing averaged (across slices) C2-C3 CSA 
     data_avg_csa = pd.read_csv(args.i)
-    # Load the CSV file containing averaged slicewise Dice scores
-    data_swdice = pd.read_csv(args.i_dice)
-    # add the column titles
-    data_swdice.columns = ['Filename', 'average_slicewise_dice']
 
     # Apply the function to extract participant ID
     data_avg_csa['Participant'] = data_avg_csa['Filename'].apply(fetch_participant_id)
-    data_swdice['Participant'] = data_swdice['Filename'].apply(fetch_participant_id)
 
     # Apply the function to extract method and the corresponding analysis details
     if analysis_type == "methods":
@@ -398,11 +393,21 @@ def main(args, analysis_type="methods"):
         # Generate violinplot showing STD across participants for each method
         generate_figure_std(data_avg_csa, file_path=args.i, metric="csa")
 
-        data_swdice['Contrast'], data_swdice['Method'] = zip(
-            *data_swdice['Filename'].apply(extract_contrast_and_details, across="Method"))
+        if args.i_dice is not None:
+            # Generate violinplot showing average slicewise Dice scores across participants for each method
 
-        # Generate violinplot showing average slicewise Dice scores across participants for each method
-        generate_figure_std(data_swdice, file_path=args.i_dice, metric="swdice")
+            # Load the CSV file containing averaged slicewise Dice scores
+            data_swdice = pd.read_csv(args.i_dice)
+            # add the column titles
+            data_swdice.columns = ['Filename', 'average_slicewise_dice']
+
+            data_swdice['Participant'] = data_swdice['Filename'].apply(fetch_participant_id)
+            data_swdice['Contrast'], data_swdice['Method'] = zip(
+                *data_swdice['Filename'].apply(extract_contrast_and_details, across="Method"))
+
+            generate_figure_std(data_swdice, file_path=args.i_dice, metric="swdice")
+        else:
+            print("No Dice scores provided. Skipping Dice score analysis.")
 
         # # Generate violinplot showing absolute CSA error across participants for each method
         # generate_figure_abs_csa_error(file_path, data, hue_order=HUE_ORDER)
@@ -430,7 +435,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Generate violin plot from CSV data.')
     parser.add_argument('-i', type=str, 
                         help='Path to the CSV file containing average C2-C3 CSA (to compute STD CSA across contrast)')
-    parser.add_argument('-i-dice', type=str,
+    parser.add_argument('-i-dice', type=str, default=None,
                         help="Path to the CSV file containing averaged slice-wise Dice scores for each contrast, method, and subjects")
     parser.add_argument('-a', type=str, default="methods", 
                         help='Options to analyse CSA across. Choices: [methods, resolutions]')

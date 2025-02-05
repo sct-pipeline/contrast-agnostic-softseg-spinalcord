@@ -38,7 +38,6 @@ import tempfile
 
 # from nnunetv2.inference.predict_from_raw_data import predict_from_raw_data as predictor
 from nnunetv2.inference.predict_from_raw_data import nnUNetPredictor
-from batchgenerators.utilities.file_and_folder_operations import join
 
 
 def get_parser():
@@ -176,7 +175,7 @@ def main():
 
     # initializes the network architecture, loads the checkpoint
     predictor.initialize_from_trained_model_folder(
-        join(args.path_model),
+        os.path.join(args.path_model),
         use_folds=folds_avail,
         checkpoint_name='checkpoint_final.pth' if not args.use_best_checkpoint else 'checkpoint_best.pth',
     )

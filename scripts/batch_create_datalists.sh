@@ -20,7 +20,7 @@ DATASETS=("data-multi-subject" "basel-mp2rage" "canproco" \
 PATH_DATA_BASE="/home/GRAMES.POLYMTL.CA/u114716/datasets"
 
 # output path
-folder_name=$(date +"%Y%m%d")-v21PtrWithPraxNoSCT
+folder_name=$(date +"%Y%m%d")-v21PtrAll
 PATH_OUTPUT="/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/datalists/${folder_name}"
 
 # create datalists!

@@ -14,7 +14,7 @@ dataset:
   # Dataset name (will be used as "group_name" for wandb logging)
   name: contrast-agnostic-v3
   # Path to the dataset directory containing all datalists (.json files)
-  root_dir: /home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/datalists/20250115-v21PtrWithPraxNoSCT
+  root_dir: /home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/datalists/20250115-v21PtrAll
 
 preprocessing:
   # Online resampling of images to the specified spacing.

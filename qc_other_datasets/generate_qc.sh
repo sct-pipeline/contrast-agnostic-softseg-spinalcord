@@ -48,11 +48,12 @@ QC_DATASET=$2           # dataset name to generate QC for
 # PATH_NNUNET_SCRIPT=$3   # path to the nnUNet contrast-agnostic run_inference_single_subject.py
 # PATH_NNUNET_MODEL=$4    # path to the nnUNet contrast-agnostic model
 PATH_MONAI_SCRIPT=$3    # path to the MONAI contrast-agnostic run_inference_single_subject.py
-PATH_MONAI_MODEL=$4     
+PATH_NNUNET_SCRIPT=$4
+# PATH_MONAI_MODEL=$4     
 
 echo "SUBJECT: ${SUBJECT}"
 echo "QC_DATASET: ${QC_DATASET}"
-# echo "PATH_NNUNET_SCRIPT: ${PATH_NNUNET_SCRIPT}"
+echo "PATH_NNUNET_SCRIPT: ${PATH_NNUNET_SCRIPT}"
 # echo "PATH_NNUNET_MODEL: ${PATH_NNUNET_MODEL}"
 echo "PATH_MONAI_SCRIPT: ${PATH_MONAI_SCRIPT}"
 echo "PATH_MONAI_MODEL: ${PATH_MONAI_MODEL}"
@@ -158,15 +159,23 @@ segment_sc() {
 # Segment spinal cord using the contrast-agnostic nnUNet model
 segment_sc_nnUNet(){
   local file="$1"
-  local kernel="$2"     # 2d or 3d
+  local model="$2"     # monai, swinunetr, mednext
+  local kernel="$3"     # 2d or 3d
+
+  if [[ $kernel == '2D' ]]; then
+    kernel_fmt='2d'
+  elif [[ $kernel == '3D' ]]; then
+    kernel_fmt='3d_fullres'
+  fi
 
   # FILESEG="${file}_seg_nnunet_${kernel}"
-  FILESEG="${file}_seg_nnunet"
+  FILESEG="${file}_seg_${model}${kernel}"
+  PATH_MODEL="/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/sct_deployed_models/model_${model}${kernel}"
 
   # Get the start time
   start_time=$(date +%s)
   # Run SC segmentation
-  python ${PATH_NNUNET_SCRIPT} -i ${file}.nii.gz -o ${FILESEG}.nii.gz -path-model ${PATH_NNUNET_MODEL}/nnUNetTrainer__nnUNetPlans__${kernel} -pred-type sc -use-gpu
+  python ${PATH_NNUNET_SCRIPT} -i ${file}.nii.gz -o ${FILESEG}.nii.gz -path-model ${PATH_MODEL}/nnUNetTrainer__nnUNetPlans__${kernel_fmt} -pred-type sc -use-gpu -use-best-checkpoint
   # Get the end time
   end_time=$(date +%s)
   # Calculate the time difference
@@ -175,6 +184,7 @@ segment_sc_nnUNet(){
 
   # Generate QC report
   sct_qc -i ${file}.nii.gz -s ${FILESEG}.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
+  # sct_qc -i ${file}.nii.gz -s ${FILESEG}.nii.gz -d ${FILESEG}.nii.gz -p sct_deepseg_lesion -plane sagittal -qc ${PATH_QC} -qc-subject ${SUBJECT}
 
   # # Compute CSA from the prediction resampled back to native resolution using the GT vertebral labels
   # sct_process_segmentation -i ${FILESEG}.nii.gz -vert 2:4 -vertfile ${file_gt_vert_label}_labeled.nii.gz -o $PATH_RESULTS/csa_label_types_c24.csv -append 1
@@ -279,17 +289,17 @@ cd $PATH_DATA_PROCESSED
 # Note: we use '/./' in order to include the sub-folder 'ses-0X'
 # We do a substitution '/' --> '_' in case there is a subfolder 'ses-0X/'
 if [[ $QC_DATASET == "sci-colorado" ]]; then
-  contrast="T2w"
+  contrasts="T2w"
   label_suffix="seg-manual"
   deepseg_input_c="t2"
 
 elif [[ $QC_DATASET == "basel-mp2rage" ]]; then
-  contrast="UNIT1"
+  contrasts="UNIT1"
   label_suffix="label-SC_seg"
   deepseg_input_c="t1"
 
 elif [[ $QC_DATASET == "dcm-zurich" ]]; then
-  contrast="acq-axial_T2w"
+  contrasts="acq-axial_T2w"
   label_suffix="label-SC_mask-manual"
   deepseg_input_c="t2"
 
@@ -317,7 +327,11 @@ elif [[ $QC_DATASET == "data-single-subject-from-duke" ]]; then
   label_suffix="label-SC_seg"
 
 elif [[ $QC_DATASET == "difficult-cases" ]]; then
-  contrasts="T1w T2w T2star flip-1_mt-on_MTS flip-2_mt-off_MTS rec-average_dwi"
+  contrasts="T1w T2w T2star flip-1_mt-on_MTS flip-2_mt-off_MTS rec-average_dwi anatGRE UNIT1 PSIR STIR"
+  label_suffix="label-SC_seg"
+
+elif [[ $QC_DATASET == "temp-data-unknown2" ]]; then
+  contrasts="T2star"
   label_suffix="label-SC_seg"
 
 else
@@ -381,10 +395,11 @@ for contrast in ${contrasts}; do
 
     # Segment SC using different methods, binarize at 0.5 and compute QC
     # CUDA_VISIBLE_DEVICES=0 segment_sc_MONAI ${file} 'v21'
-    CUDA_VISIBLE_DEVICES=0 segment_sc_MONAI ${file} 'v25'
-    CUDA_VISIBLE_DEVICES=1 segment_sc_MONAI ${file} 'vPtrV21-allNoPraxNoSCT'              # model M2prime
+    CUDA_VISIBLE_DEVICES=2 segment_sc_nnUNet ${file} 'nnunet-AllRandInit' '2D'
+    CUDA_VISIBLE_DEVICES=3 segment_sc_nnUNet ${file} 'nnunet-AllRandInit' '3D'
+    # CUDA_VISIBLE_DEVICES=1 segment_sc_MONAI ${file} 'v25'
+    # CUDA_VISIBLE_DEVICES=1 segment_sc_MONAI ${file} 'vPtrV21-allNoPraxNoSCT'              # model M2prime
     CUDA_VISIBLE_DEVICES=0 segment_sc_MONAI ${file} 'vPtrV21-allWithPraxWithSCT'           # model M5prime
-    # CUDA_VISIBLE_DEVICES=2 segment_sc_nnUNet ${file} '3d_fullres'
     # segment_sc ${file} 'deepseg' ${deepseg_input_c}
 
 #     # Create new "_clean" folder with BIDS-updated derivatives filenames
