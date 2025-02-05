@@ -168,6 +168,7 @@ def main():
         'numTraining': len(train_results),
         'numTest': len(test_results),
         'file_ending': ".nii.gz",
+        'image_orientation': "RPI",
         'training': [{'image': str(r['image_nnunet']), 'label': str(r['label_nnunet'])} for r in train_results],
         'test': [{'image': str(r['image_nnunet']), 'label': str(r['label_nnunet'])} for r in test_results]
     })
