@@ -1,0 +1,60 @@
+# This YML file contains a list of difficult subjects gathered across all datasets in NeuroPoly
+# to test the contrast-agnostic spinal cord segmentation model. 
+FILES_IMAGES:
+	basel-mp2rage:
+		- sub-C028/anat/sub-C028_UNIT1.nii.gz
+		- sub-C099/anat/sub-C099_UNIT1.nii.gz
+		- sub-P044/anat/sub-P044_UNIT1.nii.gz
+		- sub-P144/anat/sub-P144_UNIT1.nii.gz
+		- sub-P145/anat/sub-P145_UNIT1.nii.gz
+	canproco:
+		- sub-cal090/ses-M12/anat/sub-cal090_ses-M12_STIR.nii.gz
+		- sub-cal175/ses-M12/anat/sub-cal175_ses-M12_STIR.nii.gz
+		- sub-tor053/ses-M12/anat/sub-tor053_ses-M12_PSIR.nii.gz
+		- sub-tor065/ses-M12/anat/sub-tor065_ses-M12_PSIR.nii.gz
+		- sub-tor103/ses-M12/anat/sub-tor067_ses-M12_PSIR.nii.gz
+		- sub-van138/ses-M12/anat/sub-van138_ses-M12_PSIR.nii.gz
+	dcm-brno:
+		- sub-1860B6472B/ses-6472B/anat/sub-1860B6472B_ses-6472B_T2w.nii.gz
+		- sub-1860B6472B/ses-1860B/anat/sub-1860B6472B_ses-1860B_T2w.nii.gz
+		- sub-1860B6472B/ses-6472B/anat/sub-1860B6472B_ses-6472B_T2star.nii.gz
+		- sub-1860B6472B/ses-1860B/anat/sub-1860B6472B_ses-1860B_T2star.nii.gz
+		- sub-2450B6177B/ses-2450B/anat/sub-2450B6177B_ses-2450B_T2w.nii.gz
+		- sub-2450B6177B/ses-6177B/anat/sub-2450B6177B_ses-6177B_T2w.nii.gz
+		- sub-2450B6177B/ses-2450B/anat/sub-2450B6177B_ses-2450B_T2star.nii.gz
+		- sub-2450B6177B/ses-6177B/anat/sub-2450B6177B_ses-6177B_T2star.nii.gz
+		- sub-2804B4632B/ses-2804B/anat/sub-2804B4632B_ses-2804B_T2w.nii.gz
+		- sub-2804B4632B/ses-4632B/anat/sub-2804B4632B_ses-4632B_T2w.nii.gz
+		- sub-2804B4632B/ses-2804B/anat/sub-2804B4632B_ses-2804B_T2star.nii.gz
+		- sub-2804B4632B/ses-4632B/anat/sub-2804B4632B_ses-4632B_T2star.nii.gz
+		- sub-3758B6378B/ses-6378B/anat/sub-3758B6378B_ses-6378B_T2w.nii.gz
+		- sub-3758B6378B/ses-3758B/anat/sub-3758B6378B_ses-3758B_T2w.nii.gz
+		- sub-3758B6378B/ses-6378B/anat/sub-3758B6378B_ses-6378B_T2star.nii.gz
+		- sub-3758B6378B/ses-3758B/anat/sub-3758B6378B_ses-3758B_T2star.nii.gz
+	dcm-zurich:
+		- sub-784363/anat/sub-784363_acq-axial_T2w.nii.gz
+		- sub-860954/anat/sub-860954_acq-axial_T2w.nii.gz
+		- sub-892662/anat/sub-892662_acq-axial_T2w.nii.gz
+		- sub-898374/anat/sub-898374_acq-axial_T2w.nii.gz
+	lumbar-epfl:
+		- sub-05/anat/sub-05_T2w.nii.gz
+		- sub-11/anat/sub-11_T2w.nii.gz
+		- sub-20/anat/sub-20_T2w.nii.gz
+	lumbar-vanderbilt:
+		- sub-140549/anat/sub-140549_acq-axial_T2star.nii.gz
+		- sub-242327/anat/sub-242327_acq-axial_T2star.nii.gz
+		- sub-242655/anat/sub-242655_acq-axial_T2star.nii.gz
+		- sub-247770/anat/sub-247770_acq-axial_T2star.nii.gz
+	sct-testing-large:
+		- sub-milanFilippi003/anat/sub-milanFilippi003_acq-ax_T2star.nii.gz
+		- sub-milanFilippi009/anat/sub-milanFilippi009_acq-ax_T2star.nii.gz
+		- sub-milanFilippi010/anat/sub-milanFilippi010_acq-ax_T2star.nii.gz
+		- sub-milanFilippi014/anat/sub-milanFilippi014_acq-ax_T2star.nii.gz
+		- sub-milanFilippi046/anat/sub-milanFilippi046_acq-ax_T2star.nii.gz
+		- sub-vanderbiltSeth014/anat/sub-vanderbiltSeth014_T2star.nii.gz
+		- sub-vanderbiltSeth016/anat/sub-vanderbiltSeth016_T2star.nii.gz
+		- sub-vanderbiltSeth023/anat/sub-vanderbiltSeth023_T2star.nii.gz
+		- sub-unfErssm025/anat/sub-unfErssm025_T2w.nii.gz
+		- sub-unfErssm025/anat/sub-unfErssm025_T2star.nii.gz
+		- sub-unfErssm007/dwi/sub-unfErssm007_acq-dwiMean_dwi.nii.gz
+		- sub-twh008/anat/sub-twh008_T2star.nii.gz
