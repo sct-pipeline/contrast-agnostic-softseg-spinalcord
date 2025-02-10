@@ -5,6 +5,7 @@
 #
 # Usage:
 #   ./compute_csa.sh <SUBJECT>
+#   sct_run_batch -path-data ~/duke/temp/sebeda/contrast-agnostic-project/data-single-subject/preprocessing_singlesub-2023-10-23-v4/data_processed_clean/ -path-out ~/process_results/csa_single_subject_CAv3_2025-02-07 -jobs 7 -script run_pred_qc_csa_single_subject.sh
 #
 # Manual segmentations or labels should be located under:
 # PATH_DATA/derivatives/labels/SUBJECT/anat/
@@ -144,7 +145,7 @@ for file_path in "${contrasts[@]}";do
 
   # Segment SC using different methods and compute ANIMA segmentation performance metrics
   echo $PWD
-  sct_deepseg -i ${file_path}.nii.gz -task seg_sc_contrast_agnostic -o ${file_path}_pred_bin.nii.gz
+  sct_deepseg -i ${file_path}.nii.gz -task seg_sc_contrast_agnostic -largest 1 -o ${file_path}_pred_bin.nii.gz
   #python $PATH_SCRIPT/monai/run_inference_single_image.py --path-img ${file_path}.nii.gz --path-out . --chkp-path ~/duke/temp/muena/contrast-agnostic/final_monai_model/nnunet_nf=32_DS=1_opt=adam_lr=0.001_AdapW_CCrop_bs=2_64x192x320_20230918-2253
   #mv ${file}_pred.nii.gz ${file_path}_pred.nii.gz
   #sct_maths -i ${file_path}_pred.nii.gz -bin 0.5 -o ${file_path}_pred_bin.nii.gz

@@ -421,7 +421,7 @@ def main():
     # To compare only monai model and the GT
     rename = {
         'contrast-agn': 'contrast-agnostic',
-        'deepseg': 'DeepSeg2D',
+        'deepsegsc': 'DeepSeg2D',
     }
 
     print(dfs.keys())
