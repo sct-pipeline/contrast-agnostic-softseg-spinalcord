@@ -20,7 +20,6 @@ import json
 from pathlib import Path
 import tqdm
 from collections import OrderedDict
-from monai.data import load_decathlon_datalist
 from multiprocessing import Pool, cpu_count
 
 
@@ -87,6 +86,13 @@ def process_dataset_parallel(data_list, path_out_images, path_out_labels, taskna
     return results
 
 
+def load_json_datalist(datalist_path, key_to_extract):
+    """Load a json datalist file and extract the specified key"""
+    with open(datalist_path, 'r') as f:
+        datalist = json.load(f)
+    return datalist[key_to_extract]
+
+
 def main():
     # Parse arguments
     args = parse_args()
@@ -109,9 +115,9 @@ def main():
     train_data, val_data, test_data = [], [], []
     for datalist in sorted(datalists_list):
         print(f"Loading dataset: {datalist}")
-        train_data += load_decathlon_datalist(os.path.join(args.input, datalist), True, "train")
-        val_data += load_decathlon_datalist(os.path.join(args.input, datalist), True, "validation")
-        test_data += load_decathlon_datalist(os.path.join(args.input, datalist), True, "test")
+        train_data += load_json_datalist(os.path.join(args.input, datalist), key_to_extract="train")
+        val_data += load_json_datalist(os.path.join(args.input, datalist), key_to_extract="validation")
+        test_data += load_json_datalist(os.path.join(args.input, datalist), key_to_extract="test")
 
     print(f"Processing {len(datalists_list)} datasets with {args.workers} workers...")
     print(f"Number of training samples: {len(train_data)}")
