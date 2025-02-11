@@ -94,22 +94,28 @@ The scripts required for re-training the contrast-agnostic model (for reproducib
 ### Step 1: Configuring the environment
 
 1. Create a conda environment with the following command:
-```
+```bash
 conda create -n contrast_agnostic python=3.9
 ```
 
 2. Activate the environment with the following command:
-```
+```bash
 conda activate contrast_agnostic
 ```
 
-3. Install the required packages with the following command:
+3. Clone the repository with the following command:
+```bash
+git clone https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord.git
 ```
+
+3. Install the required packages with the following command:
+```bash
+cd contrast-agnostic-softseg-spinalcord/nnUnet
 pip install -r requirements.txt
 ```
 
 > **Note**
-> The `requirements.txt` does not install nnUNet. It has to be installed separately and can be done within the conda environment created above. See [here](https://github.com/MIC-DKFZ/nnUNet/blob/master/documentation/installation_instructions.md) for installation instructions. Please note that the nnUNet version used in this work is XXX.
+> The `requirements.txt` does not install nnUNet. It has to be installed separately and can be done within the conda environment created above. See [here](https://github.com/MIC-DKFZ/nnUNet/blob/master/documentation/installation_instructions.md) for installation instructions. Please note that the nnUNet version used in this work is tag `v2.5.1`.
 
 
 ### Step 2: Training the model
@@ -167,7 +173,7 @@ python analyse_csa_all_models.py -i-folder ~/duke/projects/ivadomed/contrast-agn
 The plots will be saved to the parent directory with the name `charts_<datetime.now())>` -->
 
 
-## 3. Transfer learning from contrast-agnostic model
+## 3. Transfer learning from contrast-agnostic model (WIP: to be updated)
 
 This section provides instructions on how to train nnUNet models with pre-trained weights of the contrast-agnostic model. Ideal use cases include using the 
 pretrained weights for training/finetuning on any spinal-cord-related segmentation task (e.g. lesions, rootlets, etc.). 
