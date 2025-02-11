@@ -56,6 +56,11 @@ def get_parser():
     parser.add_argument('--include', type=str, 
                         help='YAML file containing list of subjects to include (saved in the root folder of the repo)')
     parser.add_argument('--seed', default=42, type=int, help="Seed for reproducibility")
+    parser.add_argument('--use-predefined-splits', default=False, action='store_true', 
+                        help='Use predefined splits for train and test subjects. Expects --path-datasplits to be input'
+                        'Use this when you want to reproduce contrast-agnostic model training') 
+    parser.add_argument('--path-datasplits', type=str, default=None,
+                        help='Path to the datasplits folder containing predefined datasplits')
 
     return parser
 
@@ -345,24 +350,17 @@ def main():
     # during the dataloading process of training the contrast-agnostic model
 
     all_subjects = df['subjectID'].unique()
-    if dataset_name == 'sct-testing-large':
-        train_subjects, test_subjects, val_subjects = [], [], []
-        for sub in all_subjects:
-            if sub.startswith('sub-vanderbilt') or sub.startswith('sub-milan'):
-                test_subjects.append(sub)
-            else:
-                train_subjects.append(sub)
-        
-        train_subjects, val_subjects = train_test_split(train_subjects, test_size=val_ratio / (train_ratio + val_ratio))
+    if args.use_predefined_splits and args.path_datasplits is None:
+        raise ValueError("Please provide the path to the datasplits folder containing predefined random datasplits.")
 
-    elif dataset_name in ['site_006', 'site_007']:
-        train_subjects = all_subjects.copy()
-        test_subjects = [all_subjects[0]]    # only to keep the dataloader happy; we're not using the test set
-        # because we're evaluating out-of-distribution on other praxis sites
-        
-        train_subjects, val_subjects = train_test_split(train_subjects, test_size=val_ratio / (train_ratio + val_ratio))
+    elif args.use_predefined_splits and args.path_datasplits is not None:
+        logger.info("Using predefined random datasplits for train/val/test subjects ...")
+        with open(os.path.join(args.path_datasplits, f"datasplit_{dataset_name}_seed{args.seed}.yaml"), 'r') as file:
+            datasplits = yaml.safe_load(file)
+            train_subjects, val_subjects, test_subjects = datasplits['train'], datasplits['val'], datasplits['test']
 
     else:
+        logger.info("Using random splits for train/val/test subjects. Overriding predefined datasplits (if provided) ...")
         train_subjects, test_subjects = train_test_split(all_subjects, test_size=test_ratio)
         # Use the training split to further split into training and validation splits
         train_subjects, val_subjects = train_test_split(train_subjects, test_size=val_ratio / (train_ratio + val_ratio))
