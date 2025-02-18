@@ -322,6 +322,10 @@ elif [[ $QC_DATASET == "whole-spine" ]]; then
   contrasts="T1w T2w"
   label_suffix="label-SC_seg"
 
+elif [[ $QC_DATASET == "nih-ms-mp2rage" ]]; then
+  contrasts="UNIT1 T1map"
+  label_suffix="label-SC_seg" 
+
 elif [[ $QC_DATASET == "data-single-subject-from-duke" ]]; then
   contrasts="rec-average_dwi"
   label_suffix="label-SC_seg"
@@ -395,11 +399,12 @@ for contrast in ${contrasts}; do
 
     # Segment SC using different methods, binarize at 0.5 and compute QC
     # CUDA_VISIBLE_DEVICES=0 segment_sc_MONAI ${file} 'v21'
-    CUDA_VISIBLE_DEVICES=2 segment_sc_nnUNet ${file} 'nnunet-AllRandInit' '2D'
-    CUDA_VISIBLE_DEVICES=3 segment_sc_nnUNet ${file} 'nnunet-AllRandInit' '3D'
+    # CUDA_VISIBLE_DEVICES=2 segment_sc_nnUNet ${file} 'nnunet-AllRandInit' '2D'
+    CUDA_VISIBLE_DEVICES=0 segment_sc_nnUNet ${file} 'nnunet-AllRandInit' '3D'
+    CUDA_VISIBLE_DEVICES=2 segment_sc_nnUNet ${file} 'nnunet-AllInferred' '3D'
     # CUDA_VISIBLE_DEVICES=1 segment_sc_MONAI ${file} 'v25'
     # CUDA_VISIBLE_DEVICES=1 segment_sc_MONAI ${file} 'vPtrV21-allNoPraxNoSCT'              # model M2prime
-    CUDA_VISIBLE_DEVICES=0 segment_sc_MONAI ${file} 'vPtrV21-allWithPraxWithSCT'           # model M5prime
+    CUDA_VISIBLE_DEVICES=3 segment_sc_MONAI ${file} 'vPtrV21-allWithPraxWithSCT'           # model M5prime
     # segment_sc ${file} 'deepseg' ${deepseg_input_c}
 
 #     # Create new "_clean" folder with BIDS-updated derivatives filenames
