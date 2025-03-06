@@ -286,7 +286,7 @@ segment_sc_MONAI(){
 		PATH_MODEL=${PATH_MONAI_MODELS}/model_${model}
     model_name='monai'
     max_feat=320
-    pad='edge'
+    pad='constant'
 
 	fi
 
@@ -322,8 +322,8 @@ segment_sc_MONAI(){
   # NOTE: this is per-level because not all contrasts have thes same FoV (C2-C3 is what all contrasts have in common)
   sct_process_segmentation -i ${FILESEG}.nii.gz -vert 2:3 -vertfile ${file_gt_vert_label}_labeled.nii.gz -o $PATH_RESULTS/${csv_fname}_c2c3.csv -append 1
 
-  # Compute CSA "per slice" across _all_ slices in the SC for plotting the absolute CSA error across contrasts
-  sct_process_segmentation -i ${FILESEG}.nii.gz -perslice 1 -vertfile ${file_gt_vert_label}_labeled.nii.gz -o $PATH_RESULTS/${csv_fname}_${model}_perslice.csv -append 1
+  # # Compute CSA "per slice" across _all_ slices in the SC for plotting the absolute CSA error across contrasts
+  # sct_process_segmentation -i ${FILESEG}.nii.gz -perslice 1 -vertfile ${file_gt_vert_label}_labeled.nii.gz -o $PATH_RESULTS/${csv_fname}_${model}_perslice.csv -append 1
 
 }
 
@@ -464,11 +464,12 @@ for contrast in ${contrasts}; do
   # CUDA_VISIBLE_DEVICES=0 segment_sc_MONAI ${file} "${file}_seg-manual" 'v25' ${contrast} ${csv_fname}
   # CUDA_VISIBLE_DEVICES=3 segment_sc_nnUNet ${file} "${file}_seg-manual" 'nnunet-AllRandInit2D' ${contrast} ${csv_fname} '2d'
   CUDA_VISIBLE_DEVICES=1 segment_sc_nnUNet ${file} "${file}_seg-manual" 'nnunet-AllRandInit3D' ${contrast} ${csv_fname} '3d_fullres' 'bin'
-  CUDA_VISIBLE_DEVICES=2 segment_sc_nnUNet ${file} "${file}_seg-manual" 'nnunet-AllInferred3D' ${contrast} ${csv_fname} '3d_fullres' 'soft'
-  CUDA_VISIBLE_DEVICES=2 segment_sc_nnUNet ${file} "${file}_seg-manual" 'nnunet-AllInferred3D' ${contrast} ${csv_fname} '3d_fullres' 'bin'
-  # CUDA_VISIBLE_DEVICES=0 segment_sc_MONAI ${file} "${file}_seg-manual" 'vPtrV21-allWithPraxWithSCT' ${contrast} ${csv_fname}
+  # CUDA_VISIBLE_DEVICES=2 segment_sc_nnUNet ${file} "${file}_seg-manual" 'nnunet-AllInferred3D' ${contrast} ${csv_fname} '3d_fullres' 'soft'
+  # CUDA_VISIBLE_DEVICES=2 segment_sc_nnUNet ${file} "${file}_seg-manual" 'nnunet-AllInferred3D' ${contrast} ${csv_fname} '3d_fullres' 'bin'
+  CUDA_VISIBLE_DEVICES=0 segment_sc_MONAI ${file} "${file}_seg-manual" 'v20' ${contrast} ${csv_fname}
+  CUDA_VISIBLE_DEVICES=0 segment_sc_MONAI ${file} "${file}_seg-manual" 'v21' ${contrast} ${csv_fname}
   # CUDA_VISIBLE_DEVICES=3 segment_sc_nnUNet ${file} "${file}_seg-manual" '3d' ${contrast} ${csv_fname}
-  # segment_sc ${file} "${file}_seg-manual" 'deepseg' ${deepseg_input_c} ${contrast} ${csv_fname}
+  segment_sc ${file} "${file}_seg-manual" 'deepseg' ${deepseg_input_c} ${contrast} ${csv_fname}
 
 done
 
