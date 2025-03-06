@@ -126,7 +126,7 @@ segment_sc() {
       # Get the start time
       start_time=$(date +%s)
       # Run SC segmentation
-      sct_deepseg_sc -i ${file}.nii.gz -o ${FILESEG}.nii.gz -c ${contrast} -kernel ${kernel} -qc ${PATH_QC} -qc-subject ${SUBJECT}
+      sct_deepseg_sc -i ${file}.nii.gz -o ${FILESEG}.nii.gz -c ${contrast} -kernel ${kernel} # -qc ${PATH_QC} -qc-subject ${SUBJECT}
       # Get the end time
       end_time=$(date +%s)
       # Calculate the time difference
@@ -149,8 +149,24 @@ segment_sc() {
       # Remove centerline (we don't need it)
       rm ${file}_centerline.nii.gz
 
+  elif [[ $method == 'SCIsegV2' ]];then
+      FILESEG="${file}_seg_${method}"
+
+      # Get the start time
+      start_time=$(date +%s)
+      # Run SC segmentation
+      SCT_USE_GPU=1 sct_deepseg -task seg_sc_lesion_t2w_sci -i ${file}.nii.gz -o ${FILESEG}.nii.gz 
+      # rename output
+      mv ${FILESEG}_sc_seg.nii.gz ${FILESEG}.nii.gz
+      # Get the end time
+      end_time=$(date +%s)
+      # Calculate the time difference
+      execution_time=$(python3 -c "print($end_time - $start_time)")
+      echo "${FILESEG},${execution_time}" >> ${PATH_RESULTS}/execution_time.csv
+
   fi
 
+  sct_qc -i ${file}.nii.gz -s ${FILESEG}.nii.gz -d ${FILESEG}.nii.gz -p sct_deepseg_lesion -plane sagittal -qc ${PATH_QC} -qc-subject ${SUBJECT}
   # # Compute CSA from the the SC segmentation resampled back to native resolution using the GT vertebral labels
   # sct_process_segmentation -i ${FILESEG}.nii.gz -vert 2:4 -vertfile ${file_gt_vert_label}_labeled.nii.gz -o $PATH_RESULTS/csa_label_types_c24.csv -append 1
 
@@ -183,8 +199,8 @@ segment_sc_nnUNet(){
   echo "${FILESEG},${execution_time}" >> ${PATH_RESULTS}/execution_time.csv
 
   # Generate QC report
-  sct_qc -i ${file}.nii.gz -s ${FILESEG}.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
-  # sct_qc -i ${file}.nii.gz -s ${FILESEG}.nii.gz -d ${FILESEG}.nii.gz -p sct_deepseg_lesion -plane sagittal -qc ${PATH_QC} -qc-subject ${SUBJECT}
+  # sct_qc -i ${file}.nii.gz -s ${FILESEG}.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
+  sct_qc -i ${file}.nii.gz -s ${FILESEG}.nii.gz -d ${FILESEG}.nii.gz -p sct_deepseg_lesion -plane sagittal -qc ${PATH_QC} -qc-subject ${SUBJECT}
 
   # # Compute CSA from the prediction resampled back to native resolution using the GT vertebral labels
   # sct_process_segmentation -i ${FILESEG}.nii.gz -vert 2:4 -vertfile ${file_gt_vert_label}_labeled.nii.gz -o $PATH_RESULTS/csa_label_types_c24.csv -append 1
@@ -197,7 +213,7 @@ segment_sc_MONAI(){
   # local label_type="$2"     # soft or soft_bin
   local model="$2"     # monai, swinunetr, mednext
   local models_384="v25 vPtrVNSLSciDcm_ColZurLes vPtrNewSeqLSciDcm"
-  local models_320="v21 vPtrV21-allNoPraxNoSCT vPtrV21-allNoPraxWithSCT vPtrV21-allWithPraxNoSCT vPtrV21-allWithPraxWithSCT"
+  local models_320="v20 v21 vPtrV21-allNoPraxNoSCT vPtrV21-allNoPraxWithSCT vPtrV21-allWithPraxNoSCT vPtrV21-allWithPraxWithSCT"
 
 	# if [[ $label_type == 'soft' ]]; then
 	# 	FILEPRED="${file}_seg_monai_soft_input"
@@ -266,8 +282,8 @@ segment_sc_MONAI(){
   sct_maths -i ${FILEPRED}.nii.gz -bin 0.5 -o ${FILEPRED}.nii.gz
 
   # Generate QC report 
-  sct_qc -i ${file}.nii.gz -s ${FILEPRED}.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
-  # sct_qc -i ${file}.nii.gz -s ${FILEPRED}.nii.gz -d ${FILEPRED}.nii.gz -p sct_deepseg_lesion -plane sagittal -qc ${PATH_QC} -qc-subject ${SUBJECT}
+  # sct_qc -i ${file}.nii.gz -s ${FILEPRED}.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
+  sct_qc -i ${file}.nii.gz -s ${FILEPRED}.nii.gz -d ${FILEPRED}.nii.gz -p sct_deepseg_lesion -plane sagittal -qc ${PATH_QC} -qc-subject ${SUBJECT}
   # # compute ANIMA metrics
   # compute_anima_metrics ${FILEPRED} ${file}_seg-manual
 
@@ -285,6 +301,8 @@ sct_check_dependencies -short
 
 # Go to folder where data will be copied and processed
 cd $PATH_DATA_PROCESSED
+
+praxis_datasets="site_009 site_012 site_013 site_014 site_03"
 
 # Note: we use '/./' in order to include the sub-folder 'ses-0X'
 # We do a substitution '/' --> '_' in case there is a subfolder 'ses-0X/'
@@ -319,12 +337,18 @@ elif [[ $QC_DATASET == "sct-testing-large" ]]; then
   deepseg_input_c="t2"
 
 elif [[ $QC_DATASET == "whole-spine" ]]; then
-  contrasts="T1w T2w"
+  contrasts="T1w"
   label_suffix="label-SC_seg"
+  deepseg_input_c="t1"
 
 elif [[ $QC_DATASET == "nih-ms-mp2rage" ]]; then
   contrasts="UNIT1 T1map"
   label_suffix="label-SC_seg" 
+
+elif [[ " ${praxis_datasets[@]} " =~ " ${QC_DATASET} " ]]; then
+  contrasts="acq-STIRsag_T2w acq-sag_T2w acq-sag_run-01_T2w"
+  label_suffix="label-SC_seg" 
+  deepseg_input_c="t2"
 
 elif [[ $QC_DATASET == "data-single-subject-from-duke" ]]; then
   contrasts="rec-average_dwi"
@@ -334,9 +358,10 @@ elif [[ $QC_DATASET == "difficult-cases" ]]; then
   contrasts="T1w T2w T2star flip-1_mt-on_MTS flip-2_mt-off_MTS rec-average_dwi anatGRE UNIT1 PSIR STIR"
   label_suffix="label-SC_seg"
 
-elif [[ $QC_DATASET == "temp-data-unknown2" ]]; then
-  contrasts="T2star"
+elif [[ $QC_DATASET == "sci-zurich" ]]; then
+  contrasts="acq-sag_T2w"
   label_suffix="label-SC_seg"
+  deepseg_input_c="t2"
 
 else
   echo "ERROR: Dataset ${QC_DATASET} not recognized. Exiting."
@@ -398,14 +423,14 @@ for contrast in ${contrasts}; do
     # sct_qc -i ${file}.nii.gz -s ${file}_seg-manual.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
 
     # Segment SC using different methods, binarize at 0.5 and compute QC
-    # CUDA_VISIBLE_DEVICES=0 segment_sc_MONAI ${file} 'v21'
+    # CUDA_VISIBLE_DEVICES=1 segment_sc ${file} 'SCIsegV2'
+    # CUDA_VISIBLE_DEVICES=1 segment_sc_MONAI ${file} 'v20'
     # CUDA_VISIBLE_DEVICES=2 segment_sc_nnUNet ${file} 'nnunet-AllRandInit' '2D'
-    CUDA_VISIBLE_DEVICES=0 segment_sc_nnUNet ${file} 'nnunet-AllRandInit' '3D'
-    CUDA_VISIBLE_DEVICES=2 segment_sc_nnUNet ${file} 'nnunet-AllInferred' '3D'
+    CUDA_VISIBLE_DEVICES=3 segment_sc_nnUNet ${file} 'nnunet-AllRandInit' '3D'
+    # CUDA_VISIBLE_DEVICES=2 segment_sc_nnUNet ${file} 'nnunet-AllInferred' '3D'
     # CUDA_VISIBLE_DEVICES=1 segment_sc_MONAI ${file} 'v25'
-    # CUDA_VISIBLE_DEVICES=1 segment_sc_MONAI ${file} 'vPtrV21-allNoPraxNoSCT'              # model M2prime
-    CUDA_VISIBLE_DEVICES=3 segment_sc_MONAI ${file} 'vPtrV21-allWithPraxWithSCT'           # model M5prime
-    # segment_sc ${file} 'deepseg' ${deepseg_input_c}
+    # CUDA_VISIBLE_DEVICES=2 segment_sc_MONAI ${file} 'vPtrV21-allWithPraxWithSCT'           # model M5prime
+    segment_sc ${file} 'deepseg' ${deepseg_input_c}
 
 #     # Create new "_clean" folder with BIDS-updated derivatives filenames
 #     date_time=$(date +"%Y-%m-%d %H:%M:%S")
