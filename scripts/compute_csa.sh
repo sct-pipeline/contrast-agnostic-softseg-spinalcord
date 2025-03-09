@@ -24,6 +24,7 @@ echo "PATH_RESULTS: ${PATH_RESULTS}"
 echo "PATH_LOG: ${PATH_LOG}"
 echo "PATH_QC: ${PATH_QC}"
 
+# Variable passed by `sct_run_batch -script-args`
 SUBJECT=$1
 CUDA_DEVICE=$2
 PATH_NNUNET_SCRIPT=$3   # path to the nnUNet contrast-agnostic run_inference_single_subject.py
