@@ -157,7 +157,7 @@ rsync -Ravzh ${PATH_DATA}/./${SUBJECT}/anat/* .
 rsync -Ravzh ${PATH_DATA}/./${SUBJECT}/dwi/* .
 
 # ------------------------------------------------------------------------------
-# contrast
+# DEFINE CONTRASTS
 # ------------------------------------------------------------------------------
 contrasts="T1w T2w T2star flip-1_mt-on_MTS flip-2_mt-off_MTS rec-average_dwi"
 # contrasts="T1w rec-average_dwi"
@@ -193,9 +193,9 @@ for contrast in ${contrasts}; do
     contrast="DWI"
   fi
 
-# -------------
-# GT
-# -------------
+  # ------------------------------------------------------------------------------
+  # COMPUTE CSA OF GT MASKS
+  # ------------------------------------------------------------------------------
   # # Copy GT spinal cord segmentation
   # copy_gt_seg "${file}" "${type}"
 
@@ -221,6 +221,9 @@ for contrast in ${contrasts}; do
   # NOTE: this is per-level because not all contrasts have thes same FoV (C2-C3 is what all contrasts have in common)
   sct_process_segmentation -i ${FILEBIN}.nii.gz -vert 2:3 -vertfile ${file}_softseg_bin_labeled.nii.gz -o $PATH_RESULTS/${csv_fname}_c2c3.csv -append 1
 
+  # ------------------------------------------------------------------------------
+  # COMPUTE CSA OF AUTOMATIC PREDICTIONS
+  # ------------------------------------------------------------------------------
   # Segment SC (i.e. run inference) and compute CSA
   model_name=$(basename ${PATH_NNUNET_MODEL})
   CUDA_VISIBLE_DEVICES=${CUDA_DEVICE} segment_sc_nnUNet ${file} "${file}_softseg_bin" ${model_name} ${contrast} '3d_fullres'
