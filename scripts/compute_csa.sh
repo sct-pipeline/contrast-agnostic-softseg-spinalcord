@@ -49,7 +49,8 @@ label_vertebrae(){
   FILESEG="${file}_softseg_bin"
   FILELABEL="${file}_discs"
 
-  # Label vertebral levels
+  # Get vertebral levels by projecting discs on the spinal cord segmentation
+  # Note: we are using sct_label_utils over sct_label_vertebrae here to avoid straightening (which takes a lot of time)
   sct_label_utils -i ${FILESEG}.nii.gz -disc ${FILELABEL}.nii.gz -o ${FILESEG}_labeled.nii.gz
 }
 
