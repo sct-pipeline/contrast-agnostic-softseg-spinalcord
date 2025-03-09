@@ -193,6 +193,9 @@ for contrast in ${contrasts}; do
     contrast="DWI"
   fi
 
+# -------------
+# GT
+# -------------
   # # Copy GT spinal cord segmentation
   # copy_gt_seg "${file}" "${type}"
 
