@@ -59,11 +59,12 @@ echo "=============================="
 
 # Clone the dataset and initialize a git annex repository
 url_dataset="https://github.com/spine-generic/data-multi-subject"
+tag="r20250310"
 clone_folder="${PATH_OUTPUT}/data-multi-subject"
 
 # Ref: https://stackoverflow.com/questions/36498981/shell-dont-fail-git-clone-if-folder-already-exists/36499031#36499031
 if [ ! -d "$clone_folder" ] ; then
-    git clone "$url_dataset" "$clone_folder"
+    git clone --branch "$tag" "$url_dataset" "$clone_folder"
     cd $clone_folder
 fi
 
