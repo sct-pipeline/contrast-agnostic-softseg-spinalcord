@@ -1,5 +1,5 @@
 #!/bin/bash
-# Generic post-training script for evaluating morphometric drift of a lifelong learning contrast-agnostic spinal cord segmentation model. 
+# Post-training script for evaluating morphometric drift of a lifelong learning contrast-agnostic spinal cord segmentation model. 
 # It assumes that git-annex and Spinal Cord Toolbox (https://spinalcordtoolbox.com/) are installed. 
 # 
 # This standalone script that performs the following tasks:
@@ -65,11 +65,12 @@ cd ${PATH_OUTPUT}/data-multi-subject
 git annex init
 
 # Get the (frozen) test split of the spine-generic dataset to compute the morphometrics on
-# And download them using git-annex
-python3 -c 'import yaml, sys; 
+TEST_SUBJECTS=$(python3 -c 'import yaml, sys; 
 test_subjects = yaml.safe_load(open(sys.argv[1]))["test"]; 
-for subject in test_subjects: print(subject)' ${PATH_REPO}/scripts/spine_generic_test_split_for_csa_drift_monitoring.yaml | 
-while IFS= read -r subject; do
+print("\n".join(test_subjects))' "${PATH_REPO}/scripts/spine_generic_test_split_for_csa_drift_monitoring.yaml")
+
+# Download test split using git-annex
+echo "$TEST_SUBJECTS" | while IFS= read -r subject; do
     echo "Downloading: $subject"
     # download images
     git annex get "${subject}"
@@ -91,10 +92,8 @@ cd ${PATH_REPO}
 # Instead of providing a config file for batch processing script, we will provide the input arguments below
 # ==============================
 
-# Get the list of test subjects in a list
-readarray -t TEST_SUBJECTS < <(python3 -c 'import yaml, sys; 
-test_subjects = yaml.safe_load(open(sys.argv[1]))["test"]; 
-for subject in test_subjects: print(subject)' "${PATH_REPO}/scripts/test_split_for_csa_drift_monitoring.yaml")
+# Get the list of test subjects in an array
+readarray -t TEST_SUBJECTS <<< "$TEST_SUBJECTS"
 # echo "${TEST_SUBJECTS[@]}"
 
 echo "=============================="
