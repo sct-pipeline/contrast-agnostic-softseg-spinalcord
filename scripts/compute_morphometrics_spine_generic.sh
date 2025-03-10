@@ -58,8 +58,14 @@ echo "Downloading test data ..."
 echo "=============================="
 
 # Clone the dataset and initialize a git annex repository
-git clone https://github.com/spine-generic/data-multi-subject ${PATH_OUTPUT}/data-multi-subject
-cd ${PATH_OUTPUT}/data-multi-subject
+url_dataset="https://github.com/spine-generic/data-multi-subject"
+clone_folder="${PATH_OUTPUT}/data-multi-subject"
+
+# Ref: https://stackoverflow.com/questions/36498981/shell-dont-fail-git-clone-if-folder-already-exists/36499031#36499031
+if [ ! -d "$clone_folder" ] ; then
+    git clone "$url_dataset" "$clone_folder"
+    cd $clone_folder
+fi
 
 # Initialize an empty git-annex repository 
 git annex init
