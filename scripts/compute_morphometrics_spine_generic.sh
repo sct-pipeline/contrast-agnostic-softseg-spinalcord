@@ -71,13 +71,13 @@ fi
 # Initialize an empty git-annex repository 
 git annex init
 
-# Get the (frozen) test split of the spine-generic dataset to compute the morphometrics on
-TEST_SUBJECTS=$(python3 -c 'import yaml, sys; 
+# Extract test subjects and store them in an array
+readarray -t TEST_SUBJECTS < <(python3 -c 'import yaml, sys; 
 test_subjects = yaml.safe_load(open(sys.argv[1]))["test"]; 
-print("\n".join(test_subjects))' "${PATH_REPO}/scripts/spine_generic_test_split_for_csa_drift_monitoring.yaml")
+for subject in test_subjects: print(subject)' "${PATH_REPO}/scripts/spine_generic_test_split_for_csa_drift_monitoring.yaml")
 
 # Download test split using git-annex
-echo "$TEST_SUBJECTS" | while IFS= read -r subject; do
+for subject in "${TEST_SUBJECTS[@]}"; do
     echo "Downloading: $subject"
     # download images
     git annex get "${subject}"
