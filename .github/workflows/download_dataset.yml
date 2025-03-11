@@ -8,46 +8,46 @@ on:
   #   types: [published]
 
 jobs:
-  install_SCT:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+  # install_SCT:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v4
 
-      - name: Set up Conda
-        uses: conda-incubator/setup-miniconda@v2
-        with:
-          auto-update-conda: true
-          channels: conda-forge
+  #     - name: Set up Conda
+  #       uses: conda-incubator/setup-miniconda@v2
+  #       with:
+  #         auto-update-conda: true
+  #         channels: conda-forge
 
-      - name: Install SCT
-        run: |
-          git clone https://github.com/spinalcordtoolbox/spinalcordtoolbox
-          cd spinalcordtoolbox
-          ./install_sct -y
+  #     - name: Install SCT
+  #       run: |
+  #         git clone https://github.com/spinalcordtoolbox/spinalcordtoolbox
+  #         cd spinalcordtoolbox
+  #         ./install_sct -y
 
-      - name: Update SCT environment variables
-        run: |
-            if [ "$RUNNER_OS" == "Windows" ]; then
+  #     - name: Update SCT environment variables
+  #       run: |
+  #           if [ "$RUNNER_OS" == "Windows" ]; then
 
-              # NB: I'm not sure what GHA's syntax is for cmd.exe, so we use bash to set the environment variables.
-              # In a user install, the user would perform this step using the Windows environment variable changing GUI.
-              echo "SCT_DIR=$GITHUB_WORKSPACE" >> $GITHUB_ENV
-              echo "$GITHUB_WORKSPACE/bin" >> $GITHUB_PATH
+  #             # NB: I'm not sure what GHA's syntax is for cmd.exe, so we use bash to set the environment variables.
+  #             # In a user install, the user would perform this step using the Windows environment variable changing GUI.
+  #             echo "SCT_DIR=$GITHUB_WORKSPACE" >> $GITHUB_ENV
+  #             echo "$GITHUB_WORKSPACE/bin" >> $GITHUB_PATH
 
-            else
+  #           else
 
-              # NB: install_sct edits ~/.bashrc, but those environment changes don't get passed to subsequent steps in GH Actions.
-              # So, we filter through the .bashrc and pass the values to $GITHUB_ENV and $GITHUB_PATH.
-              # Relevant documentation: https://docs.github.com/en/actions/reference/workflow-commands-for-github-actions#environment-files
-              # This workaround should be replaced by https://github.com/spinalcordtoolbox/spinalcordtoolbox/pull/3198#discussion_r568225392
-              cat ~/.bashrc | grep "export SCT_DIR" | cut -d " " -f 2 >> $GITHUB_ENV
-              cat ~/.bashrc | grep "export PATH" | grep -o "/.*" | cut -d ':' -f 1 >> $GITHUB_PATH
+  #             # NB: install_sct edits ~/.bashrc, but those environment changes don't get passed to subsequent steps in GH Actions.
+  #             # So, we filter through the .bashrc and pass the values to $GITHUB_ENV and $GITHUB_PATH.
+  #             # Relevant documentation: https://docs.github.com/en/actions/reference/workflow-commands-for-github-actions#environment-files
+  #             # This workaround should be replaced by https://github.com/spinalcordtoolbox/spinalcordtoolbox/pull/3198#discussion_r568225392
+  #             cat ~/.bashrc | grep "export SCT_DIR" | cut -d " " -f 2 >> $GITHUB_ENV
+  #             cat ~/.bashrc | grep "export PATH" | grep -o "/.*" | cut -d ':' -f 1 >> $GITHUB_PATH
 
-            fi
+  #           fi
 
-      - name: Check SCT dependencies
-        run: sct_check_dependencies
+  #     - name: Check SCT dependencies
+  #       run: sct_check_dependencies
 
   run_dataset_download:
     runs-on: ubuntu-latest
@@ -67,26 +67,35 @@ jobs:
           auto-update-conda: true
           channels: conda-forge
 
-      - name: Install git-annex with Conda
-        run: conda install -y git-annex
-
-      - name: Ensure git-annex is accessible via git
+      - name: Install SCT
         run: |
-            echo "$(conda info --base)/bin" >> $GITHUB_PATH
-            export PATH="$(conda info --base)/bin:$PATH"
-            which git-annex
-            git-annex version
+          git clone https://github.com/spinalcordtoolbox/spinalcordtoolbox
+          cd spinalcordtoolbox
+          ./install_sct -y
 
-      - name: Configure Git identity
-        run: |
-          git config --global user.email "actions@github.com"
-          git config --global user.name "GitHub Actions"
+      - name: Check SCT dependencies
+        run: sct_check_dependencies
+  
+      # - name: Install git-annex with Conda
+      #   run: conda install -y git-annex
 
-      - name: Run dataset setup script
-        shell: bash -l {0}  # Ensures the Conda environment is properly loaded
-        run: |
-            chmod +x scripts/compute_morphometrics_spine_generic.sh
-            source scripts/compute_morphometrics_spine_generic.sh
+      # - name: Ensure git-annex is accessible via git
+      #   run: |
+      #       echo "$(conda info --base)/bin" >> $GITHUB_PATH
+      #       export PATH="$(conda info --base)/bin:$PATH"
+      #       which git-annex
+      #       git-annex version
 
-      # - name: Run model script
-      #   run: ./scripts/run_model.sh
+      # - name: Configure Git identity
+      #   run: |
+      #     git config --global user.email "actions@github.com"
+      #     git config --global user.name "GitHub Actions"
+
+      # - name: Run dataset setup script
+      #   shell: bash -l {0}  # Ensures the Conda environment is properly loaded
+      #   run: |
+      #       chmod +x scripts/compute_morphometrics_spine_generic.sh
+      #       source scripts/compute_morphometrics_spine_generic.sh
+
+      # # - name: Run model script
+      # #   run: ./scripts/run_model.sh
