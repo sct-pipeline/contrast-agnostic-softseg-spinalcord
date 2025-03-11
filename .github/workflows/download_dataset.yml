@@ -66,19 +66,33 @@ jobs:
         with:
           auto-update-conda: true
           channels: conda-forge
+          activate-environment: sct-env
+          python-version: '3.10'
 
       - name: Install SCT
-        shell: bash -el {0}
+        shell: bash -l {0}
         run: |
-          echo "$(conda info --base)/bin" >> $GITHUB_PATH
-          export PATH="$(conda info --base)/bin:$PATH"
           git clone https://github.com/spinalcordtoolbox/spinalcordtoolbox
           cd spinalcordtoolbox
+          # Ensure Conda environment is properly activated
+          eval "$(conda shell.bash hook)"
+          conda activate sct-env
           ./install_sct -y
 
+      - name: Update PATH and environment
+        shell: bash -l {0}
+        run: |
+          echo "SCT_DIR=$GITHUB_WORKSPACE/spinalcordtoolbox" >> $GITHUB_ENV
+          echo "$GITHUB_WORKSPACE/spinalcordtoolbox/bin" >> $GITHUB_PATH
+          source $GITHUB_WORKSPACE/spinalcordtoolbox/bin/sct_env
+
       - name: Check SCT dependencies
-        run: sct_check_dependencies
-  
+        shell: bash -l {0}
+        run: |
+          source $GITHUB_ENV
+          export PATH=$GITHUB_PATH:$PATH
+          which sct_check_dependencies
+          sct_check_dependencies  
       # - name: Install git-annex with Conda
       #   run: conda install -y git-annex
 
