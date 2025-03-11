@@ -30,7 +30,7 @@ jobs:
         run: |
           conda install -y git-annex
           pip install pyyaml
-          python -c "import yaml; print('PyYAML is installed correctly!')"
+          python3 -c "import yaml; print('PyYAML is installed correctly!')"
 
       - name: Ensure git-annex is accessible via git
         run: |
