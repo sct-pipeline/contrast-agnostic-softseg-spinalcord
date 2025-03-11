@@ -68,7 +68,10 @@ jobs:
           channels: conda-forge
 
       - name: Install SCT
+        shell: bash -el {0}
         run: |
+          echo "$(conda info --base)/bin" >> $GITHUB_PATH
+          export PATH="$(conda info --base)/bin:$PATH"
           git clone https://github.com/spinalcordtoolbox/spinalcordtoolbox
           cd spinalcordtoolbox
           ./install_sct -y
