@@ -20,7 +20,7 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Install git-annex with Conda
+      - name: Set up Conda
         uses: conda-incubator/setup-miniconda@v2
         with:
           auto-update-conda: true
@@ -28,6 +28,13 @@ jobs:
 
       - name: Install git-annex
         run: conda install -y git-annex      
+
+      - name: Ensure git-annex is accessible via git
+        run: |
+          echo "$(conda info --base)/bin" >> $GITHUB_PATH
+          export PATH="$(conda info --base)/bin:$PATH"
+          which git-annex
+          git-annex version
 
       - name: Run dataset setup script
         run: |
