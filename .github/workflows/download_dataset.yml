@@ -26,25 +26,27 @@ jobs:
           auto-update-conda: true
           channels: conda-forge
 
-      # - name: Install dependencies
-      #   run: |
-      #     conda install -y git-annex
+      - name: Install dependencies
+        run: |
+          conda install -y git-annex
 
-      # - name: Ensure git-annex is accessible via git
-      #   run: |
-      #     echo "$(conda info --base)/bin" >> $GITHUB_PATH
-      #     export PATH="$(conda info --base)/bin:$PATH"
-      #     which git-annex
-      #     git-annex version
+      - name: Ensure git-annex is accessible via git
+        run: |
+          echo "$(conda info --base)/bin" >> $GITHUB_PATH
+          export PATH="$(conda info --base)/bin:$PATH"
+          which git-annex
+          git-annex version
 
-      # - name: Configure Git identity
-      #   run: |
-      #     git config --global user.email "actions@github.com"
-      #     git config --global user.name "GitHub Actions"
+      - name: Configure Git identity
+        run: |
+          git config --global user.email "actions@github.com"
+          git config --global user.name "GitHub Actions"
 
       # https://github.com/spinalcordtoolbox/spinalcordtoolbox/blob/master/.ci.sh
       - name: Install SCT
+        shell: bash -l {0}
         run: |
+          # source /etc/profile.d/conda.sh
           git clone https://github.com/spinalcordtoolbox/spinalcordtoolbox.git
           cd spinalcordtoolbox
           ./.ci.sh -i
