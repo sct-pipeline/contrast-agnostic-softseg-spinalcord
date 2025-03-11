@@ -28,7 +28,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          conda install -y git-annex yaml
+          conda install -y git-annex
+          pip install pyyaml
 
       - name: Ensure git-annex is accessible via git
         run: |
