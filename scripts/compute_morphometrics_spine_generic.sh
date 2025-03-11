@@ -12,6 +12,8 @@
 # Usage:
 #   bash compute_morphometrics_spine_generic.sh
 
+# Exit immediately if a command exits with a non-zero status
+set -e
 
 # ==============================
 # DEFINE GLOBAL VARIABLES
