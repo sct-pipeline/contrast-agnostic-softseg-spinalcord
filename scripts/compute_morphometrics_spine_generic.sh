@@ -100,13 +100,17 @@ for subject in "${TEST_SUBJECTS[@]}"; do
     echo "Downloading: $subject"
     # download images
     git annex get "${subject}"
+    # get current working directory
+    cwd=$(pwd)
+    echo "Current working directory: $cwd"
     # change directory to derivatives
-    # cd ${PATH_OUTPUT}/data-multi-subject/derivatives
-    cd derivatives
+    cd ${cwd}/derivatives
+    # cd derivatives
     # download all kinds of labels
     git annex get $(find . -name "${subject}")
     # change back to root directory
-    cd ..
+    # cd ..
+    cd $cwd
 done
 
 echo "Dataset download complete."
