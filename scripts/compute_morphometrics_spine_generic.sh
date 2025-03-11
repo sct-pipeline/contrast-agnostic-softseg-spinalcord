@@ -77,10 +77,6 @@ fi
 # Initialize an empty git-annex repository 
 git annex init
 
-# Activate the Conda environment
-source $(conda info --base)/etc/profile.d/conda.sh
-conda activate base  # Replace with your environment if you're using a custom one
-
 # Extract test subjects and store them in an array
 readarray -t TEST_SUBJECTS < <(python -c 'import yaml, sys; 
 test_subjects = yaml.safe_load(open(sys.argv[1]))["test"]; 

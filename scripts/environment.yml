@@ -1,0 +1,10 @@
+name: myenv  # Name of your environment
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - git-annex
+  - pyyaml
+  - pip
+  # - pip:
+  #     - other-package-you-may-need
