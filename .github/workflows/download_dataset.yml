@@ -26,30 +26,16 @@ jobs:
           auto-update-conda: true
           channels: conda-forge
 
-      - name: Create and activate Conda environment
+      - name: Install dependencies
         run: |
-          conda env create -f scripts/environment.yml  # Create environment from the file
-          source $(conda info --base)/etc/profile.d/conda.sh  # Enable conda command
-          conda activate myenv  # Activate the environment
+          conda install -y git-annex
 
-      - name: Ensure git-annex is in PATH
+      - name: Ensure git-annex is accessible via git
         run: |
-          echo "$(conda info --base)/envs/myenv/bin" >> $GITHUB_PATH  # Adjust this path
+          echo "$(conda info --base)/bin" >> $GITHUB_PATH
           export PATH="$(conda info --base)/bin:$PATH"
-          git annex version
-
-      # - name: Install dependencies
-      #   run: |
-      #     conda install -y git-annex
-      #     pip install pyyaml
-      #     python -c "import yaml; print('PyYAML is installed correctly!')"
-
-      # - name: Ensure git-annex is accessible via git
-      #   run: |
-      #     echo "$(conda info --base)/bin" >> $GITHUB_PATH
-      #     export PATH="$(conda info --base)/bin:$PATH"
-      #     which git-annex
-      #     git-annex version
+          which git-annex
+          git-annex version
 
       - name: Configure Git identity
         run: |
