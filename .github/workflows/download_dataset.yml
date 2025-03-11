@@ -31,7 +31,12 @@ jobs:
           conda env create -f scripts/environment.yml  # Create environment from the file
           source $(conda info --base)/etc/profile.d/conda.sh  # Enable conda command
           conda activate myenv  # Activate the environment
-      
+
+      - name: Ensure git-annex is in PATH
+        run: |
+          echo "$(conda info --base)/envs/myenv/bin" >> $GITHUB_PATH  # Adjust this path
+          git annex version
+
       # - name: Install dependencies
       #   run: |
       #     conda install -y git-annex
