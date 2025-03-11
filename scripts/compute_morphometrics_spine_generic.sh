@@ -100,9 +100,8 @@ for subject in "${TEST_SUBJECTS[@]}"; do
     echo "Downloading: $subject"
     # download images
     git annex get "${subject}"
-    # get current working directory
+    # get current working directory (which is /home/runner/work/<repo>/<repo>/data/data-multi-subject)
     cwd=$(pwd)
-    echo "Current working directory: $cwd"
     # change directory to derivatives
     cd ${cwd}/derivatives
     # cd derivatives
