@@ -35,6 +35,7 @@ jobs:
       - name: Ensure git-annex is in PATH
         run: |
           echo "$(conda info --base)/envs/myenv/bin" >> $GITHUB_PATH  # Adjust this path
+          export PATH="$(conda info --base)/bin:$PATH"
           git annex version
 
       # - name: Install dependencies
