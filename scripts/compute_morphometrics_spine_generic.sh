@@ -20,31 +20,32 @@
 PATH_REPO="/home/GRAMES.POLYMTL.CA/${USER}/contrast-agnostic/contrast-agnostic-softseg-spinalcord"
 
 # Path to the output folder; the data, model, results, etc. will be stored in this folder
-PATH_OUTPUT="/home/GRAMES.POLYMTL.CA/${USER}/contrast-agnostic/test-post-training-script"
+# PATH_OUTPUT="/home/GRAMES.POLYMTL.CA/${USER}/contrast-agnostic/test-post-training-script"
+PATH_OUTPUT="data"
 
-# Path to the folder where the model exists, will be copied to the output folder PATH_OUTPUT
-# for testing purposes, replace the PATH_MODEL with the path to the model downloaded from the latest release
-PATH_MODEL="/home/GRAMES.POLYMTL.CA/${USER}/contrast-agnostic/sct_deployed_models/model_nnunet-AllRandInit3D"
+# # Path to the folder where the model exists, will be copied to the output folder PATH_OUTPUT
+# # for testing purposes, replace the PATH_MODEL with the path to the model downloaded from the latest release
+# PATH_MODEL="/home/GRAMES.POLYMTL.CA/${USER}/contrast-agnostic/sct_deployed_models/model_nnunet-AllRandInit3D"
 
-# NOTE: To be compatible previous releases of the models, and to be able to automatically generate the
-# morphometric plots after a new model is released, the model folder after copying will have the following
-# syntax: ${PATH_OUTPUT}/model_${VERSION_TO_BE_RELEASED}
-# Example: If the latest release in the contrast-agnostic repo points to the tag v3.1,
-# then the next version to be released is v3.2. 
-VERSION_TO_BE_RELEASED=v3.2
+# # NOTE: To be compatible previous releases of the models, and to be able to automatically generate the
+# # morphometric plots after a new model is released, the model folder after copying will have the following
+# # syntax: ${PATH_OUTPUT}/model_${VERSION_TO_BE_RELEASED}
+# # Example: If the latest release in the contrast-agnostic repo points to the tag v3.1,
+# # then the next version to be released is v3.2. 
+# VERSION_TO_BE_RELEASED=v3.2
 
-# Number of parallel processes to run (choose a smaller number as inference is run only on 1 gpu)
-NUM_WORKERS=4
+# # Number of parallel processes to run (choose a smaller number as inference is run only on 1 gpu)
+# NUM_WORKERS=4
 
-# ID of the GPU to run inference on {0,1,2,3}
-CUDA_DEVICE_ID=3
+# # ID of the GPU to run inference on {0,1,2,3}
+# CUDA_DEVICE_ID=3
 
-# Create folders 
-mkdir -p "${PATH_OUTPUT}"
-mkdir -p "${PATH_OUTPUT}/model_${VERSION_TO_BE_RELEASED}"
+# # Create folders 
+# mkdir -p "${PATH_OUTPUT}"
+# mkdir -p "${PATH_OUTPUT}/model_${VERSION_TO_BE_RELEASED}"
 
-# Copy the model to the output folder
-cp -r ${PATH_MODEL}/* ${PATH_OUTPUT}/model_${VERSION_TO_BE_RELEASED}
+# # Copy the model to the output folder
+# cp -r ${PATH_MODEL}/* ${PATH_OUTPUT}/model_${VERSION_TO_BE_RELEASED}
 
 # Exit if user presses CTRL+C (Linux) or CMD+C (OSX)
 trap "echo Caught Keyboard Interrupt within script. Exiting now.; exit" INT
@@ -64,8 +65,11 @@ clone_folder="${PATH_OUTPUT}/data-multi-subject"
 
 # Ref: https://stackoverflow.com/questions/36498981/shell-dont-fail-git-clone-if-folder-already-exists/36499031#36499031
 if [ ! -d "$clone_folder" ] ; then
+    echo "Cloning dataset ..."
     git clone --branch "$tag" "$url_dataset" "$clone_folder"
     cd $clone_folder
+else
+    echo "Dataset already exists, skipping cloning."
 fi
 
 # Initialize an empty git-annex repository 
@@ -89,39 +93,41 @@ for subject in "${TEST_SUBJECTS[@]}"; do
     cd ..
 done
 
-# Return to the root directory of the repo
-cd ${PATH_REPO}
+echo "Dataset download complete."
+
+# # Return to the root directory of the repo
+# cd ${PATH_REPO}
 
 
-# ==============================
-# RUN BATCH ANALYSIS
-# NOTE: this section piggybacks on the sct_run_batch argument provided by SCT
-# Instead of providing a config file for batch processing script, we will provide the input arguments below
-# ==============================
+# # ==============================
+# # RUN BATCH ANALYSIS
+# # NOTE: this section piggybacks on the sct_run_batch argument provided by SCT
+# # Instead of providing a config file for batch processing script, we will provide the input arguments below
+# # ==============================
 
-echo "=============================="
-echo "Running batch analysis ..."
-echo "=============================="
+# echo "=============================="
+# echo "Running batch analysis ..."
+# echo "=============================="
 
-# Run batch processing
-todays_date=$(date +"%Y%m%d")
-path_out_run_batch=${PATH_OUTPUT}/${todays_date}__results_csa__model_${VERSION_TO_BE_RELEASED}
+# # Run batch processing
+# todays_date=$(date +"%Y%m%d")
+# path_out_run_batch=${PATH_OUTPUT}/${todays_date}__results_csa__model_${VERSION_TO_BE_RELEASED}
 
-sct_run_batch -path-data ${PATH_OUTPUT}/data-multi-subject \
-    -path-output ${path_out_run_batch} \
-    -jobs ${NUM_WORKERS} \
-    -script ${PATH_REPO}/scripts/compute_csa.sh \
-    -script-args "${CUDA_DEVICE_ID} ${PATH_REPO}/nnUnet/run_inference_single_subject.py ${PATH_OUTPUT}/model_${VERSION_TO_BE_RELEASED}" \
-    -include-list ${TEST_SUBJECTS[@]}
+# sct_run_batch -path-data ${PATH_OUTPUT}/data-multi-subject \
+#     -path-output ${path_out_run_batch} \
+#     -jobs ${NUM_WORKERS} \
+#     -script ${PATH_REPO}/scripts/compute_csa.sh \
+#     -script-args "${CUDA_DEVICE_ID} ${PATH_REPO}/nnUnet/run_inference_single_subject.py ${PATH_OUTPUT}/model_${VERSION_TO_BE_RELEASED}" \
+#     -include-list ${TEST_SUBJECTS[@]}
 
 
-echo "=============================="
-echo "Moving results to ${PATH_REPO}/csa_qc_evaluation_spine_generic ..."
-echo "=============================="
+# echo "=============================="
+# echo "Moving results to ${PATH_REPO}/csa_qc_evaluation_spine_generic ..."
+# echo "=============================="
 
-cp -r ${path_out_run_batch}/results/csa_c2c3.csv ${PATH_REPO}/csa_qc_evaluation_spine_generic
+# cp -r ${path_out_run_batch}/results/csa_c2c3.csv ${PATH_REPO}/csa_qc_evaluation_spine_generic
 
-echo "=============================="
-echo "Morphometrics computation done!"
-echo "Upload the CSV file along with the release to compare CSA drift with respect to previous models."
-echo "=============================="
+# echo "=============================="
+# echo "Morphometrics computation done!"
+# echo "Upload the CSV file along with the release to compare CSA drift with respect to previous models."
+# echo "=============================="
