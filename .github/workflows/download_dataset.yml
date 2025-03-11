@@ -26,8 +26,10 @@ jobs:
           auto-update-conda: true
           channels: conda-forge
 
-      - name: Install git-annex
-        run: conda install -y git-annex      
+      - name: Install dependencies
+        run: |
+          conda install -y git-annex
+          conda install -y yaml
 
       - name: Ensure git-annex is accessible via git
         run: |
