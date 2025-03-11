@@ -29,7 +29,9 @@ jobs:
       - name: Install dependencies
         run: |
           conda install -y git-annex
+          conda activate base
           pip install pyyaml
+          python -c "import yaml; print('PyYAML is installed correctly!')"
 
       - name: Ensure git-annex is accessible via git
         run: |
@@ -44,6 +46,7 @@ jobs:
           git config --global user.name "GitHub Actions"
 
       - name: Run dataset setup script
+        shell: bash -l {0}  # Ensures the Conda environment is properly loaded
         run: |
             chmod +x scripts/compute_morphometrics_spine_generic.sh
             source scripts/compute_morphometrics_spine_generic.sh
