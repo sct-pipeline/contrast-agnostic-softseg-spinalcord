@@ -1,0 +1,27 @@
+name: Download spine-generic dataset for automatic morphometric analysis
+
+on:
+  push:
+    branches:
+      - nk/add-post-training-script-to-compute-csa
+  # release:
+  #   types: [published]
+
+jobs:
+  run_dataset_download:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Run dataset setup script
+        run: chmod +x ./scripts/compute_morphometrics_spine_generic.sh
+
+      # - name: Run model script
+      #   run: ./scripts/run_model.sh
