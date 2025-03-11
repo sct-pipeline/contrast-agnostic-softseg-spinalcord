@@ -31,7 +31,7 @@ PATH_MODEL="/home/GRAMES.POLYMTL.CA/${USER}/contrast-agnostic/sct_deployed_model
 # syntax: ${PATH_OUTPUT}/model_${VERSION_TO_BE_RELEASED}
 # Example: If the latest release in the contrast-agnostic repo points to the tag v3.1,
 # then the next version to be released is v3.2. 
-VERSION_TO_BE_RELEASED=3.2
+VERSION_TO_BE_RELEASED=v3.2
 
 # Number of parallel processes to run (choose a smaller number as inference is run only on 1 gpu)
 NUM_WORKERS=4
@@ -41,10 +41,10 @@ CUDA_DEVICE_ID=3
 
 # Create folders 
 mkdir -p "${PATH_OUTPUT}"
-mkdir -p "${PATH_OUTPUT}/model_v${VERSION_TO_BE_RELEASED}"
+mkdir -p "${PATH_OUTPUT}/model_${VERSION_TO_BE_RELEASED}"
 
 # Copy the model to the output folder
-cp -r ${PATH_MODEL}/* ${PATH_OUTPUT}/model_v${VERSION_TO_BE_RELEASED}
+cp -r ${PATH_MODEL}/* ${PATH_OUTPUT}/model_${VERSION_TO_BE_RELEASED}
 
 # Exit if user presses CTRL+C (Linux) or CMD+C (OSX)
 trap "echo Caught Keyboard Interrupt within script. Exiting now.; exit" INT
@@ -105,13 +105,13 @@ echo "=============================="
 
 # Run batch processing
 todays_date=$(date +"%Y%m%d")
-path_out_run_batch=${PATH_OUTPUT}/${todays_date}__results_csa__model_v${VERSION_TO_BE_RELEASED}
+path_out_run_batch=${PATH_OUTPUT}/${todays_date}__results_csa__model_${VERSION_TO_BE_RELEASED}
 
 sct_run_batch -path-data ${PATH_OUTPUT}/data-multi-subject \
     -path-output ${path_out_run_batch} \
     -jobs ${NUM_WORKERS} \
     -script ${PATH_REPO}/scripts/compute_csa.sh \
-    -script-args "${CUDA_DEVICE_ID} ${PATH_REPO}/nnUnet/run_inference_single_subject.py ${PATH_OUTPUT}/model_v${VERSION_TO_BE_RELEASED}" \
+    -script-args "${CUDA_DEVICE_ID} ${PATH_REPO}/nnUnet/run_inference_single_subject.py ${PATH_OUTPUT}/model_${VERSION_TO_BE_RELEASED}" \
     -include-list ${TEST_SUBJECTS[@]}
 
 
