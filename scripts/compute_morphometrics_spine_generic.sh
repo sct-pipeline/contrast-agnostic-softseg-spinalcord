@@ -101,12 +101,8 @@ for subject in "${TEST_SUBJECTS[@]}"; do
     # download images
     git annex get "${subject}"
     # change directory to derivatives
-    ls $clone_folder
-
-    ls ${PATH_OUTPUT}/data-multi-subject
-    exit
-
-    cd ${PATH_OUTPUT}/data-multi-subject/derivatives
+    # cd ${PATH_OUTPUT}/data-multi-subject/derivatives
+    cd derivatives
     # download all kinds of labels
     git annex get $(find . -name "${subject}")
     # change back to root directory
