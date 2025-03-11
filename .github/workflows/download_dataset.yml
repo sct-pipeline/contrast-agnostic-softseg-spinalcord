@@ -29,7 +29,6 @@ jobs:
       - name: Install dependencies
         run: |
           conda install -y git-annex
-          # conda activate base
           pip install pyyaml
           python -c "import yaml; print('PyYAML is installed correctly!')"
 
