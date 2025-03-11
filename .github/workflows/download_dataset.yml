@@ -56,43 +56,52 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-
       - name: Set up Conda
         uses: conda-incubator/setup-miniconda@v2
         with:
           auto-update-conda: true
           channels: conda-forge
-          activate-environment: sct-env
           python-version: '3.10'
+          activate-environment: ""
+          auto-activate-base: true
+
+      - name: Install pip dependencies
+        shell: bash -el {0}
+        run: |
+          pip install --upgrade pip
+          pip install wheel setuptools
 
       - name: Install SCT
-        shell: bash -l {0}
+        shell: bash -el {0}
         run: |
+          # Make sure conda is in PATH
+          echo $PATH
+          which conda
+          
+          # Clone SCT repository
           git clone https://github.com/spinalcordtoolbox/spinalcordtoolbox
           cd spinalcordtoolbox
-          # Ensure Conda environment is properly activated
-          eval "$(conda shell.bash hook)"
-          conda activate sct-env
-          ./install_sct -y
+          
+          # Run installer with explicit Python path to avoid using SCT's bundled conda
+          PYTHONPATH="" ./install_sct -y
 
-      - name: Update PATH and environment
-        shell: bash -l {0}
+      - name: Source SCT environment
+        shell: bash -el {0}
         run: |
+          # Add SCT to environment for subsequent steps
           echo "SCT_DIR=$GITHUB_WORKSPACE/spinalcordtoolbox" >> $GITHUB_ENV
           echo "$GITHUB_WORKSPACE/spinalcordtoolbox/bin" >> $GITHUB_PATH
-          source $GITHUB_WORKSPACE/spinalcordtoolbox/bin/sct_env
+          
+          # Debug: check if SCT binaries are available
+          ls -la $GITHUB_WORKSPACE/spinalcordtoolbox/bin/
 
       - name: Check SCT dependencies
-        shell: bash -l {0}
+        shell: bash -el {0}
         run: |
-          source $GITHUB_ENV
-          export PATH=$GITHUB_PATH:$PATH
-          which sct_check_dependencies
-          sct_check_dependencies  
+          # Add the SCT bin directory to PATH for this step
+          export PATH="$GITHUB_WORKSPACE/spinalcordtoolbox/bin:$PATH"
+          which sct_check_dependencies || echo "sct_check_dependencies not found in PATH"
+          $GITHUB_WORKSPACE/spinalcordtoolbox/bin/sct_check_dependencies  
       # - name: Install git-annex with Conda
       #   run: conda install -y git-annex
 
