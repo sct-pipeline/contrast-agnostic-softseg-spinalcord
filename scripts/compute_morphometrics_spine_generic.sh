@@ -99,10 +99,6 @@ cd ${PATH_REPO}
 # Instead of providing a config file for batch processing script, we will provide the input arguments below
 # ==============================
 
-# Get the list of test subjects in an array
-readarray -t TEST_SUBJECTS <<< "$TEST_SUBJECTS"
-# echo "${TEST_SUBJECTS[@]}"
-
 echo "=============================="
 echo "Running batch analysis ..."
 echo "=============================="
