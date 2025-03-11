@@ -38,12 +38,12 @@ jobs:
       #     pip install pyyaml
       #     python -c "import yaml; print('PyYAML is installed correctly!')"
 
-      - name: Ensure git-annex is accessible via git
-        run: |
-          echo "$(conda info --base)/bin" >> $GITHUB_PATH
-          export PATH="$(conda info --base)/bin:$PATH"
-          which git-annex
-          git-annex version
+      # - name: Ensure git-annex is accessible via git
+      #   run: |
+      #     echo "$(conda info --base)/bin" >> $GITHUB_PATH
+      #     export PATH="$(conda info --base)/bin:$PATH"
+      #     which git-annex
+      #     git-annex version
 
       - name: Configure Git identity
         run: |
