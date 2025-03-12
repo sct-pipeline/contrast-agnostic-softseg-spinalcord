@@ -164,7 +164,7 @@ echo "Copying log and results folders to ${CWD}/logs_results ..."
 echo "=============================="
 
 mkdir -p ${CWD}/logs_results
-cp -r ${path_out_run_batch}/log ${CWD}${CWD}/logs_results
+cp -r ${path_out_run_batch}/log ${CWD}/logs_results
 cp -r ${path_out_run_batch}/results ${CWD}/logs_results
 # NOTE: this copying is done so that it is easy to find these folders outside of the script to be uploaded by GH Actions
 
