@@ -153,8 +153,8 @@ sct_run_batch -path-data ${PATH_OUTPUT}/data-multi-subject \
     -path-output ${path_out_run_batch} \
     -jobs ${NUM_WORKERS} \
     -script scripts/compute_csa.sh \
+    -script-args "${VERSION_TO_BE_RELEASED}" \
     -include-list ${TEST_SUBJECTS[@]}
-    # if running directly from sct_deepseg, we don't need any script_args
     # -script-args "${CUDA_DEVICE_ID} ${PATH_REPO}/nnUnet/run_inference_single_subject.py ${PATH_OUTPUT}/model_${VERSION_TO_BE_RELEASED}" \
     # -include-list ${TEST_SUBJECTS[@]}
 

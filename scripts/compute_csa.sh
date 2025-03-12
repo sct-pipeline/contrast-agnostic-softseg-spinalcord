@@ -26,7 +26,8 @@ echo "PATH_QC: ${PATH_QC}"
 
 # Variable passed by `sct_run_batch -script-args`
 SUBJECT=$1
-CUDA_DEVICE=$2
+MODEL_VERSION=$2
+# CUDA_DEVICE=$2
 PATH_NNUNET_SCRIPT=$3   # path to the nnUNet contrast-agnostic run_inference_single_subject.py
 PATH_NNUNET_MODEL=$4
 
@@ -221,15 +222,15 @@ for contrast in ${contrasts}; do
 
   # Compute CSA averaged across all slices C2-C3 vertebral levels for plotting the STD across contrasts
   # NOTE: this is per-level because not all contrasts have thes same FoV (C2-C3 is what all contrasts have in common)
-  sct_process_segmentation -i ${FILEBIN}.nii.gz -vert 2:3 -vertfile ${file}_softseg_bin_labeled.nii.gz -o $PATH_RESULTS/${csv_fname}_c2c3.csv -append 1
+  sct_process_segmentation -i ${FILEBIN}.nii.gz -vert 2:3 -vertfile ${file}_softseg_bin_labeled.nii.gz -o $PATH_RESULTS/csa_c2c3.csv -append 1
 
   # ------------------------------------------------------------------------------
   # COMPUTE CSA OF AUTOMATIC PREDICTIONS
   # ------------------------------------------------------------------------------
   # Segment SC (i.e. run inference) and compute CSA
-  model_name=$(basename ${PATH_NNUNET_MODEL})
+  # model_name=$(basename ${PATH_NNUNET_MODEL})
   # CUDA_VISIBLE_DEVICES=${CUDA_DEVICE} segment_sc_nnUNet ${file} "${file}_softseg_bin" ${model_name} ${contrast} '3d_fullres'
-  segment_sc_nnUNet ${file} "${file}_softseg_bin" ${model_name} ${contrast} '3d_fullres'
+  segment_sc_nnUNet ${file} "${file}_softseg_bin" ${MODEL_VERSION} ${contrast} '3d_fullres'
 
 done
 
