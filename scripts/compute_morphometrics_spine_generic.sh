@@ -168,6 +168,9 @@ cp -r ${path_out_run_batch}/log ${CWD}/logs_results
 cp -r ${path_out_run_batch}/results ${CWD}/logs_results
 # NOTE: this copying is done so that it is easy to find these folders outside of the script to be uploaded by GH Actions
 
+# Go back to the current working directory at the beginning
+cd ${CWD}
+
 # echo "=============================="
 # echo "Morphometrics computation done!"
 # echo "Upload the CSV file along with the release to compare CSA drift with respect to previous models."
