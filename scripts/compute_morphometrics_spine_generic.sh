@@ -18,26 +18,26 @@ set -e
 # ==============================
 # DEFINE GLOBAL VARIABLES
 # ==============================
-# Path to the repository; all scripts will be relative to this path
-PATH_REPO="/home/GRAMES.POLYMTL.CA/${USER}/contrast-agnostic/contrast-agnostic-softseg-spinalcord"
+# # Path to the repository; all scripts will be relative to this path
+# PATH_REPO="/home/GRAMES.POLYMTL.CA/${USER}/contrast-agnostic/contrast-agnostic-softseg-spinalcord"
 
 # Path to the output folder; the data, model, results, etc. will be stored in this folder
 # PATH_OUTPUT="/home/GRAMES.POLYMTL.CA/${USER}/contrast-agnostic/test-post-training-script"
-PATH_OUTPUT="data"
+PATH_OUTPUT="csa-analysis"
 
-# # Path to the folder where the model exists, will be copied to the output folder PATH_OUTPUT
-# # for testing purposes, replace the PATH_MODEL with the path to the model downloaded from the latest release
-# PATH_MODEL="/home/GRAMES.POLYMTL.CA/${USER}/contrast-agnostic/sct_deployed_models/model_nnunet-AllRandInit3D"
+# Path to the folder where the model exists, will be copied to the output folder PATH_OUTPUT
+# for testing purposes, replace the PATH_MODEL with the path to the model downloaded from the latest release
+MODEL_URL="https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord/releases/download/v3.1/model_contrast_agnostic_20250123.zip"
 
-# # NOTE: To be compatible previous releases of the models, and to be able to automatically generate the
-# # morphometric plots after a new model is released, the model folder after copying will have the following
-# # syntax: ${PATH_OUTPUT}/model_${VERSION_TO_BE_RELEASED}
-# # Example: If the latest release in the contrast-agnostic repo points to the tag v3.1,
-# # then the next version to be released is v3.2. 
-# VERSION_TO_BE_RELEASED=v3.2
+# NOTE: To be compatible previous releases of the models, and to be able to automatically generate the
+# morphometric plots after a new model is released, the model folder after copying will have the following
+# syntax: ${PATH_OUTPUT}/model_${VERSION_TO_BE_RELEASED}
+# Example: If the latest release in the contrast-agnostic repo points to the tag v3.1,
+# then the next version to be released is v3.2. 
+VERSION_TO_BE_RELEASED=v3.1
 
-# # Number of parallel processes to run (choose a smaller number as inference is run only on 1 gpu)
-# NUM_WORKERS=4
+# Number of parallel processes to run (choose a smaller number as inference is run only on 1 gpu)
+NUM_WORKERS=4
 
 # # ID of the GPU to run inference on {0,1,2,3}
 # CUDA_DEVICE_ID=3
@@ -83,33 +83,30 @@ git annex init
 # for subject in test_subjects: print(subject)' "${PATH_REPO}/scripts/spine_generic_test_split_for_csa_drift_monitoring.yaml")
 
 TEST_SUBJECTS=(
-    "sub-barcelona06" "sub-beijingPrisma01" "sub-beijingPrisma02" "sub-brnoCeitec04" "sub-brnoUhb01"
-    "sub-cardiff03" "sub-cmrra02" "sub-cmrra05" "sub-cmrrb01" "sub-cmrrb03"
-    "sub-cmrrb05" "sub-fslAchieva04" "sub-fslPrisma01" "sub-fslPrisma02" "sub-fslPrisma04"
-    "sub-fslPrisma05" "sub-geneva03" "sub-juntendo750w01" "sub-juntendo750w02" "sub-juntendo750w03"
-    "sub-juntendo750w06" "sub-milan03" "sub-mniS03" "sub-mountSinai01" "sub-nottwil01"
-    "sub-nottwil04" "sub-nwu01" "sub-oxfordFmrib06" "sub-oxfordFmrib09" "sub-oxfordFmrib10"
-    "sub-oxfordOhba01" "sub-oxfordOhba05" "sub-pavia02" "sub-pavia05" "sub-queensland01"
-    "sub-sherbrooke02" "sub-sherbrooke05" "sub-sherbrooke06" "sub-stanford04" "sub-strasbourg04"
-    "sub-tehranS03" "sub-tokyoIngenia05" "sub-ubc06" "sub-ucl02" "sub-unf04"
-    "sub-vuiisAchieva04" "sub-vuiisIngenia03" "sub-vuiisIngenia04" "sub-vuiisIngenia05"
-)
+    "sub-barcelona06" "sub-beijingPrisma01" "sub-beijingPrisma02" "sub-brnoCeitec04" "sub-brnoUhb01")   # test only 5 for debugging
+#     "sub-cardiff03" "sub-cmrra02" "sub-cmrra05" "sub-cmrrb01" "sub-cmrrb03"
+#     "sub-cmrrb05" "sub-fslAchieva04" "sub-fslPrisma01" "sub-fslPrisma02" "sub-fslPrisma04"
+#     "sub-fslPrisma05" "sub-geneva03" "sub-juntendo750w01" "sub-juntendo750w02" "sub-juntendo750w03"
+#     "sub-juntendo750w06" "sub-milan03" "sub-mniS03" "sub-mountSinai01" "sub-nottwil01"
+#     "sub-nottwil04" "sub-nwu01" "sub-oxfordFmrib06" "sub-oxfordFmrib09" "sub-oxfordFmrib10"
+#     "sub-oxfordOhba01" "sub-oxfordOhba05" "sub-pavia02" "sub-pavia05" "sub-queensland01"
+#     "sub-sherbrooke02" "sub-sherbrooke05" "sub-sherbrooke06" "sub-stanford04" "sub-strasbourg04"
+#     "sub-tehranS03" "sub-tokyoIngenia05" "sub-ubc06" "sub-ucl02" "sub-unf04"
+#     "sub-vuiisAchieva04" "sub-vuiisIngenia03" "sub-vuiisIngenia04" "sub-vuiisIngenia05"
+# )
 
 # Download test split using git-annex
 for subject in "${TEST_SUBJECTS[@]}"; do
     echo "Downloading: $subject"
     # download images
     git annex get "${subject}"
-    # get current working directory (which is /home/runner/work/<repo>/<repo>/data/data-multi-subject)
-    cwd=$(pwd)
-    # change directory to derivatives
-    cd ${cwd}/derivatives
+    # change current working directory to derivatives
+    cd $PWD/derivatives
     # cd derivatives
     # download all kinds of labels
     git annex get $(find . -name "${subject}")
     # change back to root directory
-    # cd ..
-    cd $cwd
+    cd $PWD
 done
 
 echo "Dataset download complete."
@@ -117,27 +114,44 @@ echo "Dataset download complete."
 # # Return to the root directory of the repo
 # cd ${PATH_REPO}
 
+echo "=============================="
+echo "Downloading model from release ..."
+echo "=============================="
 
-# # ==============================
-# # RUN BATCH ANALYSIS
-# # NOTE: this section piggybacks on the sct_run_batch argument provided by SCT
-# # Instead of providing a config file for batch processing script, we will provide the input arguments below
-# # ==============================
+# Download the model zip file
+wget -O ${PATH_OUTPUT}/model_${VERSION_TO_BE_RELEASED}.zip ${MODEL_URL}
 
-# echo "=============================="
-# echo "Running batch analysis ..."
-# echo "=============================="
+# Unzip the model
+unzip ${PATH_OUTPUT}/model_${VERSION_TO_BE_RELEASED}.zip -d ${PATH_OUTPUT}/model_${VERSION_TO_BE_RELEASED}
 
-# # Run batch processing
-# todays_date=$(date +"%Y%m%d")
-# path_out_run_batch=${PATH_OUTPUT}/${todays_date}__results_csa__model_${VERSION_TO_BE_RELEASED}
+# Remove the zip file after extraction
+rm ${PATH_OUTPUT}/model_${VERSION_TO_BE_RELEASED}.zip
 
-# sct_run_batch -path-data ${PATH_OUTPUT}/data-multi-subject \
-#     -path-output ${path_out_run_batch} \
-#     -jobs ${NUM_WORKERS} \
-#     -script ${PATH_REPO}/scripts/compute_csa.sh \
-#     -script-args "${CUDA_DEVICE_ID} ${PATH_REPO}/nnUnet/run_inference_single_subject.py ${PATH_OUTPUT}/model_${VERSION_TO_BE_RELEASED}" \
-#     -include-list ${TEST_SUBJECTS[@]}
+echo "Model download complete."
+
+# ==============================
+# RUN BATCH ANALYSIS
+# NOTE: this section piggybacks on the sct_run_batch argument provided by SCT
+# Instead of providing a config file for batch processing script, we will provide the input arguments below
+# ==============================
+
+echo "=============================="
+echo "Running batch analysis ..."
+echo "=============================="
+
+# Run batch processing
+todays_date=$(date +"%Y%m%d")
+path_out_run_batch=${PATH_OUTPUT}/${todays_date}__results_csa__model_${VERSION_TO_BE_RELEASED}
+echo ${path_out_run_batch}
+
+sct_run_batch -path-data ${PATH_OUTPUT}/data-multi-subject \
+    -path-output ${path_out_run_batch} \
+    -jobs ${NUM_WORKERS} \
+    -script $PWD/scripts/compute_csa.sh \
+    -include-list ${TEST_SUBJECTS[@]}
+    # if running directly from sct_deepseg, we don't need any script_args
+    # -script-args "${CUDA_DEVICE_ID} ${PATH_REPO}/nnUnet/run_inference_single_subject.py ${PATH_OUTPUT}/model_${VERSION_TO_BE_RELEASED}" \
+    # -include-list ${TEST_SUBJECTS[@]}
 
 
 # echo "=============================="
