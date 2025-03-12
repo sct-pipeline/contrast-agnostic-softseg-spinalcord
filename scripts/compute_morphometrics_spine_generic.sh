@@ -111,8 +111,8 @@ done
 
 echo "Dataset download complete."
 
-# # Return to the root directory of the repo
-# cd ${PATH_REPO}
+# Return to the root directory of the repo
+cd ${PATH_OUTPUT}/..    # this will go to the root of the repository
 
 echo "=============================="
 echo "Downloading model from URL ${MODEL_URL} ..."
@@ -147,7 +147,7 @@ echo ${path_out_run_batch}
 sct_run_batch -path-data ${PATH_OUTPUT}/data-multi-subject \
     -path-output ${path_out_run_batch} \
     -jobs ${NUM_WORKERS} \
-    -script $PWD/scripts/compute_csa.sh \
+    -script scripts/compute_csa.sh \
     -include-list ${TEST_SUBJECTS[@]}
     # if running directly from sct_deepseg, we don't need any script_args
     # -script-args "${CUDA_DEVICE_ID} ${PATH_REPO}/nnUnet/run_inference_single_subject.py ${PATH_OUTPUT}/model_${VERSION_TO_BE_RELEASED}" \
