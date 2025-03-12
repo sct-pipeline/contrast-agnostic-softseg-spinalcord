@@ -106,7 +106,7 @@ for subject in "${TEST_SUBJECTS[@]}"; do
     # download all kinds of labels
     git annex get $(find . -name "${subject}")
     # change back to root directory
-    cd $PWD
+    cd ..
 done
 
 echo "Dataset download complete."
@@ -115,17 +115,17 @@ echo "Dataset download complete."
 # cd ${PATH_REPO}
 
 echo "=============================="
-echo "Downloading model from release ..."
+echo "Downloading model from URL ${MODEL_URL} ..."
 echo "=============================="
 
-# Download the model zip file
-wget -O ${PATH_OUTPUT}/model_${VERSION_TO_BE_RELEASED}.zip ${MODEL_URL}
+# # Download the model zip file
+# wget -O ${PATH_OUTPUT}/model_${VERSION_TO_BE_RELEASED}.zip ${MODEL_URL}
+# # Unzip the model
+# unzip ${PATH_OUTPUT}/model_${VERSION_TO_BE_RELEASED}.zip -d ${PATH_OUTPUT}/model_${VERSION_TO_BE_RELEASED}
+# # Remove the zip file after extraction
+# rm ${PATH_OUTPUT}/model_${VERSION_TO_BE_RELEASED}.zip
 
-# Unzip the model
-unzip ${PATH_OUTPUT}/model_${VERSION_TO_BE_RELEASED}.zip -d ${PATH_OUTPUT}/model_${VERSION_TO_BE_RELEASED}
-
-# Remove the zip file after extraction
-rm ${PATH_OUTPUT}/model_${VERSION_TO_BE_RELEASED}.zip
+sct_deepseg -install seg_sc_contrast_agnostic -custom-url ${MODEL_URL}
 
 echo "Model download complete."
 
