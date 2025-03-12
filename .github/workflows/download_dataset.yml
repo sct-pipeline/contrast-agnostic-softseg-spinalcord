@@ -18,12 +18,13 @@ jobs:
       - name: Install Python 3
         uses: actions/setup-python@v4
         with:
-          python-version: 3.9.16
+          # python-version: 3.9.16
+          python-version: 3.8.18
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          # pip install -r requirements.txt        
+          # pip install -r requirements.txt
 
       # https://github.com/spinalcordtoolbox/spinalcordtoolbox/blob/master/.ci.sh
       - name: Install SCT
