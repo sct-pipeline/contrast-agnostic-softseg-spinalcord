@@ -46,7 +46,7 @@ jobs:
       - name: Install SCT
         shell: bash -l {0}
         run: |
-          # source /etc/profile.d/conda.sh
+          source python/etc/profile.d/conda.sh >> $GITHUB_ENV
           git clone https://github.com/spinalcordtoolbox/spinalcordtoolbox.git
           cd spinalcordtoolbox
           ./.ci.sh -i
