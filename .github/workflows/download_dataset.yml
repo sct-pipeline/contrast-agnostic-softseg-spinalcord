@@ -25,7 +25,9 @@ jobs:
         with:
           auto-update-conda: true
           channels: conda-forge
-
+          activate-environment: sct-env
+          python-version: '3.9.16'
+  
       - name: Install dependencies
         run: |
           conda install -y git-annex
@@ -42,19 +44,28 @@ jobs:
           git config --global user.email "actions@github.com"
           git config --global user.name "GitHub Actions"
 
-      # https://github.com/spinalcordtoolbox/spinalcordtoolbox/blob/master/.ci.sh
       - name: Install SCT
         shell: bash -l {0}
         run: |
-          source python/etc/profile.d/conda.sh >> $GITHUB_ENV
-          git clone https://github.com/spinalcordtoolbox/spinalcordtoolbox.git
+          git clone https://github.com/spinalcordtoolbox/spinalcordtoolbox
           cd spinalcordtoolbox
-          ./.ci.sh -i
-          # NB: install_sct edits ~/.bashrc, but those environment changes don't get passed to subsequent steps in GH Actions.
-          # So, we filter through the .bashrc and pass the values to $GITHUB_ENV and $GITHUB_PATH.
-          # Relevant documentation: https://docs.github.com/en/actions/reference/workflow-commands-for-github-actions#environment-files
-          cat ~/.bashrc | grep "export SCT_DIR" | cut -d " " -f 2 >> $GITHUB_ENV
-          cat ~/.bashrc | grep "export PATH" | grep -o "/.*" | cut -d ':' -f 1 >> $GITHUB_PATH
+          # Ensure Conda environment is properly activated
+          eval "$(conda shell.bash hook)"
+          conda activate sct-env
+          ./install_sct -iy    
+      # # https://github.com/spinalcordtoolbox/spinalcordtoolbox/blob/master/.ci.sh
+      # - name: Install SCT
+      #   shell: bash -l {0}
+      #   run: |
+      #     # source python/etc/profile.d/conda.sh >> $GITHUB_ENV
+      #     git clone https://github.com/spinalcordtoolbox/spinalcordtoolbox.git
+      #     cd spinalcordtoolbox
+      #     ./.ci.sh -i
+      #     # NB: install_sct edits ~/.bashrc, but those environment changes don't get passed to subsequent steps in GH Actions.
+      #     # So, we filter through the .bashrc and pass the values to $GITHUB_ENV and $GITHUB_PATH.
+      #     # Relevant documentation: https://docs.github.com/en/actions/reference/workflow-commands-for-github-actions#environment-files
+      #     cat ~/.bashrc | grep "export SCT_DIR" | cut -d " " -f 2 >> $GITHUB_ENV
+      #     cat ~/.bashrc | grep "export PATH" | grep -o "/.*" | cut -d ':' -f 1 >> $GITHUB_PATH
 
       # - name: Run dataset setup script
       #   shell: bash -l {0}  # Ensures the Conda environment is properly loaded
