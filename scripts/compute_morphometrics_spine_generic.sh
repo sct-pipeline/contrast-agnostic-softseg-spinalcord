@@ -144,8 +144,9 @@ echo "Running batch analysis ..."
 echo "=============================="
 
 # Run batch processing
-todays_date=$(date +"%Y%m%d")
-path_out_run_batch=${PATH_OUTPUT}/${todays_date}__results_csa__model_${VERSION_TO_BE_RELEASED}
+# todays_date=$(date +"%Y%m%d")
+# path_out_run_batch=${PATH_OUTPUT}/${todays_date}__results_csa__model_${VERSION_TO_BE_RELEASED}
+path_out_run_batch=${PATH_OUTPUT}/batch_processing_results
 echo ${path_out_run_batch}
 
 sct_run_batch -path-data ${PATH_OUTPUT}/data-multi-subject \
@@ -158,11 +159,14 @@ sct_run_batch -path-data ${PATH_OUTPUT}/data-multi-subject \
     # -include-list ${TEST_SUBJECTS[@]}
 
 
-# echo "=============================="
-# echo "Moving results to ${PATH_REPO}/csa_qc_evaluation_spine_generic ..."
-# echo "=============================="
+echo "=============================="
+echo "Copying log and results folders to ${CWD}/logs_results ..."
+echo "=============================="
 
-# cp -r ${path_out_run_batch}/results/csa_c2c3.csv ${PATH_REPO}/csa_qc_evaluation_spine_generic
+mkdir -p ${CWD}/logs_results
+cp -r ${path_out_run_batch}/log ${CWD}${CWD}/logs_results
+cp -r ${path_out_run_batch}/results ${CWD}/logs_results
+# NOTE: this copying is done so that it is easy to find these folders outside of the script to be uploaded by GH Actions
 
 # echo "=============================="
 # echo "Morphometrics computation done!"
