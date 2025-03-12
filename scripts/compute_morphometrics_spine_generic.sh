@@ -21,6 +21,9 @@ set -e
 # # Path to the repository; all scripts will be relative to this path
 # PATH_REPO="/home/GRAMES.POLYMTL.CA/${USER}/contrast-agnostic/contrast-agnostic-softseg-spinalcord"
 
+# get current working directory before doing anything else
+CWD=${PWD}
+
 # Path to the output folder; the data, model, results, etc. will be stored in this folder
 # PATH_OUTPUT="/home/GRAMES.POLYMTL.CA/${USER}/contrast-agnostic/test-post-training-script"
 PATH_OUTPUT="csa-analysis"
@@ -69,6 +72,7 @@ clone_folder="${PATH_OUTPUT}/data-multi-subject"
 if [ ! -d "$clone_folder" ] ; then
     echo "Cloning dataset ..."
     git clone --branch "$tag" "$url_dataset" "$clone_folder"
+    # change directory
     cd $clone_folder
 else
     echo "Dataset already exists, skipping cloning."
@@ -112,7 +116,7 @@ done
 echo "Dataset download complete."
 
 # Return to the root directory of the repo
-cd ${PATH_OUTPUT}/..    # this will go to the root of the repository
+cd ${CWD}    # this will go to the root of the repository
 
 echo "=============================="
 echo "Downloading model from URL ${MODEL_URL} ..."
