@@ -53,8 +53,8 @@ git annex init
 
 TEST_SUBJECTS=(
     "sub-barcelona06" "sub-beijingPrisma01" "sub-beijingPrisma02" "sub-brnoCeitec04" "sub-brnoUhb01"   # test only 5 for debugging
-    "sub-cardiff03" "sub-cmrra02" "sub-cmrra05" "sub-cmrrb01" "sub-cmrrb03")
-#     "sub-cmrrb05" "sub-fslAchieva04" "sub-fslPrisma01" "sub-fslPrisma02" "sub-fslPrisma04"
+    "sub-cardiff03" "sub-cmrra02" "sub-cmrra05" "sub-cmrrb01" "sub-cmrrb03"
+    "sub-cmrrb05" "sub-fslAchieva04" "sub-fslPrisma01" "sub-fslPrisma02" "sub-fslPrisma04")
 #     "sub-fslPrisma05" "sub-geneva03" "sub-juntendo750w01" "sub-juntendo750w02" "sub-juntendo750w03"
 #     "sub-juntendo750w06" "sub-milan03" "sub-mniS03" "sub-mountSinai01" "sub-nottwil01"
 #     "sub-nottwil04" "sub-nwu01" "sub-oxfordFmrib06" "sub-oxfordFmrib09" "sub-oxfordFmrib10"
