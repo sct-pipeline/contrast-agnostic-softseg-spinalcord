@@ -14,8 +14,8 @@ set -e
 CWD=${PWD}
 
 # Path to the output folder; the data, model, results, etc. will be stored in this folder
-# PATH_OUTPUT="/home/GRAMES.POLYMTL.CA/${USER}/contrast-agnostic/test-post-training-script"
-PATH_OUTPUT="csa-analysis"
+# adding an extra folder interferes with the caching process of GHA
+# PATH_OUTPUT="csa-analysis"
 
 # Exit if user presses CTRL+C (Linux) or CMD+C (OSX)
 trap "echo Caught Keyboard Interrupt within script. Exiting now.; exit" INT
@@ -31,7 +31,7 @@ echo "=============================="
 # Clone the dataset and initialize a git annex repository
 url_dataset="https://github.com/spine-generic/data-multi-subject"
 tag="r20250310"
-clone_folder="${PATH_OUTPUT}/data-multi-subject"
+clone_folder="data-multi-subject"
 
 # Ref: https://stackoverflow.com/questions/36498981/shell-dont-fail-git-clone-if-folder-already-exists/36499031#36499031
 if [ ! -d "$clone_folder" ] ; then
