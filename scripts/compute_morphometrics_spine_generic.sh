@@ -25,7 +25,8 @@ set -e
 CWD=${PWD}
 
 # get list of subjects as input
-TEST_SUBJECTS=("@")
+TEST_SUBJECTS=($1)
+echo "Running analysis on ${TEST_SUBJECTS[@]}"
 
 # Path to the output folder; the data, model, results, etc. will be stored in this folder
 # PATH_OUTPUT="/home/GRAMES.POLYMTL.CA/${USER}/contrast-agnostic/test-post-training-script"
