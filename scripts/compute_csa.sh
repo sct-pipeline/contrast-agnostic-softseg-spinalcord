@@ -162,8 +162,8 @@ rsync -Ravzh ${PATH_DATA}/./${SUBJECT}/dwi/* .
 # ------------------------------------------------------------------------------
 # DEFINE CONTRASTS
 # ------------------------------------------------------------------------------
-# contrasts="T1w T2w T2star flip-1_mt-on_MTS flip-2_mt-off_MTS rec-average_dwi"
-contrasts="rec-average_dwi"
+contrasts="T1w T2w T2star flip-1_mt-on_MTS flip-2_mt-off_MTS rec-average_dwi"
+# contrasts="rec-average_dwi"
 
 # Loop across contrasts
 for contrast in ${contrasts}; do
