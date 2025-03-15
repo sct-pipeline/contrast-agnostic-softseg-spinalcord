@@ -19,21 +19,20 @@ def merge_csvs(args):
 
     # Get list of CSV files
     list_csv = []
-    # path_results = os.path.join(args.path_results, 'results')
 
     # 49 test subjects for 12 batches with 4 subjects each
-    for idx in range(1, 13):
+    for idx in range(1, 3):
         list_csv.append(os.path.join(args.path_results, f'csa-results-batch-{idx}', 'results', 'csa_c2c3.csv'))
-
-    print(args.path_results)
-    print(list_csv)
 
     # Merge CSV files
     df = pd.concat([pd.read_csv(f) for f in list_csv], ignore_index=True)
-    df.to_csv(os.path.join(args.path_output, 'csa_c2c3_merged.csv', index=False))
+
+    path_save = os.path.join(args.path_output, 'csa_c2c3_merged.csv')
+    print(f'Saving merged CSV file to: {path_save}')
+    df.to_csv(path_save, index=False)
 
 
-def main():
+if __name__ == '__main__':
     parser = get_parser()
     args = parser.parse_args()
     merge_csvs(args)
