@@ -25,6 +25,9 @@ def merge_csvs(args):
     for idx in range(1, 13):
         list_csv.append(os.path.join(args.path_results, f'csa-results-batch-{idx}', 'results', 'csa_c2c3.csv'))
 
+    print(args.path_results)
+    print(list_csv)
+
     # Merge CSV files
     df = pd.concat([pd.read_csv(f) for f in list_csv], ignore_index=True)
     df.to_csv(os.path.join(args.path_output, 'csa_c2c3_merged.csv', index=False))
