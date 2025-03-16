@@ -34,14 +34,16 @@ PATH_OUTPUT="csa-analysis"
 
 # Path to the folder where the model exists, will be copied to the output folder PATH_OUTPUT
 # for testing purposes, replace the PATH_MODEL with the path to the model downloaded from the latest release
-MODEL_URL="https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord/releases/download/v3.1/model_contrast_agnostic_20250123.zip"
+MODEL_URL=$2
+echo "Using model at: ${MODEL_URL}"
+# MODEL_URL="https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord/releases/download/v3.1/model_contrast_agnostic_20250123.zip"
 
 # NOTE: To be compatible previous releases of the models, and to be able to automatically generate the
 # morphometric plots after a new model is released, the model folder after copying will have the following
 # syntax: ${PATH_OUTPUT}/model_${VERSION_TO_BE_RELEASED}
 # Example: If the latest release in the contrast-agnostic repo points to the tag v3.1,
 # then the next version to be released is v3.2. 
-VERSION_TO_BE_RELEASED=v3.1
+VERSION_TO_BE_RELEASED=$(echo "$MODEL_URL" | sed -E 's#.*/download/([^/]+)/.*#\1#')
 
 # Number of parallel processes to run (choose a smaller number as inference is run only on 1 gpu)
 NUM_WORKERS=4
