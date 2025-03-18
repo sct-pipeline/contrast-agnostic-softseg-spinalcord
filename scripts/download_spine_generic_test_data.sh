@@ -52,19 +52,19 @@ git annex init
 # for subject in test_subjects: print(subject)' "${PATH_REPO}/scripts/spine_generic_test_split_for_csa_drift_monitoring.yaml")
 
 TEST_SUBJECTS=(
-    "sub-barcelona06" "sub-beijingPrisma01" "sub-beijingPrisma02" "sub-brnoCeitec04" )
-#     "sub-brnoUhb01" "sub-cardiff03" "sub-cmrra02" "sub-cmrra05" 
-#     "sub-cmrrb01" "sub-cmrrb03" "sub-cmrrb05" "sub-fslAchieva04" 
-#     "sub-fslPrisma01" "sub-fslPrisma02" "sub-fslPrisma04" "sub-fslPrisma05" 
-#     "sub-geneva03" "sub-juntendo750w01" "sub-juntendo750w02" "sub-juntendo750w03" 
-#     "sub-juntendo750w06" "sub-milan03" "sub-mniS03" "sub-mountSinai01" 
-#     "sub-nottwil01" "sub-nottwil04" "sub-nwu01" "sub-oxfordFmrib06" 
-#     "sub-oxfordFmrib09" "sub-oxfordFmrib10" "sub-oxfordOhba01" "sub-oxfordOhba05" 
-#     "sub-pavia02" "sub-pavia05" "sub-queensland01" "sub-sherbrooke02" 
-#     "sub-sherbrooke05" "sub-sherbrooke06" "sub-stanford04" "sub-strasbourg04" 
-#     "sub-tehranS03" "sub-tokyoIngenia05" "sub-ubc06" "sub-ucl02" 
-#     "sub-unf04" "sub-vuiisAchieva04" "sub-vuiisIngenia03" "sub-vuiisIngenia04" "sub-vuiisIngenia05"
-# )
+    "sub-barcelona06" "sub-beijingPrisma01" "sub-beijingPrisma02" "sub-brnoCeitec04" 
+    "sub-brnoUhb01" "sub-cardiff03" "sub-cmrra02" "sub-cmrra05" 
+    "sub-cmrrb01" "sub-cmrrb03" "sub-cmrrb05" "sub-fslAchieva04" 
+    "sub-fslPrisma01" "sub-fslPrisma02" "sub-fslPrisma04" "sub-fslPrisma05" 
+    "sub-geneva03" "sub-juntendo750w01" "sub-juntendo750w02" "sub-juntendo750w03" 
+    "sub-juntendo750w06" "sub-milan03" "sub-mniS03" "sub-mountSinai01" 
+    "sub-nottwil01" "sub-nottwil04" "sub-nwu01" "sub-oxfordFmrib06" 
+    "sub-oxfordFmrib09" "sub-oxfordFmrib10" "sub-oxfordOhba01" "sub-oxfordOhba05" 
+    "sub-pavia02" "sub-pavia05" "sub-queensland01" "sub-sherbrooke02" 
+    "sub-sherbrooke05" "sub-sherbrooke06" "sub-stanford04" "sub-strasbourg04" 
+    "sub-tehranS03" "sub-tokyoIngenia05" "sub-ubc06" "sub-ucl02" 
+    "sub-unf04" "sub-vuiisAchieva04" "sub-vuiisIngenia03" "sub-vuiisIngenia04" "sub-vuiisIngenia05"
+)
 
 # Download test split using git-annex
 for subject in "${TEST_SUBJECTS[@]}"; do
