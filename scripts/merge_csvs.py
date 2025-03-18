@@ -21,7 +21,7 @@ def merge_csvs(args):
     list_csv = []
 
     # 49 test subjects for 12 batches with 4 subjects each
-    for idx in range(1, 13):
+    for idx in range(1, 4):
         list_csv.append(os.path.join(args.path_results, f'csa-results-batch-{idx}', 'results', 'csa_c2c3.csv'))
 
     # Merge CSV files
