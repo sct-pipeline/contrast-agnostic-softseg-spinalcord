@@ -166,10 +166,12 @@ def main(args):
 
     csvs_list = glob.glob(os.path.join(args.i, "*.csv"))
     print(args.i)
-    print(os.listdir(args.i))
     # sort the list of CSV files
     csvs_list.sort()
-    print(csvs_list)
+    print(f"csvs list: {csvs_list}")
+
+    parent_dir = os.path.abspath(os.path.join(args.i, os.pardir))
+    print(os.listdir(parent_dir))
 
     # assuming 50 models released, we don't want to plot 50 violin plots, 
     # hence only take the most recent 5 models
