@@ -108,13 +108,13 @@ copy_gt_softseg_bin(){
 }
 
 
-# Segment spinal cord using the contrast-agnostic nnUNet model
-segment_sc_nnUNet(){
+# Segment spinal cord
+segment_sc(){
   local file="$1"
   local file_gt_vert_label="$2"
   local model_basename="$3"     # 2d or 3d
   local contrast="$4"   # used only for saving output file name
-  local kernel="$5"    # 2d or 3d_fullres
+  # local kernel="$5"    # 2d or 3d_fullres
 
   FILESEG="${file%%_*}_${contrast}_seg_${model_basename}"
 
@@ -162,8 +162,8 @@ rsync -Ravzh ${PATH_DATA}/./${SUBJECT}/dwi/* .
 # ------------------------------------------------------------------------------
 # DEFINE CONTRASTS
 # ------------------------------------------------------------------------------
-# contrasts="T1w T2w T2star flip-1_mt-on_MTS flip-2_mt-off_MTS rec-average_dwi"
-contrasts="rec-average_dwi"
+contrasts="T1w T2w T2star flip-1_mt-on_MTS flip-2_mt-off_MTS rec-average_dwi"
+# contrasts="rec-average_dwi"
 
 # Loop across contrasts
 for contrast in ${contrasts}; do
@@ -230,7 +230,7 @@ for contrast in ${contrasts}; do
   # Segment SC (i.e. run inference) and compute CSA
   # model_name=$(basename ${PATH_NNUNET_MODEL})
   # CUDA_VISIBLE_DEVICES=${CUDA_DEVICE} segment_sc_nnUNet ${file} "${file}_softseg_bin" ${model_name} ${contrast} '3d_fullres'
-  segment_sc_nnUNet ${file} "${file}_softseg_bin" ${MODEL_VERSION} ${contrast} '3d_fullres'
+  segment_sc ${file} "${file}_softseg_bin" ${MODEL_VERSION} ${contrast}
 
 done
 
