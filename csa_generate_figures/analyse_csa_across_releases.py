@@ -165,13 +165,18 @@ def generate_figure_std_csa(data, file_path, across="Method", hue_order=None):
 def main(args):
 
     csvs_list = glob.glob(os.path.join(args.i, "*.csv"))
+    print(args.i)
+    print(os.listdir(args.i))
     # sort the list of CSV files
     csvs_list.sort()
+    print(csvs_list)
 
     # assuming 50 models released, we don't want to plot 50 violin plots, 
     # hence only take the most recent 5 models
     csvs_list = csvs_list[-5:]
-
+    print(csvs_list)
+    print(len(csvs_list))
+    
     models_to_compare = [os.path.basename(f).split('__')[1].strip('.csv') for f in csvs_list]
     model_versions = [model.split('_')[1] for model in models_to_compare]
 
