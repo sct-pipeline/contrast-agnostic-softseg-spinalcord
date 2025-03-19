@@ -15,7 +15,7 @@ import glob
 
 # Setting the hue order as specified
 FONTSIZE = 12
-CONTRAST_ORDER = ["DWI"] #, "MTon", "MToff", "T1w", "T2star", "T2w"]
+CONTRAST_ORDER = ["DWI", "MTon", "MToff", "T1w", "T2star", "T2w"]
 
 
 
