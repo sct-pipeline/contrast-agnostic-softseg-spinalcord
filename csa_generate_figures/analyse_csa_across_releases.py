@@ -179,7 +179,10 @@ def main(args):
     hue_order = ['softseg_bin'] + models_to_compare
     
     # merge the CSV files for each model release
-    data_avg_csa = pd.concat([pd.read_csv(f) for f in csvs_list], ignore_index=True)
+    if len(csvs_list) > 1:
+        data_avg_csa = pd.concat([pd.read_csv(f) for f in csvs_list], ignore_index=True)
+    else:
+        data_avg_csa = pd.read_csv(csvs_list[0])
 
     # Apply the function to extract participant ID
     data_avg_csa['Participant'] = data_avg_csa['Filename'].apply(fetch_participant_id)
