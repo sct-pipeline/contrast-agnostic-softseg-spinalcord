@@ -3,7 +3,7 @@ name: Download dataset
 on:
   push:
     branches:
-      - nk/add-post-training-script-to-compute-csa
+      - jn/4813-debug-sct-installer-repo-issues
   # release:
   #   types: [published]
 
