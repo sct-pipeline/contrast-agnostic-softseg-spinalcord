@@ -17,6 +17,8 @@ import glob
 FONTSIZE = 12
 CONTRAST_ORDER = ["DWI", "MTon", "MToff", "T1w", "T2star", "T2w"]
 
+# set color palette
+sns.color_palette("deep")
 
 
 def fetch_participant_id(filename_path):
