@@ -73,9 +73,6 @@ def generate_figure_csa(file_path, data, method=None):
 
     if method is not None:
 
-        # get only the v2.0 or v3.0 suffix from the method name
-        method = method.split('_')[1]
-
         # create a dataframe with only the given method and get the mean CSA for each contrast
         df = data[data['Method'] == method].groupby(['Contrast', 'Participant'])['MEAN(area)'].agg(['mean']).reset_index()
 
@@ -138,8 +135,12 @@ def generate_figure_std_csa(data, file_path, across="Method", hue_order=None):
     plt.title(f'STD of C2-C3 CSA for each {across}', fontweight='bold' ,fontsize=FONTSIZE)
 
     XTICKS = [hue_order[0].replace('softseg_bin', 'GT')] + hue_order[1:]
+    XTICKS = [XTICKS[0]] + [f"model_{version}" for version in XTICKS[1:]]
     plt.xticks(range(len(hue_order)), XTICKS, fontsize=FONTSIZE)
-    
+
+    # set upper y-axis limits
+    plt.ylim(-0.5, 8.5)
+
     # Get y-axis limits
     ymin, ymax = plt.gca().get_ylim()
 
@@ -147,17 +148,13 @@ def generate_figure_std_csa(data, file_path, across="Method", hue_order=None):
     for method in df['Method'].unique():
         mean = df[df['Method'] == method]['std'].mean()
         std = df[df['Method'] == method]['std'].std()
-        # NOTE: the way we save segmentations filename in the CSV when computing the CSA is just the 
-        # version (i.e. *seg_v2.0, *seg_v3.0) but, we save output of sct_process_segmentation is csa_c2c3__model_v2.0.csv
-        # hence, we need to add the 'model_' prefix to the method name to match the hue_order
-        mkey = f'model_{method}' if method != 'softseg_bin' else 'softseg_bin'
-        plt.text(hue_order.index(mkey), ymax-1, f'{mean:.2f} +- {std:.2f}', ha='center', va='bottom', color='k')
+        plt.text(hue_order.index(method), ymax-1, f'{mean:.2f} +- {std:.2f}', ha='center', va='bottom', color='k')
 
     # Add horizontal dashed grid
     plt.grid(axis='y', alpha=0.5, linestyle='dashed')
 
     # Save the figure in 300 DPI as a PNG file
-    save_path = os.path.join(file_path, f"std_c2c3_csa_across_releases.png")
+    save_path = os.path.join(file_path, f"std_c2c3_csa_across_versions.png")
     plt.savefig(save_path, dpi=300)
     print(f'Figure saved to {save_path}')
 
@@ -165,25 +162,19 @@ def generate_figure_std_csa(data, file_path, across="Method", hue_order=None):
 def main(args):
 
     csvs_list = glob.glob(os.path.join(args.i, "*.csv"))
-    print(args.i)
     # sort the list of CSV files
     csvs_list.sort()
-    print(f"csvs list: {csvs_list}")
-
-    parent_dir = os.path.abspath(os.path.join(args.i, os.pardir))
-    print(os.listdir(parent_dir))
 
     # assuming 50 models released, we don't want to plot 50 violin plots, 
     # hence only take the most recent 5 models
     csvs_list = csvs_list[-5:]
-    print(csvs_list)
-    print(len(csvs_list))
     
+    # of the format: csa_c2c3__model_v2.0.csv, csa_c2c3__model_v3.0.csv
     models_to_compare = [os.path.basename(f).split('__')[1].strip('.csv') for f in csvs_list]
     model_versions = [model.split('_')[1] for model in models_to_compare]
 
     # define order of the violin plots
-    hue_order = ['softseg_bin'] + models_to_compare
+    hue_order = ['softseg_bin'] + model_versions
     
     # merge the CSV files for each model release
     if len(csvs_list) > 1:
@@ -202,7 +193,7 @@ def main(args):
     generate_figure_std_csa(data_avg_csa, file_path=args.i, across="Method", hue_order=hue_order)
 
     # Generate violinplot showing absolute CSA error for each contrast for a given method/threshold
-    for method in models_to_compare:
+    for method in model_versions:
         generate_figure_csa(file_path=args.i, data=data_avg_csa, method=method)
 
 
