@@ -43,7 +43,7 @@ jobs:
       #   uses: actions/setup-python@v4
       #   with:
       #     python-version: '3.9.16'
-  
+
       # - name: Install dependencies
       #   run: |
       #     conda install -y git-annex
@@ -68,3 +68,7 @@ jobs:
 
       # - name: Run model script
       #   run: ./scripts/run_model.sh
+
+      - name: Setup tmate session
+        if: ${{ failure() }}
+        uses: mxschmitt/action-tmate@v3
