@@ -165,19 +165,11 @@ jobs:
       
       - name: Merge batch processing results
         run: |
-          ls -la
           # create a new folder to download all artifacts uploaded above
           mkdir batch_csa_results
           # move all the files there
           mv csa-results-* batch_csa_results
           
-          # # clone the repo
-          # git clone https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord.git
-          # # change current working directory
-          # cd ${PWD}/contrast-agnostic-softseg-spinalcord
-          # # checkout to the branch
-          # git checkout nk/add-post-training-script-to-compute-csa
-
           # run script to merge individual csvs
           chmod +x scripts/merge_run_batch_results.sh
           source scripts/merge_run_batch_results.sh batch_csa_results .
@@ -199,6 +191,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: download_results
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Install Python 3
         uses: actions/setup-python@v4
         with:
@@ -249,19 +244,18 @@ jobs:
             fi
           done
 
-          # # clone the repo
-          # git clone https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord.git
-          # # change current working directory
-          # cd ${PWD}/contrast-agnostic-softseg-spinalcord
-          # # checkout to the branch
-          # git checkout nk/add-post-training-script-to-compute-csa
-
-          # # move the csvs folder inside the repo
-          # cp -r ../csvs_model_releases .
+          # NOTE: CSA violin plots are generated only for those releases that contain the `csa_c2c3__model_<version>.csv`
+          # file. Not all releases have it because some of them are temporary release that don't necessarily contain a 
+          # new model, or, if there is a model, it might not be good enough. 
+          # CSA csv files exist for only those versions that are stable
 
           # run script
           chmod +x scripts/generate_morphometrics_plots.sh
           source scripts/generate_morphometrics_plots.sh csvs_model_releases
+          
+          # remove csv files from the `csvs_model_releases` folder as this is duplication
+          # (csv files are already found in the model release assets)
+          rm csvs_model_releases/*.csv
 
           # create a zip file
           zip -r morphometric_plots.zip csvs_model_releases
@@ -271,4 +265,7 @@ jobs:
         with:
           tag_name: ${{ github.event.release.tag_name }}
           files: morphometric_plots.zip
-  
+
+      - name: Setup tmate session
+        if: ${{ failure() }}
+        uses: mxschmitt/action-tmate@v3
