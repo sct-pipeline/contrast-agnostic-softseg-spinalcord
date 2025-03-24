@@ -40,8 +40,8 @@ jobs:
       - name: Cache dataset
         uses: actions/cache@v4
         with:
-          path: contrast-agnostic-softseg-spinalcord/data-multi-subject
-          key: ${{ runner.os }}-data-multi-subject-${{ hashFiles('contrast-agnostic-softseg-spinalcord/scripts/download_spine_generic_test_data.sh') }}
+          path: data-multi-subject  # NOTE: do not change the name of the folder `data-multi-subject`
+          key: ${{ runner.os }}-data-multi-subject-${{ hashFiles('scripts/download_spine_generic_test_data.sh') }}
           restore-keys: |
             ${{ runner.os }}-data-multi-subject-
 
@@ -104,14 +104,14 @@ jobs:
           cat ~/.bashrc | grep "export PATH" | grep -o "/.*" | cut -d ':' -f 1 >> $GITHUB_PATH
           # checkout to my branch
           git checkout nk/revert-monai-model-to-320
-          ls -la
-          # enter the repository again
-          cd ${PWD}/contrast-agnostic-softseg-spinalcord
+          # enter the contrast-agnostic repository again
+          cd ../contrast-agnostic-softseg-spinalcord
+
       - name: Restore cached dataset
         uses: actions/cache@v4
         with:
-          path: contrast-agnostic-softseg-spinalcord/data-multi-subject
-          key: ${{ runner.os }}-data-multi-subject-${{ hashFiles('contrast-agnostic-softseg-spinalcord/scripts/download_spine_generic_test_data.sh') }}
+          path: data-multi-subject
+          key: ${{ runner.os }}-data-multi-subject-${{ hashFiles('scripts/download_spine_generic_test_data.sh') }}
           restore-keys: |
             ${{ runner.os }}-data-multi-subject-
 
@@ -152,6 +152,10 @@ jobs:
         with:
           name: csa-results-batch-${{ matrix.batch }}
           path: contrast-agnostic-softseg-spinalcord/logs_results
+
+      - name: Setup tmate session
+        if: ${{ failure() }}
+        uses: mxschmitt/action-tmate@v3
 
   download_results:
     runs-on: ubuntu-latest
