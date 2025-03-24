@@ -1,7 +1,6 @@
 name: Run Morphometric Analysis
 
 on:
-  push:
   release:
     types: [published]
 
@@ -28,11 +27,6 @@ jobs:
 
       - name: Download test data
         run: |
-            # git clone https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord.git
-            # # change current working directory
-            # cd ${PWD}/contrast-agnostic-softseg-spinalcord
-            # # checkout to the branch
-            # git checkout nk/add-post-training-script-to-compute-csa
             # run script
             chmod +x scripts/download_spine_generic_test_data.sh
             source scripts/download_spine_generic_test_data.sh
@@ -97,14 +91,17 @@ jobs:
       - name: Install SCT
         run: |
           cd ..  # avoid long path name by not installing in repo subfolder
+          # for more info about why `cd ..`, refer to
+          # https://github.com/spinalcordtoolbox/spinalcordtoolbox/issues/4813#issuecomment-2741165452
+          
+          # clone and install SCT
           git clone https://github.com/spinalcordtoolbox/spinalcordtoolbox.git
           cd spinalcordtoolbox
           ./.ci.sh -i
           cat ~/.bashrc | grep "export SCT_DIR" | cut -d " " -f 2 >> $GITHUB_ENV
           cat ~/.bashrc | grep "export PATH" | grep -o "/.*" | cut -d ':' -f 1 >> $GITHUB_PATH
-          # checkout to my branch
-          git checkout nk/revert-monai-model-to-320
-          # enter the contrast-agnostic repository again
+          
+          # re-enter the contrast-agnostic repository
           cd $GITHUB_WORKSPACE
 
       - name: Restore cached dataset
@@ -118,17 +115,6 @@ jobs:
       - name: Run morphometric analysis
         shell: bash -el {0}  # Ensures the Conda environment is properly loaded
         run: |
-          # mv contrast-agnostic-softseg-spinalcord csa-analysis
-          # # clone the repo
-          # git clone https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord.git
-          # # change current working directory
-          # cd ${PWD}/contrast-agnostic-softseg-spinalcord
-          # # checkout to the branch
-          # git checkout nk/add-post-training-script-to-compute-csa
-
-          # # move dataset inside the repo
-          # cp -r ../csa-analysis .
-          
           # Get the release details from the GitHub event
           RELEASE_ID=${{ github.event.release.id }}
           REPOSITORY="${{ github.repository }}"
@@ -203,7 +189,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event.release.tag_name }}
-          files: contrast-agnostic-softseg-spinalcord/csa_c2c3__model_${{ github.event.release.tag_name }}.csv
+          files: csa_c2c3__model_${{ github.event.release.tag_name }}.csv
 
       - name: Setup tmate session
         if: ${{ failure() }}
@@ -263,15 +249,15 @@ jobs:
             fi
           done
 
-          # clone the repo
-          git clone https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord.git
-          # change current working directory
-          cd ${PWD}/contrast-agnostic-softseg-spinalcord
-          # checkout to the branch
-          git checkout nk/add-post-training-script-to-compute-csa
+          # # clone the repo
+          # git clone https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord.git
+          # # change current working directory
+          # cd ${PWD}/contrast-agnostic-softseg-spinalcord
+          # # checkout to the branch
+          # git checkout nk/add-post-training-script-to-compute-csa
 
-          # move the csvs folder inside the repo
-          cp -r ../csvs_model_releases .
+          # # move the csvs folder inside the repo
+          # cp -r ../csvs_model_releases .
 
           # run script
           chmod +x scripts/generate_morphometrics_plots.sh
@@ -284,5 +270,5 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event.release.tag_name }}
-          files: contrast-agnostic-softseg-spinalcord/morphometric_plots.zip
+          files: morphometric_plots.zip
   
