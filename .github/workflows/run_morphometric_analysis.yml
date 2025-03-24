@@ -28,9 +28,10 @@ jobs:
 
       - name: Download test data
         run: |
+            ls -la
             # git clone https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord.git
-            # # change current working directory
-            # cd ${PWD}/contrast-agnostic-softseg-spinalcord
+            # change current working directory
+            cd ${PWD}/contrast-agnostic-softseg-spinalcord
             # checkout to the branch
             git checkout nk/add-post-training-script-to-compute-csa
             # run script
