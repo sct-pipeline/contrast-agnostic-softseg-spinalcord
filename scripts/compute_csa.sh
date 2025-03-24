@@ -123,7 +123,7 @@ segment_sc(){
   # # Run SC segmentation
   # python ${PATH_NNUNET_SCRIPT} -i ${file}.nii.gz -o ${FILESEG}.nii.gz -path-model ${PATH_NNUNET_MODEL}/nnUNetTrainer__nnUNetPlans__${kernel} -pred-type sc -use-gpu -use-best-checkpoint
   # Run SC segmentation (natively with sct_deepseg)
-  sct_deepseg -task seg_sc_contrast_agnostic -i ${file}.nii.gz -o ${FILESEG}.nii.gz -qc ${PATH_QC} -qc-subject ${SUBJECT}
+  sct_deepseg spinalcord -i ${file}.nii.gz -o ${FILESEG}.nii.gz -qc ${PATH_QC} -qc-subject ${SUBJECT}
   # Get the end time
   end_time=$(date +%s)
   # Calculate the time difference
