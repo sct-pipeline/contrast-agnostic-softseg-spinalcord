@@ -28,9 +28,9 @@ jobs:
 
       - name: Download test data
         run: |
-            git clone https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord.git
-            # change current working directory
-            cd ${PWD}/contrast-agnostic-softseg-spinalcord
+            # git clone https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord.git
+            # # change current working directory
+            # cd ${PWD}/contrast-agnostic-softseg-spinalcord
             # checkout to the branch
             git checkout nk/add-post-training-script-to-compute-csa
             # run script
@@ -96,6 +96,7 @@ jobs:
 
       - name: Install SCT
         run: |
+          cd ..  # avoid long path name by not installing in repo subfolder
           git clone https://github.com/spinalcordtoolbox/spinalcordtoolbox.git
           cd spinalcordtoolbox
           ./.ci.sh -i
@@ -103,7 +104,9 @@ jobs:
           cat ~/.bashrc | grep "export PATH" | grep -o "/.*" | cut -d ':' -f 1 >> $GITHUB_PATH
           # checkout to my branch
           git checkout nk/revert-monai-model-to-320
-
+          ls -la
+          # enter the repository again
+          cd ${PWD}/contrast-agnostic-softseg-spinalcord
       - name: Restore cached dataset
         uses: actions/cache@v4
         with:
@@ -115,16 +118,17 @@ jobs:
       - name: Run morphometric analysis
         shell: bash -el {0}  # Ensures the Conda environment is properly loaded
         run: |
-          mv contrast-agnostic-softseg-spinalcord csa-analysis
-          # clone the repo
-          git clone https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord.git
-          # change current working directory
-          cd ${PWD}/contrast-agnostic-softseg-spinalcord
-          # checkout to the branch
-          git checkout nk/add-post-training-script-to-compute-csa
+          ls -la
+          # mv contrast-agnostic-softseg-spinalcord csa-analysis
+          # # clone the repo
+          # git clone https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord.git
+          # # change current working directory
+          # cd ${PWD}/contrast-agnostic-softseg-spinalcord
+          # # checkout to the branch
+          # git checkout nk/add-post-training-script-to-compute-csa
 
-          # move dataset inside the repo
-          cp -r ../csa-analysis .
+          # # move dataset inside the repo
+          # cp -r ../csa-analysis .
           
           # Get the release details from the GitHub event
           RELEASE_ID=${{ github.event.release.id }}
@@ -154,6 +158,9 @@ jobs:
     needs: compute_csa
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Install Python 3
         uses: actions/setup-python@v4
         with:
@@ -169,15 +176,16 @@ jobs:
       
       - name: Merge batch processing results
         run: |
+          ls -la
           # create a new folder to download all artifacts uploaded above
           mkdir batch_csa_results
           # move all the files there
           mv csa-results-* batch_csa_results
           
-          # clone the repo
-          git clone https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord.git
-          # change current working directory
-          cd ${PWD}/contrast-agnostic-softseg-spinalcord
+          # # clone the repo
+          # git clone https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord.git
+          # # change current working directory
+          # cd ${PWD}/contrast-agnostic-softseg-spinalcord
           # checkout to the branch
           git checkout nk/add-post-training-script-to-compute-csa
 
