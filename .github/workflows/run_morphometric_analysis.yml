@@ -105,7 +105,7 @@ jobs:
           # checkout to my branch
           git checkout nk/revert-monai-model-to-320
           # enter the contrast-agnostic repository again
-          cd ../contrast-agnostic-softseg-spinalcord
+          cd $GITHUB_WORKSPACE
 
       - name: Restore cached dataset
         uses: actions/cache@v4
@@ -118,7 +118,6 @@ jobs:
       - name: Run morphometric analysis
         shell: bash -el {0}  # Ensures the Conda environment is properly loaded
         run: |
-          ls -la
           # mv contrast-agnostic-softseg-spinalcord csa-analysis
           # # clone the repo
           # git clone https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord.git
@@ -151,7 +150,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: csa-results-batch-${{ matrix.batch }}
-          path: contrast-agnostic-softseg-spinalcord/logs_results
+          path: logs_results
 
       - name: Setup tmate session
         if: ${{ failure() }}
@@ -190,12 +189,12 @@ jobs:
           # git clone https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord.git
           # # change current working directory
           # cd ${PWD}/contrast-agnostic-softseg-spinalcord
-          # checkout to the branch
-          git checkout nk/add-post-training-script-to-compute-csa
+          # # checkout to the branch
+          # git checkout nk/add-post-training-script-to-compute-csa
 
           # run script to merge individual csvs
           chmod +x scripts/merge_run_batch_results.sh
-          source scripts/merge_run_batch_results.sh ../batch_csa_results .
+          source scripts/merge_run_batch_results.sh batch_csa_results .
 
           # rename the csv file to contain the model version
           mv csa_c2c3_merged.csv csa_c2c3__model_${{ github.event.release.tag_name }}.csv
@@ -205,6 +204,10 @@ jobs:
         with:
           tag_name: ${{ github.event.release.tag_name }}
           files: contrast-agnostic-softseg-spinalcord/csa_c2c3__model_${{ github.event.release.tag_name }}.csv
+
+      - name: Setup tmate session
+        if: ${{ failure() }}
+        uses: mxschmitt/action-tmate@v3
 
   generate_plots: 
     runs-on: ubuntu-latest
