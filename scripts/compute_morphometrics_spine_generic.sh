@@ -48,7 +48,7 @@ echo "=============================="
 echo "Downloading model from URL ${MODEL_URL} ..."
 echo "=============================="
 
-sct_deepseg -install spinalcord -custom-url ${MODEL_URL}
+sct_deepseg spinalcord -install -custom-url ${MODEL_URL}
 
 echo "Model download complete."
 
