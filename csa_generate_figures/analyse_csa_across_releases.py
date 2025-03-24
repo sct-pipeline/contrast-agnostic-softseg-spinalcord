@@ -164,8 +164,7 @@ def main(args):
     # sort the list of CSV files
     csvs_list.sort()
 
-    # assuming 50 models released, we don't want to plot 50 violin plots, 
-    # hence only take the most recent 5 models
+    # only take the most recent 5 models for comparison (irrespective of how many are released)
     csvs_list = csvs_list[-5:]
     
     # of the format: csa_c2c3__model_v2.0.csv, csa_c2c3__model_v3.0.csv
