@@ -83,7 +83,7 @@ def generate_figure_csa(file_path, data, method=None):
         
     # plot the abs error for each contrast in a violinplot
     plt.figure(figsize=(12, 6))
-    sns.violinplot(x='Contrast', y='mean', data=df, order=CONTRAST_ORDER, palette="Set2")
+    sns.violinplot(x='Contrast', y='mean', data=df, order=CONTRAST_ORDER, hue='Contrast', legend=False)
     # overlay swarm plot on the violin plot to show individual data points
     sns.swarmplot(x='Contrast', y='mean', data=df, color='k', order=CONTRAST_ORDER, size=3)
     plt.xlabel(None)
@@ -122,7 +122,7 @@ def generate_figure_std_csa(data, file_path, across="Method", hue_order=None):
     df = data.groupby([across, 'Participant'])['MEAN(area)'].agg(['mean', 'std']).reset_index()
 
     plt.figure(figsize=(12, 6))
-    sns.violinplot(x=across, y='std', data=df, order=hue_order, palette="Set2")
+    sns.violinplot(x=across, y='std', data=df, order=hue_order, hue=across, legend=False)
     # overlay swarm plot on the violin plot to show individual data points
     sns.swarmplot(x=across, y='std', data=df, color='k', order=hue_order, size=3)
 
