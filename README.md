@@ -41,11 +41,13 @@ note = {Shared authorship -- authors contributed equally}
 * Our paper on proposing a contrast-agnostic soft segmentation of the spinal cord was accepted at Medical Image Analysis! 🎉. Please find the official version of the paper [here](https://www.sciencedirect.com/science/article/pii/S1361841525000210).
 
 
+TODO: add lifelong learning figure
+
 
 ## Table of contents
 * [1. Using contrast agnostic model with SCT](#1-using-contrast-agnostic-model-with-sct)
 * [2. Retraining the contrast-agnostic model ](#2-retraining-the-contrast-agnostic-model)
-* [3. Transfer learning from contrast-agnostic model](#3-transfer-learning-from-contrast-agnostic-model)
+* [3. Lifelong learning for monitoring morphometric drift](#3-lifelong-learning-for-monitoring-morphometric-drift)
 
 <!-- * [5. Computing morphometric measures (CSA)](#5-computing-morphometric-measures-csa)
     * [5.1. Using contrast-agnostic model (best)](#51-using-contrast-agnostic-model-best)
@@ -68,7 +70,7 @@ note = {Shared authorship -- authors contributed equally}
 If at the time of installed, SCT v7.0 is not available, download the previous stable version and pull the master branch to get the latest version of the contrast-agnostic model. Once the dependencies are installed, download the latest contrast-agnostic model:
 
 ```bash
-sct_deepseg -install-task seg_sc_contrast_agnostic
+sct_deepseg spinalcord -install
 ```
 
 ### Getting the spinal cord segmentation
@@ -76,13 +78,13 @@ sct_deepseg -install-task seg_sc_contrast_agnostic
 To segment a single image, run the following command: 
 
 ```bash
-sct_deepseg -task seg_sc_lesion_t2w_sci -i <path-to-image>.nii.gz -o <path-to-output-file>.nii.gz 
+sct_deepseg spinalcord -i <path-to-image>.nii.gz -o <path-to-output-file>.nii.gz 
 ```
 
 To segment a single image AND generate a QC report for the image, run the following command: 
 
 ```bash
-sct_deepseg -task seg_sc_lesion_t2w_sci -i <path-to-image>.nii.gz -o <path-to-output-file>.nii.gz -qc qc -qc-subject <name-of-subject>
+sct_deepseg spinalcord -i <path-to-image>.nii.gz -o <path-to-output-file>.nii.gz -qc qc -qc-subject <name-of-subject>
 ```
 
 More information on input arguments and their usage can be found [here](https://spinalcordtoolbox.com/stable/user_section/command-line/deepseg/seg_sc_contrast_agnostic.html).
@@ -120,10 +122,10 @@ pip install -r requirements.txt
 
 ### Step 2: Training the model
 
-The script `train_contrast_agnostic.sh` is a do-it-all script that downloads the datasets from git-annex, creates datalists, converts them into nnUNet-specific format, and trains the model. More instructions about what variables to set and which datasets to use can be found in the script itself. Once these variables are set, the script can be run simply as follows:
+The script `scripts/train_contrast_agnostic.sh` is a do-it-all script that downloads the datasets from git-annex, creates datalists, converts them into nnUNet-specific format, and trains the model. More instructions about what variables to set and which datasets to use can be found in the script itself. Once these variables are set, the script can be run simply as follows:
 
 ```bash
-bash train_contrast_agnostic.sh
+bash scripts/train_contrast_agnostic.sh
 ```
 <!-- 
 TODO: move to csa_qc_evaluation folder
@@ -173,76 +175,31 @@ python analyse_csa_all_models.py -i-folder ~/duke/projects/ivadomed/contrast-agn
 The plots will be saved to the parent directory with the name `charts_<datetime.now())>` -->
 
 
-## 3. Transfer learning from contrast-agnostic model (WIP: to be updated)
+## 3. Lifelong learning for monitoring morphometric drift
 
-This section provides instructions on how to train nnUNet models with pre-trained weights of the contrast-agnostic model. Ideal use cases include using the 
-pretrained weights for training/finetuning on any spinal-cord-related segmentation task (e.g. lesions, rootlets, etc.). 
+This section provides some notes on the lifelong/continuous learning framework for automatically monitoring morphometric drift between various versions of segmentation models. Once a new segmentation model is developed and released, a GitHub actions (GHA) workflow is triggered which automatically computes the spinal cord CSA between current (new) version of the model and previously released models. 
 
-### Step 1: Download the pretrained weights
+For a fair comparison, we evalute various model versions on the frozen test set of the spine-generic `data-multi-subject` (public) dataset. The test split can be found in `scripts/spine_generic_test_split_for_csa_drift_monitoring.yaml` file. 
 
-Download the pretrained weights from the [latest release](https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord/releases) of the 
-contrast-agnostic model. This refers to the `.zip` file of the format `model_contrast_agnostic_<date>_nnunet_compatible.zip`. 
+### Step 1: Creating a new release
 
-> [!WARNING]  
-> Only download the model with the `nnunet_compatible` suffix. If a release does not have this suffix, then that model weights are not directly 
-compatible with nnUNet.
+Here are the steps involved in the workflow:
 
+* After training a new segmentation model, create a release with the following naming convention: 
+    * **Tag name**: `vX.Y` (e.g. `v2.0`, `v3.0`, etc.), where `X` is the major update (i.e. architectural/training-strategy change) and `Y` is the minor update (addition of new contrasts and/or pathologies).
+    * **Release title**: `contrast-agnostic-spinal-cord-segmentation vX.Y` (note, the title can be anything, GHA workflow does not depend on it).
+    * **Release description**: A drop-down summary of the dataset characteristics. The details of the datasets used during training is automatically generated from the `nnUnet/utils.py` script.
+    * **Release assets**: The model weights and the training logs (if needed) are attached to the release. The entire output folder of the nnUnet model containing the folds, should be uploaded. The naming convention for the `.zip` file should be `model_contrast_agnostic_<date-the-model-was-trained-on>.zip`. 
+    * Once the above steps are completed, publish the release.
 
-### Step 2: Create a new plans file
+### Step 2: The GHA workflow
 
-1. After running `nnUNetv2_plan_and_preprocess` (and before running `nnUNetv2_predict`), create a copy of the original `nnUNetPlans.json` file (found under `$nnUNet_preprocessed/<dataset_name_or_id>`) and  rename it to `nnUNetPlans_contrast_agnostic.json`. 
-2. In the `nnUNetPlans_contrast_agnostic.json`, modify the values of the following keys in the `3d_fullres` dict to be able to match the 
-values used for the contrast-agnostic model:
+* Once published, the release triggers a GHA workflow. The workflow is a `.yml` file located in the `.github/workflows` folder. For a high-level overview, it is divided into the following steps:
+    * **Job 1**: Clones the dataset via git-annex and only downloads subjects in the test split. The dataset is cached for future use.
+    * **Job 2**: The test set of *(n=49)* is split into batches of 3 subjects for parallel processing. The model is downloaded from the release and each job (or, a runner) is responsible for computing the C2-C3 CSA for all the 6 contrasts. 
+    * **Job 3**: The output `.csv` files are aggregated across batches and merged into a single CSV file. The file is saved with the following naming convention `csa_c2c3__model_<tag-name>.csv` (note that the tag name defined in Step 1 is being used here) and uploaded to the release.
+    * **Job 4**: All `csa_c2c3__model_<tag-name>.csv` files corresponding to current and previous releases are downloaded. Then, violin plots comparing the CSA per contrast (for each model) and the STD of CSA across contrasts are generated. The plots are saved in the `morphometric_plots.zip` folder and uploaded to the existing release.
 
-```json
-
-"patch_size": [64, 192, 320],
-"n_stages": 6,
-"features_per_stage": [32, 64, 128, 256, 320, 320],
-"n_conv_per_stage": [2, 2, 2, 2, 2, 2],
-"n_conv_per_stage_decoder": [2, 2, 2, 2, 2],
-"strides": [
-    [1, 1, 1],
-    [2, 2, 2],
-    [2, 2, 2],
-    [2, 2, 2],
-    [2, 2, 2],
-    [1, 2, 2]
-    ],
-"kernel_sizes":[
-    [3, 3, 3],
-    [3, 3, 3],
-    [3, 3, 3],
-    [3, 3, 3],
-    [3, 3, 3],
-    [3, 3, 3]
-    ],
-
-```
-
-> [!IMPORTANT]  
-> * Note that the patch size does not have to be `[64, 192, 320]`. Any patch size can be used as long as the RL dimension is divisible by 16, AP and SI dimensions are divisible by 32. Examples of other patch sizes: `[16, 32, 32]`, `[32, 64, 96]`, `[64, 128, 64]`, `[64, 160, 192]`, `[64, 192, 256]` etc. For possibly best results, use the patch sizes that are close to original patch size in `nnUNetPlans.json`.
-
-### Step 3: Train/Finetune the nnUNet model on your task
-
-Provide the path to the downloaded pretrained weights:
-
-```bash
-
-nnUNetv2_train <dataset_name_or_id> <configuration> <fold> -p nnUNetPlans_contrast_agnostic -pretrained_weights <path_to_pretrained_weights> -tr <nnUNetTrainer_Xepochs>
-
-```
-
-> [!IMPORTANT]  
-> * Training/finetuning with contrast-agnostic weights only works when for 3D nnUNet models. 
-> * Ensure that all images are in the RPI orientation before running `nnUNetv2_plan_and_preprocess`. This is because the updated 
-`patch_size` refers to patches in RPI orientation (if images are in different orientation, then the patch size might be sub-optimal).
-> * Ensure that `X` in `nnUNetTrainer_Xepochs` is set to a lower value than 1000. The idea is the finetuning does not require as 
-many epochs as training from scratch because the contrast-agnostic model has already been trained on a lot of spinal cord images 
-(so it might not require 1000 epochs to converge).
-> * The modified `nnUNetPlans_contrast_agnostic.json` might not have the same values for parameters such as `patch_size`, `strides`, 
-`n_stages`, etc. automatically set by nnUNet. As a result, the original (train-from-scratch) model might even perform better. 
-In such cases, training/finetuning with contrast-agnostic weights should just be considered as another baseline for your actual task.
-
+In summary, once a new model is released, the GitHub actions workflow automatically generates the plots for monitoring the morphometric drift between various versions of the segmentation model.
 
 
