@@ -120,8 +120,6 @@ segment_sc(){
 
   # Get the start time
   start_time=$(date +%s)
-  # # Run SC segmentation
-  # python ${PATH_NNUNET_SCRIPT} -i ${file}.nii.gz -o ${FILESEG}.nii.gz -path-model ${PATH_NNUNET_MODEL}/nnUNetTrainer__nnUNetPlans__${kernel} -pred-type sc -use-gpu -use-best-checkpoint
   # Run SC segmentation (natively with sct_deepseg)
   sct_deepseg spinalcord -i ${file}.nii.gz -o ${FILESEG}.nii.gz -qc ${PATH_QC} -qc-subject ${SUBJECT}
   # Get the end time
@@ -129,9 +127,6 @@ segment_sc(){
   # Calculate the time difference
   execution_time=$(python3 -c "print($end_time - $start_time)")
   echo "${FILESEG},${execution_time}" >> ${PATH_RESULTS}/execution_time.csv
-
-  # # Generate QC report
-  # sct_qc -i ${file}.nii.gz -s ${FILESEG}.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
 
   # Compute CSA averaged across all slices C2-C3 vertebral levels for plotting the STD across contrasts
   # NOTE: this is per-level because not all contrasts have thes same FoV (C2-C3 is what all contrasts have in common)
@@ -199,9 +194,6 @@ for contrast in ${contrasts}; do
   # ------------------------------------------------------------------------------
   # COMPUTE CSA OF GT MASKS
   # ------------------------------------------------------------------------------
-  # # Copy GT spinal cord segmentation
-  # copy_gt_seg "${file}" "${type}"
-
   # Copy soft GT spinal cord segmentation
   copy_gt_softseg_bin "${file}" "${type}"
 
@@ -228,8 +220,6 @@ for contrast in ${contrasts}; do
   # COMPUTE CSA OF AUTOMATIC PREDICTIONS
   # ------------------------------------------------------------------------------
   # Segment SC (i.e. run inference) and compute CSA
-  # model_name=$(basename ${PATH_NNUNET_MODEL})
-  # CUDA_VISIBLE_DEVICES=${CUDA_DEVICE} segment_sc_nnUNet ${file} "${file}_softseg_bin" ${model_name} ${contrast} '3d_fullres'
   segment_sc ${file} "${file}_softseg_bin" ${MODEL_VERSION} ${contrast}
 
 done
