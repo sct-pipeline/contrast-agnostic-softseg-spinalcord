@@ -1,0 +1,271 @@
+name: Run Morphometric Analysis
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  download_dataset:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Python 3
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.9.16
+
+      - name: Install git-annex
+        uses: jstritch/setup-git-annex@v1
+          
+      - name: Configure git
+        run: |
+            git config --global user.email "actions@github.com"
+            git config --global user.name "GitHub Actions"
+
+      - name: Download test data
+        run: |
+            # run script
+            chmod +x scripts/download_spine_generic_test_data.sh
+            source scripts/download_spine_generic_test_data.sh
+
+      - name: Cache dataset
+        uses: actions/cache@v4
+        with:
+          path: data-multi-subject  # NOTE: do not change the name of the folder `data-multi-subject`
+          key: ${{ runner.os }}-data-multi-subject-${{ hashFiles('scripts/download_spine_generic_test_data.sh') }}
+          restore-keys: |
+            ${{ runner.os }}-data-multi-subject-
+
+  compute_csa:
+    runs-on: ubuntu-latest
+    needs: download_dataset
+    strategy:
+      matrix:
+        batch: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+        include:
+          - batch: 1
+            subjects: "sub-barcelona06 sub-beijingPrisma01 sub-beijingPrisma02"
+          - batch: 2
+            subjects: "sub-brnoCeitec04 sub-brnoUhb01 sub-cardiff03"
+          - batch: 3
+            subjects: "sub-cmrra02 sub-cmrra05 sub-cmrrb01"
+          - batch: 4
+            subjects: "sub-cmrrb03 sub-cmrrb05 sub-fslAchieva04"
+          - batch: 5
+            subjects: "sub-fslPrisma01 sub-fslPrisma02 sub-fslPrisma04"
+          - batch: 6
+            subjects: "sub-fslPrisma05 sub-geneva03 sub-juntendo750w01"
+          - batch: 7
+            subjects: "sub-juntendo750w02 sub-juntendo750w03 sub-juntendo750w06"
+          - batch: 8
+            subjects: "sub-milan03 sub-mniS03 sub-mountSinai01"
+          - batch: 9
+            subjects: "sub-nottwil01 sub-nottwil04 sub-nwu01"
+          - batch: 10
+            subjects: "sub-oxfordFmrib06 sub-oxfordFmrib09 sub-oxfordFmrib10"
+          - batch: 11
+            subjects: "sub-oxfordOhba01 sub-oxfordOhba05 sub-pavia02"
+          - batch: 12
+            subjects: "sub-pavia05 sub-queensland01 sub-sherbrooke02"
+          - batch: 13
+            subjects: "sub-sherbrooke05 sub-sherbrooke06 sub-stanford04"
+          - batch: 14
+            subjects: "sub-strasbourg04 sub-tehranS03 sub-tokyoIngenia05"
+          - batch: 15
+            subjects: "sub-ubc06 sub-ucl02 sub-unf04"
+          - batch: 16
+            subjects: "sub-vuiisAchieva04 sub-vuiisIngenia03 sub-vuiisIngenia04 sub-vuiisIngenia05"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Python 3
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.9.16
+
+      - name: Install SCT
+        run: |
+          cd ..  # avoid long path name by not installing in repo subfolder
+          # for more info about why `cd ..`, refer to
+          # https://github.com/spinalcordtoolbox/spinalcordtoolbox/issues/4813#issuecomment-2741165452
+          
+          # clone and install SCT
+          git clone https://github.com/spinalcordtoolbox/spinalcordtoolbox.git
+          cd spinalcordtoolbox
+          ./.ci.sh -i
+          cat ~/.bashrc | grep "export SCT_DIR" | cut -d " " -f 2 >> $GITHUB_ENV
+          cat ~/.bashrc | grep "export PATH" | grep -o "/.*" | cut -d ':' -f 1 >> $GITHUB_PATH
+          
+          # re-enter the contrast-agnostic repository
+          cd $GITHUB_WORKSPACE
+
+      - name: Restore cached dataset
+        uses: actions/cache@v4
+        with:
+          path: data-multi-subject
+          key: ${{ runner.os }}-data-multi-subject-${{ hashFiles('scripts/download_spine_generic_test_data.sh') }}
+          restore-keys: |
+            ${{ runner.os }}-data-multi-subject-
+
+      - name: Run morphometric analysis
+        shell: bash -el {0}  # Ensures the Conda environment is properly loaded
+        run: |
+          # Get the release details from the GitHub event
+          RELEASE_ID=${{ github.event.release.id }}
+          REPOSITORY="${{ github.repository }}"
+          
+          # List all assets for this release
+          ASSETS_URL="https://api.github.com/repos/$REPOSITORY/releases/$RELEASE_ID/assets"
+          ASSETS=$(curl -s -H "Authorization: token ${{ github.token }}" -H "Content-Encoding: gzip" $ASSETS_URL)
+          echo $ASSETS
+                    
+          # Find the model asset - fix: improve regex pattern matching
+          MODEL_URL=$(echo "$ASSETS" | jq -r '.[] | select(.name | contains("model") and endswith(".zip")) | .browser_download_url')
+          echo "Model URL: $MODEL_URL"
+
+          # run script
+          chmod +x scripts/compute_morphometrics_spine_generic.sh
+          source scripts/compute_morphometrics_spine_generic.sh "${{ matrix.subjects }}" "$MODEL_URL"
+
+      - name: Upload batch processing results
+        uses: actions/upload-artifact@v4
+        with:
+          name: csa-results-batch-${{ matrix.batch }}
+          path: logs_results
+
+      - name: Setup tmate session
+        if: ${{ failure() }}
+        uses: mxschmitt/action-tmate@v3
+
+  download_results:
+    runs-on: ubuntu-latest
+    needs: compute_csa
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Python 3
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.9.16
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas argparse
+      
+      - name: Download batch processing results
+        uses: actions/download-artifact@v4
+      
+      - name: Merge batch processing results
+        run: |
+          # create a new folder to download all artifacts uploaded above
+          mkdir batch_csa_results
+          # move all the files there
+          mv csa-results-* batch_csa_results
+          
+          # run script to merge individual csvs
+          chmod +x scripts/merge_run_batch_results.sh
+          source scripts/merge_run_batch_results.sh batch_csa_results .
+
+          # rename the csv file to contain the model version
+          mv csa_c2c3_merged.csv csa_c2c3__model_${{ github.event.release.tag_name }}.csv
+
+      - name: Upload merged CSV to current release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.release.tag_name }}
+          files: csa_c2c3__model_${{ github.event.release.tag_name }}.csv
+
+      - name: Setup tmate session
+        if: ${{ failure() }}
+        uses: mxschmitt/action-tmate@v3
+
+  generate_plots: 
+    runs-on: ubuntu-latest
+    needs: download_results
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Python 3
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.9.16
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas argparse seaborn matplotlib
+
+      - name: Generate morphometrics plots
+        shell: bash -el {0}
+        run: |
+          # create new folder to store downloaded CSV files
+          mkdir -p csvs_model_releases
+          
+          # list all releases
+          REPOSITORY="${{ github.repository }}"
+          RELEASES_URL="https://api.github.com/repos/$REPOSITORY/releases"
+          RELEASES=$(curl -s -H "Authorization: token ${{ github.token }}" $RELEASES_URL)
+          # echo "$RELEASES"  # Added quotes
+
+          # loop through each release and find CSV assets
+          echo "$RELEASES" | jq -c '.[]' | while read -r release; do
+            RELEASE_ID=$(echo "$release" | jq -r '.id')
+            RELEASE_TAG=$(echo "$release" | jq -r '.tag_name')  # Get tag from the current release
+
+            # list all assets for this release
+            ASSETS_URL="https://api.github.com/repos/$REPOSITORY/releases/$RELEASE_ID/assets"
+            ASSETS=$(curl -s -H "Authorization: token ${{ github.token }}" -H "Content-Encoding: gzip" $ASSETS_URL)
+            # echo "$ASSETS"  # Added quotes
+            
+            # find CSV files
+            CSV_URLS=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith(".csv")) | .browser_download_url')
+            
+            if [ -n "$CSV_URLS" ]; then
+              echo "Found CSV file(s) for release $RELEASE_TAG:"
+              
+              # download the CSV files into the folder
+              echo "$CSV_URLS" | while read -r url; do
+                if [ -n "$url" ]; then
+                  echo "Downloading $url"
+                  curl -L -H "Authorization: token ${{ github.token }}" -o "csvs_model_releases/$(basename "$url")" "$url"
+                fi
+              done
+            else
+              echo "No CSV files found for release $RELEASE_TAG"
+            fi
+          done
+
+          # NOTE: CSA violin plots are generated only for those releases that contain the `csa_c2c3__model_<version>.csv`
+          # file. Not all releases have it because some of them are temporary release that don't necessarily contain a 
+          # new model, or, if there is a model, it might not be good enough. 
+          # CSA csv files exist for only those versions that are stable
+
+          # run script
+          chmod +x scripts/generate_morphometrics_plots.sh
+          source scripts/generate_morphometrics_plots.sh csvs_model_releases
+          
+          # remove csv files from the `csvs_model_releases` folder as this is duplication
+          # (csv files are already found in the model release assets)
+          rm csvs_model_releases/*.csv
+
+          # create a zip file
+          zip -r morphometric_plots.zip csvs_model_releases
+
+      - name: Upload plots to the current release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.release.tag_name }}
+          files: morphometric_plots.zip
+
+      - name: Setup tmate session
+        if: ${{ failure() }}
+        uses: mxschmitt/action-tmate@v3
