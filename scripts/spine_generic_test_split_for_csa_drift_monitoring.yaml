@@ -1,0 +1,68 @@
+# This file contains the frozen test split for the spine-generic `data-multi-subject` dataset on which the 
+# morphometric variability (CSA) was computed on using while developing the contrast-agnostic model. 
+# To monitor the drift in the CSA variability as the model evolves, we freeze the test split and use it to
+# evaluate the model at different stages of its evolution (i.e. when new datasets and pathologies are added).
+# 
+# How this split was obtained:
+# ```python
+# from sklearn.model_selection import train_test_split
+# import numpy as np
+#
+# np.random.seed(seed=50)
+# test_ratio = 0.2
+# train_subjects, test_subjects = train_test_split(all_subjects, test_size=test_ratio)
+# ```
+# 
+# NOTE: `all_subjects` is a list of all the subjects in the spine-generic dataset
+# https://github.com/spine-generic/data-multi-subject
+
+test:
+- sub-barcelona06
+- sub-beijingPrisma01
+- sub-beijingPrisma02
+- sub-brnoCeitec04
+- sub-brnoUhb01
+- sub-cardiff03
+- sub-cmrra02
+- sub-cmrra05
+- sub-cmrrb01
+- sub-cmrrb03
+- sub-cmrrb05
+- sub-fslAchieva04
+- sub-fslPrisma01
+- sub-fslPrisma02
+- sub-fslPrisma04
+- sub-fslPrisma05
+- sub-geneva03
+- sub-juntendo750w01
+- sub-juntendo750w02
+- sub-juntendo750w03
+- sub-juntendo750w06
+- sub-milan03
+- sub-mniS03
+- sub-mountSinai01
+- sub-nottwil01
+- sub-nottwil04
+- sub-nwu01
+- sub-oxfordFmrib06
+- sub-oxfordFmrib09
+- sub-oxfordFmrib10
+- sub-oxfordOhba01
+- sub-oxfordOhba05
+- sub-pavia02
+- sub-pavia05
+- sub-queensland01
+- sub-sherbrooke02
+- sub-sherbrooke05
+- sub-sherbrooke06
+- sub-stanford04
+- sub-strasbourg04
+- sub-tehranS03
+- sub-tokyoIngenia05
+- sub-ubc06
+- sub-ucl02
+- sub-unf04
+- sub-vuiisAchieva04
+- sub-vuiisIngenia03
+- sub-vuiisIngenia04
+- sub-vuiisIngenia05
