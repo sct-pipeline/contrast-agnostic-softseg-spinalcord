@@ -55,7 +55,6 @@ echo "Model download complete."
 # ==============================
 # RUN BATCH ANALYSIS
 # NOTE: this section piggybacks on the sct_run_batch argument provided by SCT
-# Instead of providing a config file for batch processing script, we will provide the input arguments below
 # ==============================
 
 echo "=============================="
