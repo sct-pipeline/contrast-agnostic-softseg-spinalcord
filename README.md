@@ -53,11 +53,9 @@ note = {Shared authorship -- authors contributed equally}
 - [conda](https://conda.io/projects/conda/en/latest/user-guide/install/index.html) 
 - Python (v3.9)
 
-If at the time of installed, SCT v7.0 is not available, download the previous stable version and pull the master branch to get the latest version of the contrast-agnostic model. Once the dependencies are installed, download the latest contrast-agnostic model:
+### Installing the model
 
-```bash
-sct_deepseg spinalcord -install
-```
+Instructions for installing the model can be found [here](https://spinalcordtoolbox.com/stable/user_section/command-line/deepseg/spinalcord.html).
 
 ### Getting the spinal cord segmentation
 
