@@ -61,6 +61,8 @@ def get_parser():
                              'Default: 0.5 '
                              'NOTE: changing it from 0.5 to 0.9 makes inference faster but there is a small drop in '
                              'performance.')
+    parser.add_argument('-save-probs', action='store_true', default=False,
+                        help='If set, then the softmax probabilities are also saved in .npz format. Default: False')
     return parser
 
 
@@ -150,6 +152,7 @@ def main():
 
     # Use all the folds available in the model folder by default
     folds_avail = [int(f.split('_')[-1]) for f in os.listdir(args.path_model) if f.startswith('fold_')]
+    print(f"Using folds {folds_avail}")
 
     # Create directory for nnUNet prediction
     tmpdir_nnunet = os.path.join(tmpdir, 'nnUNet_prediction')
@@ -185,7 +188,7 @@ def main():
     predictor.predict_from_files(
         list_of_lists_or_source_folder=fname_file_tmp_list,
         output_folder_or_list_of_truncated_output_files=tmpdir_nnunet,
-        save_probabilities=False,
+        save_probabilities=True if args.save_probs else False,
         overwrite=True,
         num_processes_preprocessing=8,
         num_processes_segmentation_export=8,
@@ -203,6 +206,12 @@ def main():
     pred_file = glob.glob(os.path.join(tmpdir_nnunet, '*.nii.gz'))[0]
     shutil.copyfile(pred_file, fname_prediction)
 
+    if args.save_probs:
+        # copy also the npz file
+        pred_file_npz = glob.glob(os.path.join(tmpdir_nnunet, '*.npz'))[0]
+        fname_pred_npz = fname_prediction.replace('.nii.gz', '.npz')
+        shutil.copyfile(pred_file_npz, fname_pred_npz)
+
     print('Re-orienting the prediction back to original orientation...')
     # Reorient the image back to original orientation
     # skip if already in RPI
@@ -215,6 +224,10 @@ def main():
     if args.pred_type == 'sc':
         # keep only the spinal cord segmentation
         os.system('sct_maths -i {} -bin 0 -o {}'.format(fname_prediction, fname_file_out))
+        if args.save_probs:
+            shutil.copy(fname_pred_npz, fname_file_out.replace('.nii.gz', '.npz'))
+            # i.e. forget about the binary prediction
+       
     elif args.pred_type == 'lesion':
         # keep only the lesion segmentation
         os.system('sct_maths -i {} -bin 1 -o {}'.format(fname_prediction, fname_file_out))
