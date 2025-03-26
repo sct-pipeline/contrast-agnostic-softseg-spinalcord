@@ -6,9 +6,9 @@ Official repository for contrast-agnostic segmentation of the spinal cord.
 
 This repo contains all the code for data preprocessing, training and running inference on other datasets. The code for training is based on the [nnUNetv2 framework](https://github.com/MIC-DKFZ/nnUNet). The segmentation model is available as part of [Spinal Cord Toolbox (SCT)](https://spinalcordtoolbox.com) via the `sct_deepseg` functionality.
 
-<details>
 
-<summary> Citation Information </summary>
+
+### Citation Information
 
 If you find this work and/or code useful for your research, please cite our paper:
 
@@ -27,27 +27,13 @@ note = {Shared authorship -- authors contributed equally}
 }
 ```
 
-</details>
-
-### Updates
-
-#### 2025-02-04
-
-* We have [released](https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord/releases/tag/v3.1) an improved version of the model. The new model has been trained a wide variety of contrast and pathologies and works especially well on compressed spinal cords, MS lesions, etc. 
-
-
-#### 2025-01-13
-
-* Our paper on proposing a contrast-agnostic soft segmentation of the spinal cord was accepted at Medical Image Analysis! 🎉. Please find the official version of the paper [here](https://www.sciencedirect.com/science/article/pii/S1361841525000210).
-
-
-TODO: add lifelong learning figure
+**TODO**: add lifelong learning figure
 
 
 ## Table of contents
-* [1. Using contrast agnostic model with SCT](#1-using-contrast-agnostic-model-with-sct)
-* [2. Retraining the contrast-agnostic model ](#2-retraining-the-contrast-agnostic-model)
-* [3. Lifelong learning for monitoring morphometric drift](#3-lifelong-learning-for-monitoring-morphometric-drift)
+1. [Using contrast agnostic model with SCT](#1-using-contrast-agnostic-model-with-sct)
+2. [Training the model ](#2-training-the-model)
+3. [Lifelong learning for monitoring morphometric drift](#3-lifelong-learning-for-monitoring-morphometric-drift)
 
 <!-- * [5. Computing morphometric measures (CSA)](#5-computing-morphometric-measures-csa)
     * [5.1. Using contrast-agnostic model (best)](#51-using-contrast-agnostic-model-best)
@@ -89,9 +75,9 @@ sct_deepseg spinalcord -i <path-to-image>.nii.gz -o <path-to-output-file>.nii.gz
 
 More information on input arguments and their usage can be found [here](https://spinalcordtoolbox.com/stable/user_section/command-line/deepseg/seg_sc_contrast_agnostic.html).
 
-## 2. Retraining the contrast-agnostic model 
+## 2. Training the model 
 
-The scripts required for re-training the contrast-agnostic model (for reproducibility or extending it to more contrasts/pathologies) can be found in `nnUnet` folder. Training with nnUNet is simple. Once the environment is properly configured, the following steps should get the model up and running:
+The scripts required for training the model can be found in `nnUnet` folder. Training with nnUNet is simple. Once the environment is properly configured, the following steps should get the model up and running:
 
 ### Step 1: Configuring the environment
 
@@ -203,3 +189,13 @@ Here are the steps involved in the workflow:
 In summary, once a new model is released, the GitHub actions workflow automatically generates the plots for monitoring the morphometric drift between various versions of the segmentation model.
 
 
+### Updates
+
+#### 2025-02-04
+
+* We have [released](https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord/releases/tag/v3.1) an improved version of the model. The new model has been trained a wide variety of contrast and pathologies and works especially well on compressed spinal cords, MS lesions, etc. 
+
+
+#### 2025-01-13
+
+* Our paper on proposing a contrast-agnostic soft segmentation of the spinal cord was accepted at Medical Image Analysis! 🎉. Please find the official version of the paper [here](https://www.sciencedirect.com/science/article/pii/S1361841525000210).
