@@ -215,7 +215,9 @@ segment_sc_nnUNet(){
   local contrast="$4"   # used only for saving output file name
   local csv_fname="$5"   # used for saving output file name
   local kernel="$6"    # 2d or 3d_fullres
-
+  local mask_type="$7"
+  PATH_NPZ_TO_NIFTI_CONVERSION_SCRIPT=${PATH_NNUNET_SCRIPT/run_inference_single_subject.py/save_softmax_npz_as_nifti.py}
+  
   FILESEG="${file%%_*}_${contrast}_seg_${model}"
 	PATH_MODEL=${PATH_MONAI_MODELS}/model_${model}
   # FILESEG="${file}_seg_nnunet${kernel}"
@@ -223,23 +225,44 @@ segment_sc_nnUNet(){
 
   # Get the start time
   start_time=$(date +%s)
-  # Run SC segmentation
-  python ${PATH_NNUNET_SCRIPT} -i ${file}.nii.gz -o ${FILESEG}.nii.gz -path-model ${PATH_MODEL}/nnUNetTrainer__nnUNetPlans__${kernel} -pred-type sc -use-gpu -use-best-checkpoint
-  # Get the end time
-  end_time=$(date +%s)
-  # Calculate the time difference
-  execution_time=$(python3 -c "print($end_time - $start_time)")
-  echo "${FILESEG},${execution_time}" >> ${PATH_RESULTS}/execution_time.csv
+  if [[ ${mask_type} == 'soft' ]]; then
+    # Run SC segmentation
+    python ${PATH_NNUNET_SCRIPT} -i ${file}.nii.gz -o ${FILESEG}.nii.gz -path-model ${PATH_MODEL}/nnUNetTrainer__nnUNetPlans__${kernel} -pred-type sc -use-gpu -use-best-checkpoint -save-probs
+    # Convert npz file to nifti
+    python ${PATH_NPZ_TO_NIFTI_CONVERSION_SCRIPT} -i ${FILESEG}.npz -o ${FILESEG}_soft.nii.gz
 
-  # Generate QC report
-  sct_qc -i ${file}.nii.gz -s ${FILESEG}.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
+    # Get the end time
+    end_time=$(date +%s)
+    # Calculate the time difference
+    execution_time=$(python3 -c "print($end_time - $start_time)")
+    echo "${FILESEG},${execution_time}" >> ${PATH_RESULTS}/execution_time.csv
 
-  # Compute CSA averaged across all slices C2-C3 vertebral levels for plotting the STD across contrasts
-  # NOTE: this is per-level because not all contrasts have thes same FoV (C2-C3 is what all contrasts have in common)
-  sct_process_segmentation -i ${FILESEG}.nii.gz -vert 2:3 -vertfile ${file_gt_vert_label}_labeled.nii.gz -o $PATH_RESULTS/${csv_fname}_c2c3.csv -append 1
+    # Generate QC report
+    sct_qc -i ${file}.nii.gz -s ${FILESEG}_soft.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
 
-  # Compute CSA "per slice" across _all_ slices in the SC for plotting the absolute CSA error across contrasts
-  sct_process_segmentation -i ${FILESEG}.nii.gz -perslice 1 -vertfile ${file_gt_vert_label}_labeled.nii.gz -o $PATH_RESULTS/${csv_fname}_${model}_perslice.csv -append 1
+    # Compute CSA averaged across all slices C2-C3 vertebral levels for plotting the STD across contrasts
+    # NOTE: this is per-level because not all contrasts have thes same FoV (C2-C3 is what all contrasts have in common)
+    sct_process_segmentation -i ${FILESEG}_soft.nii.gz -vert 2:3 -vertfile ${file_gt_vert_label}_labeled.nii.gz -o $PATH_RESULTS/${csv_fname}_c2c3.csv -append 1
+
+  else
+    # Run SC segmentation
+    python ${PATH_NNUNET_SCRIPT} -i ${file}.nii.gz -o ${FILESEG}_bin.nii.gz -path-model ${PATH_MODEL}/nnUNetTrainer__nnUNetPlans__${kernel} -pred-type sc -use-gpu -use-best-checkpoint
+
+    # Get the end time
+    end_time=$(date +%s)
+    # Calculate the time difference
+    execution_time=$(python3 -c "print($end_time - $start_time)")
+    echo "${FILESEG},${execution_time}" >> ${PATH_RESULTS}/execution_time.csv
+
+    # Generate QC report
+    sct_qc -i ${file}.nii.gz -s ${FILESEG}_bin.nii.gz -p sct_deepseg_sc -qc ${PATH_QC} -qc-subject ${SUBJECT}
+
+    # Compute CSA averaged across all slices C2-C3 vertebral levels for plotting the STD across contrasts
+    # NOTE: this is per-level because not all contrasts have thes same FoV (C2-C3 is what all contrasts have in common)
+    sct_process_segmentation -i ${FILESEG}_bin.nii.gz -vert 2:3 -vertfile ${file_gt_vert_label}_labeled.nii.gz -o $PATH_RESULTS/${csv_fname}_c2c3.csv -append 1
+  fi
+  # # Compute CSA "per slice" across _all_ slices in the SC for plotting the absolute CSA error across contrasts
+  # sct_process_segmentation -i ${FILESEG}.nii.gz -perslice 1 -vertfile ${file_gt_vert_label}_labeled.nii.gz -o $PATH_RESULTS/${csv_fname}_${model}_perslice.csv -append 1
 
 }
 
@@ -263,7 +286,7 @@ segment_sc_MONAI(){
 		PATH_MODEL=${PATH_MONAI_MODELS}/model_${model}
     model_name='monai'
     max_feat=320
-    pad='edge'
+    pad='constant'
 
 	fi
 
@@ -299,8 +322,8 @@ segment_sc_MONAI(){
   # NOTE: this is per-level because not all contrasts have thes same FoV (C2-C3 is what all contrasts have in common)
   sct_process_segmentation -i ${FILESEG}.nii.gz -vert 2:3 -vertfile ${file_gt_vert_label}_labeled.nii.gz -o $PATH_RESULTS/${csv_fname}_c2c3.csv -append 1
 
-  # Compute CSA "per slice" across _all_ slices in the SC for plotting the absolute CSA error across contrasts
-  sct_process_segmentation -i ${FILESEG}.nii.gz -perslice 1 -vertfile ${file_gt_vert_label}_labeled.nii.gz -o $PATH_RESULTS/${csv_fname}_${model}_perslice.csv -append 1
+  # # Compute CSA "per slice" across _all_ slices in the SC for plotting the absolute CSA error across contrasts
+  # sct_process_segmentation -i ${FILESEG}.nii.gz -perslice 1 -vertfile ${file_gt_vert_label}_labeled.nii.gz -o $PATH_RESULTS/${csv_fname}_${model}_perslice.csv -append 1
 
 }
 
@@ -433,17 +456,20 @@ for contrast in ${contrasts}; do
   # NOTE: this is per-level because not all contrasts have thes same FoV (C2-C3 is what all contrasts have in common)
   sct_process_segmentation -i ${FILEBIN}.nii.gz -vert 2:3 -vertfile ${file}_seg-manual_labeled.nii.gz -o $PATH_RESULTS/${csv_fname}_c2c3.csv -append 1
 
-  # 2.2 Compute CSA "per slice" across _all_ slices in the SC for plotting the absolute CSA error across contrasts
-  sct_process_segmentation -i ${FILEBIN}.nii.gz -perslice 1 -vertfile ${file}_seg-manual_labeled.nii.gz -o $PATH_RESULTS/${csv_fname}_softseg_bin_perslice.csv -append 1
+  # # 2.2 Compute CSA "per slice" across _all_ slices in the SC for plotting the absolute CSA error across contrasts
+  # sct_process_segmentation -i ${FILEBIN}.nii.gz -perslice 1 -vertfile ${file}_seg-manual_labeled.nii.gz -o $PATH_RESULTS/${csv_fname}_softseg_bin_perslice.csv -append 1
 
   # 3. Segment SC using different methods, binarize at 0.5 and compute CSA
 	# CUDA_VISIBLE_DEVICES=0 segment_sc_MONAI ${file} "${file}_seg-manual" 'v20' ${contrast} ${csv_fname}
   # CUDA_VISIBLE_DEVICES=0 segment_sc_MONAI ${file} "${file}_seg-manual" 'v25' ${contrast} ${csv_fname}
-  CUDA_VISIBLE_DEVICES=3 segment_sc_nnUNet ${file} "${file}_seg-manual" 'nnunet-AllRandInit2D' ${contrast} ${csv_fname} '2d'
-  CUDA_VISIBLE_DEVICES=2 segment_sc_nnUNet ${file} "${file}_seg-manual" 'nnunet-AllRandInit3D' ${contrast} ${csv_fname} '3d_fullres'
-  CUDA_VISIBLE_DEVICES=0 segment_sc_MONAI ${file} "${file}_seg-manual" 'vPtrV21-allWithPraxWithSCT' ${contrast} ${csv_fname}
+  # CUDA_VISIBLE_DEVICES=3 segment_sc_nnUNet ${file} "${file}_seg-manual" 'nnunet-AllRandInit2D' ${contrast} ${csv_fname} '2d'
+  CUDA_VISIBLE_DEVICES=1 segment_sc_nnUNet ${file} "${file}_seg-manual" 'nnunet-AllRandInit3D' ${contrast} ${csv_fname} '3d_fullres' 'bin'
+  # CUDA_VISIBLE_DEVICES=2 segment_sc_nnUNet ${file} "${file}_seg-manual" 'nnunet-AllInferred3D' ${contrast} ${csv_fname} '3d_fullres' 'soft'
+  # CUDA_VISIBLE_DEVICES=2 segment_sc_nnUNet ${file} "${file}_seg-manual" 'nnunet-AllInferred3D' ${contrast} ${csv_fname} '3d_fullres' 'bin'
+  CUDA_VISIBLE_DEVICES=0 segment_sc_MONAI ${file} "${file}_seg-manual" 'v20' ${contrast} ${csv_fname}
+  CUDA_VISIBLE_DEVICES=0 segment_sc_MONAI ${file} "${file}_seg-manual" 'v21' ${contrast} ${csv_fname}
   # CUDA_VISIBLE_DEVICES=3 segment_sc_nnUNet ${file} "${file}_seg-manual" '3d' ${contrast} ${csv_fname}
-  # segment_sc ${file} "${file}_seg-manual" 'deepseg' ${deepseg_input_c} ${contrast} ${csv_fname}
+  segment_sc ${file} "${file}_seg-manual" 'deepseg' ${deepseg_input_c} ${contrast} ${csv_fname}
 
 done
 

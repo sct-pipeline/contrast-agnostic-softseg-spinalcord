@@ -42,6 +42,7 @@ FILESEG_SUFFIXES = {
 }
 
 # add abbreviations of pathologies in sct-testing-large and other datasets to be included in the aggregated dataset
+# NOTE: only subjects with these pathologies are selected from sct-testing-large dataset (info obtained from participants.tsv)
 PATHOLOGIES = ["ALS", "DCM", "NMO", "MS", "SYR", "SCI"]
 
 
@@ -52,8 +53,14 @@ def get_parser():
 
     parser.add_argument('--path-data', required=True, type=str, help='Path to BIDS dataset.')
     parser.add_argument('--path-out', type=str, help='Path to the output directory where dataset json is saved')
-    parser.add_argument('--exclude', type=str, help='YAML file containing list of subjects to exclude')
+    parser.add_argument('--include', type=str, 
+                        help='YAML file containing list of subjects to include (saved in the root folder of the repo)')
     parser.add_argument('--seed', default=42, type=int, help="Seed for reproducibility")
+    parser.add_argument('--use-predefined-splits', default=False, action='store_true', 
+                        help='Use predefined splits for train and test subjects. Expects --path-datasplits to be input'
+                        'Use this when you want to reproduce contrast-agnostic model training') 
+    parser.add_argument('--path-datasplits', type=str, default=None,
+                        help='Path to the datasplits folder containing predefined datasplits')
 
     return parser
 
@@ -122,7 +129,7 @@ def fetch_subject_nifti_details(filename_path):
     return subjectID, sessionID, orientationID, contrastID
 
 
-def create_df(dataset_path):
+def create_df(args, dataset_path):
     """
     Create a dataframe with the following columns: subjectID, sessionID, orientationID, age, sex, pathology, notes
     Returns a dataframe with all datasetes merged
@@ -152,7 +159,7 @@ def create_df(dataset_path):
         sct_testing_large_patho_subjects = [sub for sub in sct_testing_large_patho_subjects if sub in derivatives_subs]
 
     elif dataset_name == 'canproco':
-        # 2024/04/23: only pick the ses-M0 images
+        # 2024/04/23: only pick the ses-M0 images for training (keep ses-M12 for testing)
         path_files = os.path.join(dataset_path, 'derivatives', labels_folder, 'sub-*', 'ses-M0', '**', f'*_{labels_suffix}.nii.gz')
 
     else: 
@@ -201,9 +208,9 @@ def create_df(dataset_path):
         df = df[~df['subjectID'].str.contains('sub-xuanwuChenxi002')]
 
         # include yaml path
-        path_yaml = "/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/new_datasets_to_include/sct-testing-large/qc_fail_t2s_mton.yml"
-        with open(path_yaml, 'r') as file:
-            files_to_include = yaml.safe_load(file)['FILES_SEG']
+        subjects_to_inlucde_yml = args.include
+        with open(subjects_to_inlucde_yml, 'r') as file:
+            files_to_include = yaml.safe_load(file)[dataset_name]
             # split the files_to_include to keep only basename
             files_to_include = [os.path.basename(file) for file in files_to_include]
 
@@ -214,26 +221,7 @@ def create_df(dataset_path):
 
         # store the pathology info by merging the "pathology_M0" colume from df_participants to the df dataframe
         df = pd.merge(df, df_participants[['participant_id', 'pathology']], left_on='subjectID', right_on='participant_id', how='left')
-        df.rename(columns={'pathology': 'pathologyID'}, inplace=True)
-
-        for file in df['filename']:
-                
-            # NOTE: sct-testing-large has a lot of images which might/might not have labels. 
-            # Get only those images which have labels and are present in the dataframe (and belong to the pathology)
-            fname_label = file
-            gitannex_cmd_label = f'cd {dataset_path}; git annex get {fname_label}'
-            
-            fname_image = fname_label.replace(f'/derivatives/{labels_folder}', '').replace(f'_{labels_suffix}.nii.gz', '.nii.gz')
-            gitannex_cmd_image = f'cd {dataset_path}; git annex get {fname_image}'
-
-            try:
-                subprocess.run(gitannex_cmd_label, shell=True, check=True)
-                subprocess.run(gitannex_cmd_image, shell=True, check=True)
-                logger.info(f"Downloaded {os.path.basename(fname_label)} from git-annex")
-                logger.info(f"Downloaded {os.path.basename(fname_image)} from git-annex")
-            except subprocess.CalledProcessError as e:
-                logger.error(f"Error in downloading {file} from git-annex: {e}")
-            
+        df.rename(columns={'pathology': 'pathologyID'}, inplace=True)            
 
     elif dataset_name == 'canproco':
         # remove subjects from the exclude list: https://github.com/ivadomed/canproco/blob/main/exclude.yml
@@ -255,34 +243,13 @@ def create_df(dataset_path):
 
         # rename the column to 'pathologyID'
         df.rename(columns={'phenotype_M0': 'pathologyID'}, inplace=True)
-
-        for file in df['filename']: 
-
-            fname_label = file
-            gitannex_cmd_label = f'cd {dataset_path}; git annex get {fname_label}'
-
-            fname_image = fname_label.replace(f'/derivatives/{labels_folder}', '').replace(f'_{labels_suffix}.nii.gz', '.nii.gz')
-            gitannex_cmd_image = f'cd {dataset_path}; git annex get {fname_image}'
-
-            try:
-                subprocess.run(gitannex_cmd_label, shell=True, check=True)
-                subprocess.run(gitannex_cmd_image, shell=True, check=True)
-                logger.info(f"Downloaded {os.path.basename(fname_label)} from git-annex")
-                logger.info(f"Downloaded {os.path.basename(fname_image)} from git-annex")
-            except subprocess.CalledProcessError as e:
-                logger.error(f"Error in downloading {file} from git-annex: {e}")
     
     elif dataset_name in ['site_006', 'site_007']:
 
         # include yaml path
-        path_yaml = "/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/new_datasets_to_include/data-praxis-sci/qc_fail_praxis_jan_corrected_seg_mon_van_sites.yml"
-        with open(path_yaml, 'r') as file:
-            yaml_content = yaml.safe_load(file)
-            try:
-                files_to_include = yaml_content['FILES_SEG']
-            except KeyError:
-                files_to_include = yaml_content['FILES_LESION']
-
+        subjects_to_inlucde_yml = args.include
+        with open(subjects_to_inlucde_yml, 'r') as file:
+            files_to_include = yaml.safe_load(file)[dataset_name]
             # split the files_to_include to keep only basename
             files_to_include = [os.path.basename(file) for file in files_to_include]
             # add label_suffix to the files_to_include
@@ -317,6 +284,23 @@ def create_df(dataset_path):
         else:
             df['pathologyID'] = 'n/a'
 
+    # NOTE: Datasets might have lot of images might not have labels (and hence need not be downloaded to save space)
+    # Get only those images which have labels and are present in the dataframe (and belong to the pathology)
+    for file in df['filename']:            
+        fname_label = file
+        gitannex_cmd_label = f'cd {dataset_path}; git annex get {fname_label}'
+        
+        fname_image = fname_label.replace(f'/derivatives/{labels_folder}', '').replace(f'_{labels_suffix}.nii.gz', '.nii.gz')
+        gitannex_cmd_image = f'cd {dataset_path}; git annex get {fname_image}'
+
+        try:
+            subprocess.run(gitannex_cmd_label, shell=True, check=True)
+            subprocess.run(gitannex_cmd_image, shell=True, check=True)
+            logger.info(f"Downloaded {os.path.basename(fname_label)} from git-annex")
+            logger.info(f"Downloaded {os.path.basename(fname_image)} from git-annex")
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Error in downloading {file} from git-annex: {e}")    
+
     # get image stats
     df['shape'], df['imgOrientation'], df['spacing'] = zip(*df['filename'].map(get_image_stats))
 
@@ -348,15 +332,7 @@ def main():
     dataset_commits = {}
 
     # create a dataframe for each dataset
-    df = create_df(data_root)
-
-    # do some post-mortem on the dataframe based on '--include' args    
-    # NOTE: for lumbar-vanderbilt we are excluding subjects only 2 subjects: sub-247090 and sub-247091 
-    if args.exclude is not None:
-        with open(args.exclude, 'r') as file:
-            exclude_subjects = yaml.safe_load(file)['EXCLUDE']
-
-        df = df[~df['subjectID'].isin(exclude_subjects)]
+    df = create_df(args, data_root)
     
     # get the git commit ID of the dataset
     dataset_name = os.path.basename(os.path.normpath(data_root))
@@ -374,24 +350,17 @@ def main():
     # during the dataloading process of training the contrast-agnostic model
 
     all_subjects = df['subjectID'].unique()
-    if dataset_name == 'sct-testing-large':
-        train_subjects, test_subjects, val_subjects = [], [], []
-        for sub in all_subjects:
-            if sub.startswith('sub-vanderbilt') or sub.startswith('sub-milan'):
-                test_subjects.append(sub)
-            else:
-                train_subjects.append(sub)
-        
-        train_subjects, val_subjects = train_test_split(train_subjects, test_size=val_ratio / (train_ratio + val_ratio))
+    if args.use_predefined_splits and args.path_datasplits is None:
+        raise ValueError("Please provide the path to the datasplits folder containing predefined random datasplits.")
 
-    elif dataset_name in ['site_006', 'site_007']:
-        train_subjects = all_subjects.copy()
-        test_subjects = [all_subjects[0]]    # only to keep the dataloader happy; we're not using the test set
-        # because we're evaluating out-of-distribution on other praxis sites
-        
-        train_subjects, val_subjects = train_test_split(train_subjects, test_size=val_ratio / (train_ratio + val_ratio))
+    elif args.use_predefined_splits and args.path_datasplits is not None:
+        logger.info("Using predefined random datasplits for train/val/test subjects ...")
+        with open(os.path.join(args.path_datasplits, f"datasplit_{dataset_name}_seed{args.seed}.yaml"), 'r') as file:
+            datasplits = yaml.safe_load(file)
+            train_subjects, val_subjects, test_subjects = datasplits['train'], datasplits['val'], datasplits['test']
 
     else:
+        logger.info("Using random splits for train/val/test subjects. Overriding predefined datasplits (if provided) ...")
         train_subjects, test_subjects = train_test_split(all_subjects, test_size=test_ratio)
         # Use the training split to further split into training and validation splits
         train_subjects, val_subjects = train_test_split(train_subjects, test_size=val_ratio / (train_ratio + val_ratio))

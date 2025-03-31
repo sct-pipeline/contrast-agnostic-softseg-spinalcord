@@ -3,6 +3,7 @@ import numpy as np
 import nibabel as nib
 import logging
 from copy import deepcopy
+import subprocess
 
 logger = logging.getLogger(__name__)
 
@@ -684,3 +685,81 @@ def find_zmin_zmax(im, threshold=0.1):
             break
 
     return zmin, zmax
+
+
+def get_git_branch_and_commit(dataset_path=None):
+    """
+    :return: git branch and commit ID, with trailing '*' if modified
+    Taken from: https://github.com/spinalcordtoolbox/spinalcordtoolbox/blob/master/spinalcordtoolbox/utils/sys.py#L476 
+    and https://github.com/spinalcordtoolbox/spinalcordtoolbox/blob/master/spinalcordtoolbox/utils/sys.py#L461
+    """
+
+    # branch info
+    b = subprocess.Popen(["git", "rev-parse", "--abbrev-ref", "HEAD"], stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE, cwd=dataset_path)
+    b_output, _ = b.communicate()
+    b_status = b.returncode
+
+    if b_status == 0:
+        branch = b_output.decode().strip()
+    else:
+        branch = "!?!"
+
+    # commit info
+    p = subprocess.Popen(["git", "rev-parse", "HEAD"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=dataset_path)
+    output, _ = p.communicate()
+    status = p.returncode
+    if status == 0:
+        commit = output.decode().strip()
+    else:
+        commit = "?!?"
+
+    p = subprocess.Popen(["git", "status", "--porcelain"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=dataset_path)
+    output, _ = p.communicate()
+    status = p.returncode
+    if status == 0:
+        unclean = True
+        for line in output.decode().strip().splitlines():
+            line = line.rstrip()
+            if line.startswith("??"):  # ignore ignored files, they can't hurt
+                continue
+            break
+        else:
+            unclean = False
+        if unclean:
+            commit += "*"
+
+    return branch, commit
+
+
+def get_image_stats(image_path):
+    """
+    This function takes an image file as input and returns its orientation.
+
+    Input:
+        image_path : str : Path to the image file
+
+    Returns:
+        orientation : str : Orientation of the image
+    """
+    img = Image(str(image_path))
+    img.change_orientation('RPI')
+    shape = img.dim[:3]
+    shape = [int(s) for s in shape]
+    # Get pixdim
+    pixdim = img.dim[4:7]
+    # If all are the same, the image is isotropic
+    if np.allclose(pixdim, pixdim[0], atol=1e-3):
+        orientation = 'isotropic'
+    # Elif, the lowest arg is 0 then the orientation is sagittal
+    elif np.argmax(pixdim) == 0:
+        orientation = 'sagittal'
+    # Elif, the lowest arg is 1 then the orientation is coronal
+    elif np.argmax(pixdim) == 1:
+        orientation = 'coronal'
+    # Else the orientation is axial
+    else:
+        orientation = 'axial'
+    resolution = np.round(pixdim, 2)
+    return shape, orientation, resolution
+
