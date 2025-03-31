@@ -1,6 +1,6 @@
 # Towards Contrast-agnostic Soft Segmentation of the Spinal Cord
 
-[![arXiv](https://img.shields.io/badge/arXiv-2310.15402-b31b1b.svg)](https://arxiv.org/abs/2310.15402)
+[![MedIA](https://img.shields.io/badge/MedIA-10.106/media.2025.103473-darkgreen.svg)](https://doi.org/10.1016/j.media.2025.103473)
 
 Official repository for contrast-agnostic segmentation of the spinal cord. 
 
