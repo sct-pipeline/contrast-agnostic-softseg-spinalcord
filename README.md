@@ -4,8 +4,7 @@
 
 Official repository for contrast-agnostic segmentation of the spinal cord. 
 
-This repo contains all the code for data preprocessing, training and running inference on other datasets. The code for training is based on the [nnUNetv2 framework](https://github.com/MIC-DKFZ/nnUNet). The segmentation model is available as part of [Spinal Cord Toolbox (SCT)](https://spinalcordtoolbox.com) via the `sct_deepseg` functionality.
-
+This repo contains all the code for data preprocessing, training and running inference on other datasets. The code for training is based on the [nnUNetv2 framework](https://github.com/MIC-DKFZ/nnUNet). The segmentation model is available as part of [Spinal Cord Toolbox (SCT)](https://spinalcordtoolbox.com/stable/user_section/command-line/deepseg/seg_sc_contrast_agnostic.html) via the `sct_deepseg` functionality.
 
 
 ### Citation Information
@@ -31,7 +30,6 @@ note = {Shared authorship -- authors contributed equally}
 
 
 ## Table of contents
-1. [Using contrast agnostic model with SCT](#1-using-contrast-agnostic-model-with-sct)
 2. [Training the model ](#2-training-the-model)
 3. [Lifelong learning for monitoring morphometric drift](#3-lifelong-learning-for-monitoring-morphometric-drift)
 
@@ -44,34 +42,6 @@ note = {Shared authorship -- authors contributed equally}
     * [7.2. Running QC on predictions from MS-MP2RAGE dataset](#72-running-qc-on-predictions-from-ms-mp2rage-dataset)
     * [7.3. Running QC on predictions from Radiculopathy-EPI dataset](#73-running-qc-on-predictions-from-radiculopathy-epi-dataset) -->
 
-
-## 1. Using contrast-agnostic model with SCT
-
-### Installing dependencies
-
-- [Spinal Cord Toolbox (SCT) v7.0](https://github.com/spinalcordtoolbox/spinalcordtoolbox/releases/tag/7.0) or higher -- follow the installation instructions [here](https://github.com/spinalcordtoolbox/spinalcordtoolbox?tab=readme-ov-file#installation)
-- [conda](https://conda.io/projects/conda/en/latest/user-guide/install/index.html) 
-- Python (v3.9)
-
-### Installing the model
-
-Instructions for installing the model can be found [here](https://spinalcordtoolbox.com/stable/user_section/command-line/deepseg/spinalcord.html).
-
-### Getting the spinal cord segmentation
-
-To segment a single image, run the following command: 
-
-```bash
-sct_deepseg spinalcord -i <path-to-image>.nii.gz -o <path-to-output-file>.nii.gz 
-```
-
-To segment a single image AND generate a QC report for the image, run the following command: 
-
-```bash
-sct_deepseg spinalcord -i <path-to-image>.nii.gz -o <path-to-output-file>.nii.gz -qc qc -qc-subject <name-of-subject>
-```
-
-More information on input arguments and their usage can be found [here](https://spinalcordtoolbox.com/stable/user_section/command-line/deepseg/seg_sc_contrast_agnostic.html).
 
 ## 2. Training the model 
 
