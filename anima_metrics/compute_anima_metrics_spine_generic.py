@@ -106,23 +106,28 @@ def get_parser():
                         help='Dataset name used for storing on git-annex. For region-based metrics, '
                              'append "-region" to the dataset name. Default: spine-generic')
     parser.add_argument('--method', required=True, type=str, default='monai', 
-                        choices=['monai', 'synthseg', 'deepseg2d', 'deepseg3d', 'propseg'],
+                        choices=['monai', 'synthseg', 'deepseg2d', 'deepseg3d', 'propseg', 'v20', 'v30'],
                         help='Segmentation method to compute metrics for. Default: monai')
 
     return parser
 
 
-def get_test_metrics_by_dataset(pred_folder, output_folder, anima_binaries_path, data_set):
+def get_test_metrics_by_dataset(pred_folder, output_folder, anima_binaries_path, data_set, method):
     """
     Computes the test metrics given folders containing nifti images of test predictions 
     and GT images by running the "animaSegPerfAnalyzer" command
     """
-    pred_suffix = 'synthseg_sc' # '_pred.nii.gz' 
-    gt_suffix = 'seg-manual' # '_softseg_gt.nii.gz'
+    if method == 'v20':
+        pred_suffix = 'seg_v20' # '_pred.nii.gz'
+    elif method == 'v30':
+        pred_suffix = 'seg_nnunet-AllRandInit3D_bin'
+    elif method == 'deepseg2d':
+        pred_suffix = 'seg_deepseg_2d'
+    gt_suffix = 'softseg_bin' # '_softseg_gt.nii.gz'
     if data_set in STANDARD_DATASETS:
         # glob all the predictions and GTs and get the last three digits of the filename
-        pred_files = sorted(glob.glob(f"{pred_folder}/**/*_{pred_suffix}.nii.gz"))
-        gt_files = sorted(glob.glob(f"{pred_folder}/**/*_{gt_suffix}.nii.gz"))
+        pred_files = sorted(glob.glob(f"{pred_folder}/**/**/*_{pred_suffix}.nii.gz"))
+        gt_files = sorted(glob.glob(f"{pred_folder}/**/**/*_{gt_suffix}.nii.gz"))
 
         # dataset_name_nnunet = fetch_filename_details(pred_files[0])[0]
 
@@ -191,16 +196,16 @@ def main():
     dataset_name = args.dataset_name
     method = args.method
 
-    output_folder = os.path.join(pred_folder, f"anima_stats")
+    output_folder = os.path.join(pred_folder, f"anima_stats_{method}")
     if not os.path.exists(output_folder):
         os.makedirs(output_folder, exist_ok=True)
     print(f"Saving ANIMA performance metrics to {output_folder}")
 
     # Get all XML filepaths where ANIMA performance metrics are saved for each hold-out subject
-    if method in ['monai', 'synthseg']:
+    if method in ['monai', 'synthseg', 'v20', 'deepseg2d', 'v30']:
         subject_filepaths = get_test_metrics_by_dataset(pred_folder, output_folder, anima_binaries_path, 
-                                                        data_set=dataset_name)
-    elif method in ['deepseg2d', 'deepseg3d', 'propseg']:
+                                                        data_set=dataset_name, method=method)
+    elif method in ['deepseg3d', 'propseg']:
         subject_filepaths = sorted(glob.glob(f"{pred_folder}/*.xml"))
     else:
         raise ValueError(f"Unknown method {method}!")
