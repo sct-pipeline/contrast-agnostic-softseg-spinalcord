@@ -20,8 +20,8 @@ PATH_REPO="/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/contrast-agnostic-s
 SEED=50
 
 # List of datasets to train on
-# NOTE 1: the following datasets were used for training the contrast-agnostic v3.1 model
-# https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord/releases/tag/v3.1 
+# NOTE 1: the following datasets were used for training the contrast-agnostic v3.0 model
+# https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord/releases/tag/v3.0
 # NOTE 2: training on praxis acute SCI data requires special access to spineimage.ca. Because this is different from
 # the usual downloading from git-annex, this script does not support downloading praxis data. To train contrast-agnostic model 
 # download the dataset manually and store it in PATH_DATA_BASE (see below)
@@ -63,7 +63,7 @@ DATASET_NAME="TempContrastAgnostic"
 DATASET_NUMBER=999          # this refers to the `-d` argument when training nnunet models
 
 # Name of the nnUNet trainer variant 
-# NOTE: contrast-agnostic v3.1 model used the default trainer defined below
+# NOTE: contrast-agnostic v3.0 model used the default trainer defined below
 # NNUNET_TRAINER="nnUNetTrainer"
 NNUNET_TRAINER="nnUNetTrainer_5epochs"
 
