@@ -4,7 +4,7 @@
 
 Official repository for contrast-agnostic segmentation of the spinal cord. 
 
-This repo contains all the code for data preprocessing, training and running inference on other datasets. The code for training is based on the [nnUNetv2 framework](https://github.com/MIC-DKFZ/nnUNet). The segmentation model is available as part of [Spinal Cord Toolbox (SCT)](https://spinalcordtoolbox.com/stable/user_section/command-line/deepseg/seg_sc_contrast_agnostic.html) via the `sct_deepseg` functionality.
+This repo contains all the code for training the contrast-agnostic model. The code for training is based on the [nnUNetv2 framework](https://github.com/MIC-DKFZ/nnUNet). The segmentation model is available as part of [Spinal Cord Toolbox (SCT)](https://spinalcordtoolbox.com/stable/user_section/command-line/deepseg/spinalcord.html) via the `sct_deepseg` functionality.
 
 
 ### Citation Information
@@ -30,8 +30,8 @@ note = {Shared authorship -- authors contributed equally}
 
 
 ## Table of contents
-2. [Training the model ](#2-training-the-model)
-3. [Lifelong learning for monitoring morphometric drift](#3-lifelong-learning-for-monitoring-morphometric-drift)
+* [Training the model ](#training-the-model)
+* [Lifelong learning for monitoring morphometric drift](#lifelong-learning-for-monitoring-morphometric-drift)
 
 <!-- * [5. Computing morphometric measures (CSA)](#5-computing-morphometric-measures-csa)
     * [5.1. Using contrast-agnostic model (best)](#51-using-contrast-agnostic-model-best)
@@ -43,9 +43,7 @@ note = {Shared authorship -- authors contributed equally}
     * [7.3. Running QC on predictions from Radiculopathy-EPI dataset](#73-running-qc-on-predictions-from-radiculopathy-epi-dataset) -->
 
 
-## 2. Training the model 
-
-The scripts required for training the model can be found in `nnUnet` folder. Training with nnUNet is simple. Once the environment is properly configured, the following steps should get the model up and running:
+## Training the model 
 
 ### Step 1: Configuring the environment
 
@@ -71,12 +69,12 @@ pip install -r requirements.txt
 ```
 
 > **Note**
-> The `requirements.txt` does not install nnUNet. It has to be installed separately and can be done within the conda environment created above. See [here](https://github.com/MIC-DKFZ/nnUNet/blob/master/documentation/installation_instructions.md) for installation instructions. Please note that the nnUNet version used in this work is tag `v2.5.1`.
+> The `requirements.txt` does NOT install nnUNet. It has to be installed separately and can be done within the conda environment created above. See [here](https://github.com/MIC-DKFZ/nnUNet/blob/master/documentation/installation_instructions.md) for installation instructions. Please note that the nnUNet version used in this work is tag `v2.5.1`.
 
 
-### Step 2: Training the model
+### Step 2: Train the model
 
-The script `scripts/train_contrast_agnostic.sh` is a do-it-all script that downloads the datasets from git-annex, creates datalists, converts them into nnUNet-specific format, and trains the model. More instructions about what variables to set and which datasets to use can be found in the script itself. Once these variables are set, the script can be run simply as follows:
+The script `scripts/train_contrast_agnostic.sh` downloads the datasets from git-annex, creates datalists, converts them into nnUNet-specific format, and trains the model. More instructions about what variables to set and which datasets to use can be found in the script itself. Once these variables are set, the script can be run simply as follows:
 
 ```bash
 bash scripts/train_contrast_agnostic.sh
@@ -129,7 +127,7 @@ python analyse_csa_all_models.py -i-folder ~/duke/projects/ivadomed/contrast-agn
 The plots will be saved to the parent directory with the name `charts_<datetime.now())>` -->
 
 
-## 3. Lifelong learning for monitoring morphometric drift
+## Lifelong learning for monitoring morphometric drift
 
 This section provides some notes on the lifelong/continuous learning framework for automatically monitoring morphometric drift between various versions of segmentation models. Once a new segmentation model is developed and released, a GitHub actions (GHA) workflow is triggered which automatically computes the spinal cord CSA between current (new) version of the model and previously released models. 
 
@@ -155,15 +153,3 @@ Here are the steps involved in the workflow:
     * **Job 4**: All `csa_c2c3__model_<tag-name>.csv` files corresponding to current and previous releases are downloaded. Then, violin plots comparing the CSA per contrast (for each model) and the STD of CSA across contrasts are generated. The plots are saved in the `morphometric_plots.zip` folder and uploaded to the existing release.
 
 In summary, once a new model is released, the GitHub actions workflow automatically generates the plots for monitoring the morphometric drift between various versions of the segmentation model.
-
-
-### Updates
-
-#### 2025-02-04
-
-* We have [released](https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord/releases/tag/v3.1) an improved version of the model. The new model has been trained a wide variety of contrast and pathologies and works especially well on compressed spinal cords, MS lesions, etc. 
-
-
-#### 2025-01-13
-
-* Our paper on proposing a contrast-agnostic soft segmentation of the spinal cord was accepted at Medical Image Analysis! 🎉. Please find the official version of the paper [here](https://www.sciencedirect.com/science/article/pii/S1361841525000210).

@@ -33,7 +33,6 @@ PATH_OUTPUT="csa-analysis"
 # for testing purposes, replace the PATH_MODEL with the path to the model downloaded from the latest release
 MODEL_URL=$2
 echo "Using model at: ${MODEL_URL}"
-# MODEL_URL="https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord/releases/download/v3.1/model_contrast_agnostic_20250123.zip"
 
 # Get model version
 MODEL_VERSION=$(echo "$MODEL_URL" | sed -E 's#.*/download/([^/]+)/.*#\1#')
