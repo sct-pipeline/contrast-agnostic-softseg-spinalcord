@@ -1,3 +1,11 @@
+"""
+This script takes as input the path to the original BIDS dataset and outputs a datalist json file
+    containing the train/val/test splits. To reproduce contrast-agnostic v3.0 training, the script
+    uses pre-defined splits by default (they can be found under the folder <path-to-repo/datasetplits>.)
+
+Authors: Naga Karthik
+"""
+
 import os
 import re
 import json
