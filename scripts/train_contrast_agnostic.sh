@@ -1,10 +1,10 @@
 #!/bin/bash
-# This script is used for reproducing contrast-agnostic v3.0 training and also provides the option to extend the 
+# This script is used for training contrast-agnostic v3.0 and also provides the option to extend the 
 # contrast-agnostic spinal cord segmentation model with new datasets. It achieves the following:
 # 1. Clones the datasets from NeuroPoly's git-annex server. 
 # 2. Creates datalists (i.e. json files with image/label pairs) based on pre-defined or random dataset splits 
 # 3. Converts the json files for each dataset into one aggregated dataset in the nnUNet format
-# 4. Runs nnUNet preprocessing and training based on the defined configurations (2D/3D) and folds.
+# 4. Runs nnUNet preprocessing and training based on the defined configurations (2D/3D).
 
 
 # Define (full) path to the contrast-agnostic repository
@@ -64,7 +64,7 @@ DATASET_NAME="TempContrastAgnostic"
 DATASET_NUMBER=999          # this refers to the `-d` argument when training nnunet models
 
 # Name of the nnUNet trainer variant 
-# NOTE: contrast-agnostic v3.1 model used the default trainer defined below
+# NOTE: contrast-agnostic v3.0 model used the default trainer defined below
 # NNUNET_TRAINER="nnUNetTrainer"
 NNUNET_TRAINER="nnUNetTrainer_5epochs"
 
