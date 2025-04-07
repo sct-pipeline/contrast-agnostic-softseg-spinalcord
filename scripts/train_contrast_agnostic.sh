@@ -1,5 +1,5 @@
 #!/bin/bash
-# This script is used for reproducing contrast-agnostic v3.1 training and also provides the option to extend the 
+# This script is used for reproducing contrast-agnostic v3.0 training and also provides the option to extend the 
 # contrast-agnostic spinal cord segmentation model with new datasets. It achieves the following:
 # 1. Clones the datasets from NeuroPoly's git-annex server. 
 # 2. Creates datalists (i.e. json files with image/label pairs) based on pre-defined or random dataset splits 
@@ -20,22 +20,23 @@ PATH_REPO="/home/GRAMES.POLYMTL.CA/u114716/contrast-agnostic/contrast-agnostic-s
 SEED=50
 
 # List of datasets to train on
-# NOTE 1: the following datasets were used for training the contrast-agnostic v3.1 model
-# https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord/releases/tag/v3.1 
-# NOTE 2: training on praxis acute SCI data requires special access to spineimage.ca. Because this is different from
+# NOTE 1: the following datasets were used for training the contrast-agnostic v3.0 model
+# https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord/releases/tag/v3.0
+# NOTE 2: training on praxis acute SCI data requires special access to `spineimage.ca`. Because this is different from
 # the usual downloading from git-annex, this script does not support downloading praxis data. To train contrast-agnostic model 
 # download the dataset manually and store it in PATH_DATA_BASE (see below)
 
-DATASETS=("data-multi-subject" "basel-mp2rage" "canproco" \
-            "lumbar-epfl" "lumbar-vanderbilt" "dcm-brno" "dcm-zurich" "dcm-zurich-lesions" "dcm-zurich-lesions-20231115" \
-            "sci-paris" "sci-zurich" "sci-colorado" "sct-testing-large" \
-            "site_006" "site_007"
-            )
-DATASETS=("site_006")
+# DATASETS=("data-multi-subject" "basel-mp2rage" "canproco" \
+#             "lumbar-epfl" "lumbar-vanderbilt" "dcm-brno" "dcm-zurich" "dcm-zurich-lesions" "dcm-zurich-lesions-20231115" \
+#             "sci-paris" "sci-zurich" "sci-colorado" "sct-testing-large" \
+#             "site_006" "site_007"
+#             )
+# for debugging purposes, test the script on 1 dataset from the above list
+DATASETS=("lumbar-vanderbilt")
 
 # Path to the folder where the datasets will be downloaded
-# PATH_DATA_BASE="/home/GRAMES.POLYMTL.CA/u114716/datasets"
-PATH_DATA_BASE="/scratch/naga/contrast_agnostic/datasets"
+PATH_DATA_BASE="/home/GRAMES.POLYMTL.CA/<your-grames-id>/datasets"
+# PATH_DATA_BASE="/scratch/naga/contrast_agnostic/datasets"
 
 # Path to the output folder where the dataset in MSD-style format will be saved as json files with image/label pairs
 # and other dataset-related statistics. To keep track of the experiments, date is also appended as a prefix or suffix
