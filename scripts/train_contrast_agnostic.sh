@@ -32,10 +32,10 @@ SEED=50
 #             "site_006" "site_007"
 #             )
 # for debugging purposes, test the script on 1 dataset from the above list
-DATASETS=("lumbar-vanderbilt")
+DATASETS=("data-multi-subject")
 
 # Path to the folder where the datasets will be downloaded
-PATH_DATA_BASE="/home/GRAMES.POLYMTL.CA/<your-grames-id>/datasets"
+PATH_DATA_BASE="/home/GRAMES.POLYMTL.CA/u114716/datasets"
 # PATH_DATA_BASE="/scratch/naga/contrast_agnostic/datasets"
 
 # Path to the output folder where the dataset in MSD-style format will be saved as json files with image/label pairs
@@ -73,7 +73,7 @@ NNUNET_TRAINER="nnUNetTrainer_5epochs"
 NNUNET_PLANS_FILE="nnUNetPlans"
 
 # Type/Kernel of the model. for 2D training, use "2d"; for 3D training, use "3d_fullres"
-# configurations=("2d" "3d_fullres")                        
+# configurations=("2d" "3d_fullres")
 configurations=("3d_fullres")
 
 # Number of cross-validation folds to run the model on. nnUNet by default allows training on 5 folds
@@ -106,7 +106,8 @@ for dataset in ${DATASETS[@]}; do
         echo "-----------------------------------"
         python ${PATH_REPO}/nnUnet/01_clone_dataset.py \
             --ofolder ${PATH_DATA_BASE} \
-            --dataset ${dataset} 
+            --dataset ${dataset} \
+            --path-datasplits ${PATH_REPO}/datasplits
     
     fi
 
