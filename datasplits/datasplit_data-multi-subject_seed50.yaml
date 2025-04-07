@@ -1,3 +1,5 @@
+dataset_name: data-multi-subject
+dataset_version_commit: a0738046538232df8e09eba8d98899eada9c11d5
 test:
 - sub-barcelona06
 - sub-beijingPrisma01
