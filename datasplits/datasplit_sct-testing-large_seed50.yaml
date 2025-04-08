@@ -1,3 +1,5 @@
+dataset_name: sct-testing-large
+dataset_version_commit: c26a5d690e2ced34bd5dea61cab66a7cb0eaebed
 test:
 - sub-milanFilippi003
 - sub-milanFilippi005

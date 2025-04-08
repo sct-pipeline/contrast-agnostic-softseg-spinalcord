@@ -1,3 +1,5 @@
+dataset_name: dcm-zurich
+dataset_version_commit: 83dab50d8138bbc1f8e4f18672e651e988d1e000
 test:
 - sub-260155
 - sub-296085

@@ -1,3 +1,5 @@
+dataset_name: dcm-brno
+dataset_version_commit: 3dacde7ee16f0dfc27508fe0bf8f1919cfc7eb4d
 test:
 - sub-1860B6472B
 - sub-2295B4676B

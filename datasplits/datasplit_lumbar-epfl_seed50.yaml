@@ -1,3 +1,5 @@
+dataset_name: lumbar-epfl
+dataset_version_commit: c6685fc4762daea3ec6f184b128b7fe19acad2b8
 test:
 - sub-05
 - sub-11

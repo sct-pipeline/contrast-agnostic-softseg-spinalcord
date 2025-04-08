@@ -1,3 +1,5 @@
+dataset_name: lumbar-vanderbilt
+dataset_version_commit: 81fc970a6515ec27d90c0dda5935b5179a10305e
 test:
 - sub-140549
 - sub-242142
