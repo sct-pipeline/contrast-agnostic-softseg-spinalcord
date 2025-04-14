@@ -46,7 +46,8 @@ def process_single_image(args):
     # Reorient label to RPI
     assert os.system(f"sct_image -i {img_dict['label']} -setorient RPI -o {label_file_nnunet}") == 0
     
-    # Register label to image
+    # Put label to image to match dimension, resolution and orientation
+    # '-identity 1': registration optimization (e.g. translations, rotations, deformations) is skipped
     assert os.system(f"sct_register_multimodal -i {str(label_file_nnunet)} -d {str(image_file_nnunet)} "
                     f"-identity 1 -o {str(label_file_nnunet)} -owarp file_to_delete_{counter}.nii.gz "
                     f"-owarpinv file_to_delete_2_{counter}.nii.gz") == 0
