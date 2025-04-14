@@ -27,7 +27,10 @@ from utils import get_git_branch_and_commit
 
 def download_dataset(dataset_name, dataset_commit):
     # Clone the dataset
-    subprocess.run(["git", "clone", f"git@data.neuro.polymtl.ca:datasets/{dataset_name}"])
+    if dataset_name == 'data-multi-subject':
+        subprocess.run(["git", "clone", f"https://github.com/spine-generic/{dataset_name}"])
+    else:
+        subprocess.run(["git", "clone", f"git@data.neuro.polymtl.ca:datasets/{dataset_name}"])
     os.chdir(dataset_name)
     
     # Checkout the specific commit
