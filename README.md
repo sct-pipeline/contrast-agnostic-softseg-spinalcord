@@ -7,6 +7,9 @@ Official repository for contrast-agnostic segmentation of the spinal cord.
 This repo contains all the code for training the contrast-agnostic model. The code for training is based on the [nnUNetv2 framework](https://github.com/MIC-DKFZ/nnUNet). The segmentation model is available as part of [Spinal Cord Toolbox (SCT)](https://spinalcordtoolbox.com/stable/user_section/command-line/deepseg/spinalcord.html) via the `sct_deepseg` functionality.
 
 
+<img width="1540" alt="lifelong_ca_final" src="https://github.com/user-attachments/assets/c35d445c-d2ec-4bca-9995-e16371972cbf" />
+
+
 ### Citation Information
 
 If you find this work and/or code useful for your research, please cite our paper:
@@ -25,8 +28,6 @@ author = {Sandrine Bédard* and Enamundram Naga Karthik* and Charidimos Tsagkas 
 note = {Shared authorship -- authors contributed equally}
 }
 ```
-
-**TODO**: add lifelong learning figure
 
 
 ## Table of contents
