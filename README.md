@@ -83,7 +83,8 @@ bash scripts/train_contrast_agnostic.sh
 > [!IMPORTANT]  
 > The script `train_contrast_agnostic.sh` will NOT run out-of-the-box. User-specific variables such as the path to download datasets and nnUnet repository need to be set. Info about which varibles to set can be found in the script itself.
 
-
+> [!IMPORTANT]  
+ > You might need to run the `train_contrast_agnostic.sh` script in a virtual terminal such as `tmux` or `screen`.
 <!-- 
 TODO: move to csa_qc_evaluation folder
 ## 5. Computing morphometric measures (CSA)
