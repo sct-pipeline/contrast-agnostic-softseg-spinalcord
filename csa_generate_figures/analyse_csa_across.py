@@ -12,6 +12,9 @@ import re
 import seaborn as sns
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.stats import friedmanchisquare, normaltest, wilcoxon
+import scikit_posthocs as sp
+from loguru import logger
 
 # Setting the hue order as specified
 HUE_ORDER = ["softseg_bin", "deepseg_2d", "v20", "nnunet-AllRandInit3D_bin"]
@@ -32,6 +35,36 @@ color_palette = {
         'nnunet-AllInferred3D_bin':'#8da0cb',
         'nnunet-AllRandInit3D_bin': '#a6d854',
     }
+
+def format_pvalue(p_value, decimal_places=3, include_space=False, include_equal=True):
+    """
+    Format p-value.
+    If the p-value is lower than alpha, format it to "<0.001", otherwise, round it to three decimals
+
+    :param p_value: input p-value as a float
+    :param decimal_places: number of decimal places the p-value will be rounded
+    :param include_space: include space or not (e.g., ' = 0.06')
+    :param include_equal: include equal sign ('=') to the p-value (e.g., '=0.06') or not (e.g., '0.06')
+    :return: p_value: the formatted p-value (e.g., '<0.05') as a str
+    """
+    if include_space:
+        space = ' '
+    else:
+        space = ''
+
+    # If the p-value is lower than alpha, return '<alpha' (e.g., <0.001)
+    for alpha in [0.001, 0.01, 0.05]:
+        if p_value < alpha:
+            p_value = space + "<" + space + str(alpha)
+            break
+    # If the p-value is greater than 0.05, round it number of decimals specified by decimal_places
+    else:
+        if include_equal:
+            p_value = space + '=' + space + str(round(p_value, decimal_places))
+        else:
+            p_value = space + str(round(p_value, decimal_places))
+
+    return p_value
 
 
 def save_figure(file_path, save_fname):
@@ -96,7 +129,6 @@ def extract_contrast_and_details(filename, across="Method"):
     else:
         raise ValueError(f'Unknown analysis type: {across}. Choices: [Method, Resolution, Threshold].')
     
-
 
 def generate_figure_std(data, file_path, across="Method", metric="csa", hue_order=HUE_ORDER):
     """
@@ -334,7 +366,6 @@ def generate_figure_csa(file_path, data, method=None, threshold=None):
     save_figure(file_path, save_fname)
 
 
-
 def generate_figure_csa_all_methods(file_path, data):
     """
     Generate a single violinplot showing CSA for each contrast across all methods
@@ -464,9 +495,116 @@ def generate_figure_csa_all_methods(file_path, data):
     plt.show()
 
 
+def compute_statistical_tests(df_avg_csa, exp_type='default'):
+    """
+    Compute statistical tests to compare the STD of CSA across methods.
+    """
+    # Compute mean and std across contrasts for each method
+    # contains columns: 'Method', 'Participant', 'mean', 'std'
+    df = df_avg_csa.groupby(['Method', 'Participant'])['MEAN(area)'].agg(['mean', 'std']).reset_index()
+    # drop method 'softseg_bin'
+    df = df[df['Method'] != 'softseg_bin']  # we don't want pair-wise comparisons with GT (only methods)
+    
+    # create df for each method
+    method_dfs = {}
+    for method in df['Method'].unique():
+        method_dfs[method] = df[df['Method'] == method][['Participant', 'std']].set_index('Participant')
+    
+    # check the length of each method dataframe
+    lengths = [len(method_dfs[method]) for method in method_dfs]
+    if len(set(lengths)) != 1:
+        logger.info("Error: Not all methods have the same number of participants. Cannot perform Friedman test.")
+        return
+    
+    # for method in df['Method'].unique():
+    #     if method == 'v20':
+    #         # just a sanity check to see if average of std values matches what we have on STD CSA plot
+    #         # print mean and std of the 'std' column
+    #         mean_std = method_dfs[method]['std'].mean()
+    #         std_std = method_dfs[method]['std'].std()
+    #         print(f'Method: {method}, Mean of STD: {mean_std:.3f}, Std of STD: {std_std:.3f}')
+
+    # Check normality of the data for each method using D'Agostino and Pearson's test
+    for method in method_dfs:
+        stat, p_value = normaltest(method_dfs[method]['std'])
+        logger.info(f'Normality test for method {method}: stat={stat}, p-value (formatted): {format_pvalue(p_value)}, p-value: {p_value}')
+        if p_value < 0.05:
+            logger.info(f"The data for method {method} is not normally distributed (reject H0). Consider using a non-parametric test.\n")
+        else:
+            logger.info(f"The data for method {method} is normally distributed (fail to reject H0)")
+
+    if exp_type == 'ablation':
+
+        # check if nnunet-AllInferred3D_bin|nnunet-AllRandInit3D_bin are in method_dfs
+        methods_to_compare = ['nnunet-AllInferred3D_bin', 'nnunet-AllRandInit3D_bin']
+        for method in methods_to_compare:
+            if method not in method_dfs:
+                logger.info(f"Error: Method {method} not found in the data. Cannot perform Wilcoxon signed-rank test.")
+                return
+
+        # NOTE: because we only have 2 related samples (i.e., methods): original model and one trained with recursive GT.
+        # we use Wilcoxon signed-rank test
+        stat, p_value = wilcoxon(method_dfs['nnunet-AllInferred3D_bin']['std'], method_dfs['nnunet-AllRandInit3D_bin']['std'])
+        logger.info(f'Wilcoxon signed-rank test statistic: {stat}, p-value (formatted): {format_pvalue(p_value)}, p-value: {p_value}')
+        if p_value < 0.05:
+            logger.info("There is a significant difference between the two methods (reject H0).\n")
+
+    else:
+        # NOTE: Why Friedman? Because we have more than 2 related samples (i.e., methods) and we want to compare their distributions.
+        # Related (paired) samples because the same participants (i.e. test set) are used for each method.
+        stat, p_value = friedmanchisquare(*[method_dfs[method]['std'] for method in method_dfs])
+        logger.info(f'Friedman test statistic: {stat}, p-value (formatted): {format_pvalue(p_value)}, p-value: {p_value}')
+        if p_value < 0.05:
+            logger.info("There is a significant difference between the methods (reject H0). Perform post-hoc test to identify which pairs are different.\n")
+
+            # reframe the df to have all methods in a column and the metric values in another column
+            df_friedman = pd.DataFrame()
+            for method in method_dfs:
+                temp_df = method_dfs[method].reset_index()
+                temp_df['Method'] = method
+                df_friedman = pd.concat([df_friedman, temp_df])
+            df_friedman = df_friedman.rename(columns={'std': 'Metric'})
+
+            # NOTE: As per https://scikit-posthocs.readthedocs.io/en/latest/generated/scikit_posthocs.posthoc_dunn.html
+            # Dunn's test is suitable after Kruskall-Wallis test
+            # # Perform post-hoc test using Dunn's test with Holm correction
+            # p_posthoc = sp.posthoc_dunn(df_friedman, val_col='Metric', group_col='Method', p_adjust='holm')
+            # logger.info("Post-hoc Dunn's test p-values (Holm corrected):")
+            # logger.info(f"\n{p_posthoc}")
+
+            # NOTE: As per https://scikit-posthocs.readthedocs.io/en/latest/generated/scikit_posthocs.posthoc_nemenyi_friedman.html
+            # there exists a post-hoc test specifically for Friedman test, which is the Nemenyi test
+            # Perform post-hoc test using nemenyi test
+            # get a non-melted version of df_friedman (can be used with default setting of scikit-posthocs)
+            df_wide = df_friedman.pivot(index='Participant', columns='Method', values='Metric')
+            
+            p_posthoc = sp.posthoc_nemenyi_friedman(df_wide)
+            logger.info("Post-hoc Nemenyi test p-values:")
+            logger.info(f"\n{p_posthoc}")
+
+            # check if p_posthoc is symmetric
+            assert (p_posthoc.values == p_posthoc.values.T).all(), "Post-hoc p-value matrix is not symmetric"
+
+            # p_posthoc is a square matrix with the p-values for each pair of methods. The diagonal is always 1 
+            # (i.e., method compared to itself). So, the matrix is symmetric (i.e., p-value for method A vs B is the same as B vs A)
+            # we only need to print the upper triangle of the matrix
+            logger.info("Significant differences (p < 0.05) between methods:")
+            for i in range(len(p_posthoc)):
+                for j in range(i+1, len(p_posthoc)):
+                    method1 = p_posthoc.index[i]
+                    method2 = p_posthoc.columns[j]
+                    p_val = p_posthoc.iloc[i, j]
+                    if p_val < 0.05:
+                        logger.info(f"\t{method1} vs {method2}: p-value (formatted): {format_pvalue(p_val)}, p-value: {p_val}")
+        else:
+            logger.info("No significant difference between the methods (fail to reject H0)")
+
+
 def main(args, analysis_type="methods"):
     # Load the CSV file containing averaged (across slices) C2-C3 CSA 
     data_avg_csa = pd.read_csv(args.i)
+
+    logger.add(os.path.join(os.path.dirname(args.i), 'log.txt'), rotation='10 MB', level='INFO')
 
     # Apply the function to extract participant ID
     data_avg_csa['Participant'] = data_avg_csa['Filename'].apply(fetch_participant_id)
@@ -482,6 +620,9 @@ def main(args, analysis_type="methods"):
         
         # Generate violinplot showing STD across participants for each method
         generate_figure_std(data_avg_csa, file_path=args.i, metric="csa")
+
+        # Compute statistical tests
+        compute_statistical_tests(data_avg_csa, exp_type='ablation' if args.ablation else 'default')
 
         if args.i_dice is not None:
             # Generate violinplot showing average slicewise Dice scores across participants for each method
@@ -532,5 +673,7 @@ if __name__ == "__main__":
                         help="Path to the CSV file containing averaged slice-wise Dice scores for each contrast, method, and subjects")
     parser.add_argument('-a', type=str, default="methods", 
                         help='Options to analyse CSA across. Choices: [methods, resolutions]')
+    parser.add_argument('--ablation', action='store_true',
+                        help='If set, perform generate std, stats results for recursive/ablation experiments.')
     args = parser.parse_args()
     main(args, analysis_type=args.a)
