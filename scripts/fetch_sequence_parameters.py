@@ -137,7 +137,8 @@ def fetch_participant_details(input_string):
 
     if 'data-multi-subject' in input_string:
         # NOTE: the preprocessed spine-generic dataset have a weird BIDS naming convention (due to how they were preprocessed)
-        contrast_pattern =  r'.*_(space-other_T1w|space-other_T2w|space-other_T2star|flip-1_mt-on_space-other_MTS|flip-2_mt-off_space-other_MTS|rec-average_dwi).*'
+        # contrast_pattern =  r'.*_(space-other_T1w|space-other_T2w|space-other_T2star|flip-1_mt-on_space-other_MTS|flip-2_mt-off_space-other_MTS|rec-average_dwi).*'
+        contrast_pattern =  r'.*_(T1w|T2w|T2star|flip-1_mt-on_MTS|flip-2_mt-off_MTS|rec-average_dwi).*'
     else:
         # TODO: add more contrasts as needed
         # contrast_pattern =  r'.*_(T1w|T2w|T2star|PSIR|STIR|UNIT1|acq-MTon_MTR|acq-dwiMean_dwi|acq-b0Mean_dwi|acq-T1w_MTR).*'
@@ -173,7 +174,8 @@ def main():
             data = json.load(f)
         
         list_of_files = []
-        for split in ['train', 'validation', 'test']:
+        # for split in ['train', 'validation', 'test']:
+        for split in ['test']:
             for idx in range(len(data[split])):
                 list_of_files.append(data[split][idx]["image"])
 
@@ -206,6 +208,15 @@ def main():
 
         logger.info(f"Dataset: {dataset_name}")
 
+        contrasts = df['Contrast'].unique()
+        # contrasts = ['DWI', 'MToff', 'MTon', 'T1w', 'T2star', 'T2w']
+        for contrast in contrasts:
+            df_contrast = df[df['Contrast'] == contrast]
+            logger.info(f"\nContrast: {contrast}")
+            logger.info(f"Number of files: {len(df_contrast)}")
+            logger.info(f"PixDim (min, max): {df_contrast['PixDim'].agg(['min', 'max']).to_dict()}")
+            logger.info(f"SliceThickness (min, max): {df_contrast['SliceThickness'].agg(['min', 'max']).to_dict()}")
+
         # Remove rows with n/a values for MagneticFieldStrength
         df = df[df['MagneticFieldStrength'] != 'n/a']
 
@@ -215,8 +226,8 @@ def main():
         # Print the min and max values of the MagneticFieldStrength, PixDim, and SliceThickness
         logger.info(f"\n{df[['MagneticFieldStrength', 'PixDim', 'SliceThickness']].agg(['min', 'max'])}")
 
-        # Print unique values of the Manufacturer and ManufacturerModelName
-        logger.info(f"\n{df[['Manufacturer', 'ManufacturerModelName']].drop_duplicates()}")
+        # # Print unique values of the Manufacturer and ManufacturerModelName
+        # logger.info(f"\n{df[['Manufacturer', 'ManufacturerModelName']].drop_duplicates()}")
         # # Print number of filenames for unique values of the Manufacturer
         # print(df.groupby('Manufacturer')['filename'].nunique())
         # # Print number of filenames for unique values of the MagneticFieldStrength
