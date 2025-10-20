@@ -316,7 +316,7 @@ def main():
             test_input = batch["image"].to(DEVICE)
             
             # this loop only takes about 0.2s on average on a CPU
-            checkpoint = torch.load(chkp_path, map_location=torch.device(DEVICE))["state_dict"]
+            checkpoint = torch.load(chkp_path, map_location=torch.device(DEVICE), weights_only=False)["state_dict"]
             # NOTE: remove the 'net.' prefix from the keys because of how the model was initialized in lightning
             # https://discuss.pytorch.org/t/missing-keys-unexpected-keys-in-state-dict-when-loading-self-trained-model/22379/14
             for key in list(checkpoint.keys()):
