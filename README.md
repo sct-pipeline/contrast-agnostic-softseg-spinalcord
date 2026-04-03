@@ -1,6 +1,7 @@
 # Towards Contrast-agnostic Soft Segmentation of the Spinal Cord
 
 [![MedIA](https://img.shields.io/badge/MedIA-10.106/media.2025.103473-darkgreen.svg)](https://doi.org/10.1016/j.media.2025.103473)
+[![ImagingNeuroscience](https://img.shields.io/badge/ImagingNeuroscience-10.1162/IMAG.a.1105-darkgreen.svg)](https://doi.org/10.1162/IMAG.a.1105)
 
 Official repository for contrast-agnostic segmentation of the spinal cord. 
 
@@ -12,7 +13,7 @@ This repo contains all the code for training the contrast-agnostic model. The co
 
 ### Citation Information
 
-If you find this work and/or code useful for your research, please cite our paper:
+If you find this work and/or code useful for your research, please cite our papers:
 
 ```
 @article{BEDARD2025103473,
@@ -28,6 +29,20 @@ author = {Sandrine Bédard* and Enamundram Naga Karthik* and Charidimos Tsagkas 
 note = {Shared authorship -- authors contributed equally}
 }
 ```
+
+```
+@article{Karthik2026,
+title = {Monitoring morphometric drift in lifelong learning segmentation of the spinal cord},
+journal = {Imaging Neuroscience},
+volume = {4},
+pages = {IMAG.a.1105},
+year = {2026},
+doi = {https://doi.org/10.1162/IMAG.a.1105},
+author = {Enamundram Naga Karthik and Sandrine Bédard and Jan Valošek and Christoph S Aigner and Elise Bannier and Josef Bednařík and Virginie Callot and Anna Combes and Armin Curt and Gergely David and Falk Eippert and Lynn Farner and Michael G Fehlings and Patrick Freund and Tobias Granberg and Cristina Granziera and Ulrike Horn and Tomáš Horák and Suzanne Humphreys and Markus Hupp and Anne Kerbrat and Nawal Kinany and Shannon Kolind and Petr Kudlička and Anna Lebret and Lisa Eunyoung Lee and Caterina Mainero and Allan R Martin and Megan McGrath and Govind Nair and Kristin P O'Grady and Jiwon Oh and Russell Ouellette and Nikolai Pfender and Dario Pfyffer and Pierre-François Pradat and Alexandre Prat and Emanuele Pravatà and Daniel S Reich and Ilaria Ricchi and Naama Rotem-Kohavi and Simon Schading-Sassenhausen and Maryam Seif and Andrew Smith and Seth A Smith and Grace Sweeney and Roger Tam and Anthony Traboulsee and Constantina Andrada Treaba and Charidimos Tsagkas and Zachary Vavasour and Dimitri Van De Ville and Kenneth Arnold Weber II and Sarath Chandar and Julien Cohen-Adad}
+}
+```
+
+![Lifelong learning figure](imag.a.1105_fig2.png)
 
 
 ## Table of contents
