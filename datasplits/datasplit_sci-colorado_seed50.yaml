@@ -1,3 +1,5 @@
+dataset_name: sci-colorado
+dataset_version_commit: 1518ecd184b8a89bc1a1197eb5ae4caf5c608fb9
 test:
 - sub-5575
 - sub-5629

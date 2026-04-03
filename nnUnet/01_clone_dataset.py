@@ -14,6 +14,7 @@ import os
 import sys
 import subprocess
 import argparse
+import yaml
 
 # Add the parent directory of the script to the Python path
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -24,10 +25,19 @@ from utils import get_git_branch_and_commit
 # from utils.utils import SITES_DICT, get_git_branch_and_commit
 
 
-def download_dataset(dataset_name):
+def download_dataset(dataset_name, dataset_commit):
     # Clone the dataset
-    subprocess.run(["git", "clone", f"git@data.neuro.polymtl.ca:datasets/{dataset_name}"])
+    if dataset_name == 'data-multi-subject':
+        subprocess.run(["git", "clone", f"https://github.com/spine-generic/{dataset_name}"])
+    else:
+        subprocess.run(["git", "clone", f"git@data.neuro.polymtl.ca:datasets/{dataset_name}"])
     os.chdir(dataset_name)
+    
+    # Checkout the specific commit
+    subprocess.run(["git", "checkout", f"{dataset_commit}"])
+    
+    # Get the git-annex files
+    subprocess.run(["git", "annex", "init"])
     subprocess.run(["git", "annex", "dead", "here"])
 
     # Get the git commit ID of the dataset
@@ -53,10 +63,17 @@ if __name__ == "__main__":
                         required=True,
                         type=str,
                         help="Name of the dataset to be cloned")
+    parser.add_argument('--path-datasplits', type=str, default=None,
+                        help='Path to the datasplits folder containing predefined datasplits (used to fetch dataset commit)')
     args = parser.parse_args()
 
     PATH_DATA = os.path.abspath(os.path.expanduser(args.ofolder))
     os.chdir(PATH_DATA)
 
+    # get commit of the dataset
+    with open(os.path.join(args.path_datasplits, f"datasplit_{args.dataset}_seed50.yaml"), 'r') as file:
+        datasplits = yaml.safe_load(file)
+        dataset_commit = datasplits['dataset_version_commit']
+
     # for site, dataset_name in SITES_DICT.items():
-    download_dataset(args.dataset)
+    download_dataset(args.dataset, dataset_commit)

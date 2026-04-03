@@ -22,20 +22,21 @@ SEED=50
 # List of datasets to train on
 # NOTE 1: the following datasets were used for training the contrast-agnostic v3.0 model
 # https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord/releases/tag/v3.0
-# NOTE 2: training on praxis acute SCI data requires special access to spineimage.ca. Because this is different from
+# NOTE 2: training on praxis acute SCI data requires special access to `spineimage.ca`. Because this is different from
 # the usual downloading from git-annex, this script does not support downloading praxis data. To train contrast-agnostic model 
 # download the dataset manually and store it in PATH_DATA_BASE (see below)
 
-DATASETS=("data-multi-subject" "basel-mp2rage" "canproco" \
-            "lumbar-epfl" "lumbar-vanderbilt" "dcm-brno" "dcm-zurich" "dcm-zurich-lesions" "dcm-zurich-lesions-20231115" \
-            "sci-paris" "sci-zurich" "sci-colorado" "sct-testing-large" \
-            "site_006" "site_007"
-            )
-DATASETS=("site_006")
+# DATASETS=("data-multi-subject" "basel-mp2rage" "canproco" \
+#             "lumbar-epfl" "lumbar-vanderbilt" "dcm-brno" "dcm-zurich" "dcm-zurich-lesions" "dcm-zurich-lesions-20231115" \
+#             "sci-paris" "sci-zurich" "sci-colorado" "sct-testing-large" \
+#             "site_006" "site_007"
+#             )
+# for debugging purposes, test the script on 1 dataset from the above list
+DATASETS=("data-multi-subject")
 
 # Path to the folder where the datasets will be downloaded
-# PATH_DATA_BASE="/home/GRAMES.POLYMTL.CA/u114716/datasets"
-PATH_DATA_BASE="/scratch/naga/contrast_agnostic/datasets"
+PATH_DATA_BASE="/home/GRAMES.POLYMTL.CA/u114716/datasets"
+# PATH_DATA_BASE="/scratch/naga/contrast_agnostic/datasets"
 
 # Path to the output folder where the dataset in MSD-style format will be saved as json files with image/label pairs
 # and other dataset-related statistics. To keep track of the experiments, date is also appended as a prefix or suffix
@@ -72,7 +73,7 @@ NNUNET_TRAINER="nnUNetTrainer_5epochs"
 NNUNET_PLANS_FILE="nnUNetPlans"
 
 # Type/Kernel of the model. for 2D training, use "2d"; for 3D training, use "3d_fullres"
-# configurations=("2d" "3d_fullres")                        
+# configurations=("2d" "3d_fullres")
 configurations=("3d_fullres")
 
 # Number of cross-validation folds to run the model on. nnUNet by default allows training on 5 folds
@@ -105,7 +106,8 @@ for dataset in ${DATASETS[@]}; do
         echo "-----------------------------------"
         python ${PATH_REPO}/nnUnet/01_clone_dataset.py \
             --ofolder ${PATH_DATA_BASE} \
-            --dataset ${dataset} 
+            --dataset ${dataset} \
+            --path-datasplits ${PATH_REPO}/datasplits
     
     fi
 

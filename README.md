@@ -62,7 +62,7 @@ author = {Enamundram Naga Karthik and Sandrine Bédard and Jan Valošek and Chri
 
 1. Create a conda environment with the following command:
 ```bash
-conda create -n contrast_agnostic python=3.9
+conda create -n contrast_agnostic python=3.9.16
 ```
 
 2. Activate the environment with the following command:
@@ -77,8 +77,8 @@ git clone https://github.com/sct-pipeline/contrast-agnostic-softseg-spinalcord.g
 
 3. Install the required packages with the following command:
 ```bash
-cd contrast-agnostic-softseg-spinalcord/nnUnet
-pip install -r requirements.txt
+cd contrast-agnostic-softseg-spinalcord
+pip install -r nnUnet/requirements.txt
 ```
 
 > **Note**
@@ -87,11 +87,17 @@ pip install -r requirements.txt
 
 ### Step 2: Train the model
 
-The script `scripts/train_contrast_agnostic.sh` downloads the datasets from git-annex, creates datalists, converts them into nnUNet-specific format, and trains the model. More instructions about what variables to set and which datasets to use can be found in the script itself. Once these variables are set, the script can be run simply as follows:
+The script `scripts/train_contrast_agnostic.sh` downloads the datasets from git-annex, creates datalists, converts them into nnUNet-specific format, and trains the model. More instructions about what variables to set and which datasets to use can be found in the script itself. Once these variables are set, run:
 
 ```bash
 bash scripts/train_contrast_agnostic.sh
 ```
+
+> [!IMPORTANT]  
+> The script `train_contrast_agnostic.sh` will NOT run out-of-the-box. User-specific variables such as the path to download datasets and nnUnet repository need to be set. Info about which varibles to set can be found in the script itself.
+
+> [!IMPORTANT]  
+ > You might need to run the `train_contrast_agnostic.sh` script in a virtual terminal such as `tmux` or `screen`.
 <!-- 
 TODO: move to csa_qc_evaluation folder
 ## 5. Computing morphometric measures (CSA)

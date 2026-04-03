@@ -1,3 +1,5 @@
+dataset_name: canproco
+dataset_version_commit: a04d89739c769dc03f23fcda183df62c62f586a9
 test:
 - sub-cal080
 - sub-cal085

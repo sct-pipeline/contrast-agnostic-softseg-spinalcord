@@ -102,11 +102,13 @@ def get_parser():
                         help='Path to the folder containing nifti images of test predictions AND GTs'
                         ' when method == monai, else path to the xml files containing the pre-computed'
                         ' ANIMA metrics when method == [deepseg*, propseg]')
+    parser.add_argument('--out-folder', required=False, type=str, default=None,
+                        help='Path to the folder containing the output xml files containing the ANIMA metrics.')
     parser.add_argument('-dname', '--dataset-name', required=True, type=str, choices=STANDARD_DATASETS,
                         help='Dataset name used for storing on git-annex. For region-based metrics, '
                              'append "-region" to the dataset name. Default: spine-generic')
     parser.add_argument('--method', required=True, type=str, default='monai', 
-                        choices=['monai', 'synthseg', 'deepseg2d', 'deepseg3d', 'propseg', 'v20', 'v30'],
+                        choices=['monai', 'synthseg', 'deepseg2d', 'deepseg3d', 'propseg', 'v20', 'v30', 'scisegv2'],
                         help='Segmentation method to compute metrics for. Default: monai')
 
     return parser
@@ -120,10 +122,13 @@ def get_test_metrics_by_dataset(pred_folder, output_folder, anima_binaries_path,
     if method == 'v20':
         pred_suffix = 'seg_v20' # '_pred.nii.gz'
     elif method == 'v30':
-        pred_suffix = 'seg_nnunet-AllRandInit3D_bin'
+        # pred_suffix = 'seg_nnunet-AllRandInit3D_bin'
+        pred_suffix = 'seg_nnunet-AllRandInit3D'
     elif method == 'deepseg2d':
         pred_suffix = 'seg_deepseg_2d'
-    gt_suffix = 'softseg_bin' # '_softseg_gt.nii.gz'
+    elif method == 'scisegv2':
+        pred_suffix = 'seg_scisegv2'
+    gt_suffix = "label-SC_seg" #'seg-manual' # 'softseg_bin'
     if data_set in STANDARD_DATASETS:
         # glob all the predictions and GTs and get the last three digits of the filename
         pred_files = sorted(glob.glob(f"{pred_folder}/**/**/*_{pred_suffix}.nii.gz"))
@@ -202,9 +207,13 @@ def main():
     print(f"Saving ANIMA performance metrics to {output_folder}")
 
     # Get all XML filepaths where ANIMA performance metrics are saved for each hold-out subject
-    if method in ['monai', 'synthseg', 'v20', 'deepseg2d', 'v30']:
-        subject_filepaths = get_test_metrics_by_dataset(pred_folder, output_folder, anima_binaries_path, 
-                                                        data_set=dataset_name, method=method)
+    if method in ['monai', 'synthseg', 'v20', 'deepseg2d', 'v30', 'scisegv2']:
+        if args.out_folder:
+            subject_filepaths = [os.path.join(output_folder, f) for f in os.listdir(output_folder) if f.endswith('.xml')]
+        else:
+            print("Computing ANIMA metrics from scratch as no output folder is provided!")
+            subject_filepaths = get_test_metrics_by_dataset(pred_folder, output_folder, anima_binaries_path, 
+                                                            data_set=dataset_name, method=method)
     elif method in ['deepseg3d', 'propseg']:
         subject_filepaths = sorted(glob.glob(f"{pred_folder}/*.xml"))
     else:
@@ -216,7 +225,7 @@ def main():
     # Update the test metrics dictionary by iterating over all subjects
     for subject_filepath in subject_filepaths:
         subject = os.path.split(subject_filepath)[-1].split('_')[0]
-        contrast = os.path.split(subject_filepath)[-1].split('_')[1]
+        contrast = 'T2' #os.path.split(subject_filepath)[-1].split('_')[1] # T2w
         root_node = ET.parse(source=subject_filepath).getroot()
 
         # create a dictionary to store the metrics for each subject
@@ -252,8 +261,7 @@ def main():
     # get the list of contrasts
     contrasts = sorted(list(test_metrics[list(test_metrics.keys())[0]].keys()))
     print(f"Contrasts: {contrasts}")
-    metrics = ['Dice', 'RelativeVolumeError', 'SurfaceDistance', 'HausdorffDistance']
-
+    metrics = ['Jaccard', 'Dice', 'RelativeVolumeError', 'SurfaceDistance', 'HausdorffDistance']
     metrics_per_contrast = {}
     metrics_avg_all = {}
 

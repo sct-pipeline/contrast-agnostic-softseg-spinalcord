@@ -1,3 +1,11 @@
+"""
+This script takes as input the path to the original BIDS dataset and outputs a datalist json file
+    containing the train/val/test splits. To reproduce contrast-agnostic v3.0 training, the script
+    uses pre-defined splits by default (they can be found under the folder <path-to-repo/datasetplits>.)
+
+Authors: Naga Karthik
+"""
+
 import os
 import re
 import json
@@ -111,13 +119,9 @@ def fetch_subject_nifti_details(filename_path):
     orientation = re.search('acq-(.*?)[_/]', filename_path)     # [_/] means either underscore or slash
     orientationID = orientation.group(0)[:-1] if orientation else ""    # [:-1] removes the last underscore or slash
 
-    if 'data-multi-subject' in filename_path:
-        # NOTE: the preprocessed spine-generic dataset have a weird BIDS naming convention (due to how they were preprocessed)
-        contrast_pattern =  r'.*_(space-other_T1w|space-other_T2w|space-other_T2star|flip-1_mt-on_space-other_MTS|flip-2_mt-off_space-other_MTS|rec-average_dwi).*'
-    else:
-        # TODO: add more contrasts as needed
-        # contrast_pattern =  r'.*_(T1w|T2w|T2star|PSIR|STIR|UNIT1|acq-MTon_MTR|acq-dwiMean_dwi|acq-b0Mean_dwi|acq-T1w_MTR).*'
-        contrast_pattern =  r'.*_(T1w|T2w|acq-sagthor_T2w|acq-sagcerv_T2w|acq-sagstir_T2w|acq-ax_T2w|T2star|PSIR|STIR|UNIT1|acq-MTon_MTR|acq-dwiMean_dwi|acq-T1w_MTR).*'
+    # TODO: add more contrasts as needed
+    # contrast_pattern =  r'.*_(T1w|T2w|T2star|PSIR|STIR|UNIT1|acq-MTon_MTR|acq-dwiMean_dwi|acq-b0Mean_dwi|acq-T1w_MTR).*'
+    contrast_pattern =  r'.*_(T1w|T2w|acq-sagthor_T2w|acq-sagcerv_T2w|acq-sagstir_T2w|acq-ax_T2w|T2star|PSIR|STIR|UNIT1|flip-1_mt-on_MTS|flip-2_mt-off_MTS|acq-MTon_MTR|acq-dwiMean_dwi|rec-average_dwi|acq-T1w_MTR).*'
     contrast = re.search(contrast_pattern, filename_path)
     contrastID = contrast.group(1) if contrast else ""
 
@@ -139,11 +143,7 @@ def create_df(args, dataset_path):
     labels_folder = FILESEG_SUFFIXES[dataset_name][0]
     labels_suffix = FILESEG_SUFFIXES[dataset_name][1]
 
-    if dataset_name == 'data-multi-subject':
-        # get only the (preprocessed) subject files, which are in the `derivatives` folder
-        path_files = os.path.join(dataset_path, 'derivatives', 'data_preprocessed', 'sub-*', '**', f'*.nii.gz')
-    
-    elif dataset_name == 'sct-testing-large':
+    if dataset_name == 'sct-testing-large':
         path_files = os.path.join(dataset_path, 'derivatives', labels_folder, 'sub-*', '**', f'*_{labels_suffix}.nii.gz')
 
         df_participants = pd.read_csv(os.path.join(dataset_path, 'participants.tsv'), sep='\t')
@@ -286,7 +286,7 @@ def create_df(args, dataset_path):
 
     # NOTE: Datasets might have lot of images might not have labels (and hence need not be downloaded to save space)
     # Get only those images which have labels and are present in the dataframe (and belong to the pathology)
-    for file in df['filename']:            
+    for file in df['filename']:
         fname_label = file
         gitannex_cmd_label = f'cd {dataset_path}; git annex get {fname_label}'
         
@@ -404,16 +404,9 @@ def main():
                 for idx in range(num_files_per_subject):
                 
                     temp_data = {}
-                    # if the subject belongs to a data-multi-subject dataset, then the filename is different
-                    if df['datasetName'].values[0] == 'data-multi-subject':
-                        # NOTE: for spine-generic subjects, we're pulling the data from image filename
-                        fname_image = df[df['subjectID'] == subject]['filename'].values[idx]
-                        fname_label = fname_image.replace('data_preprocessed', labels_folder).replace('.nii.gz', f'_{labels_suffix}.nii.gz')
-                    
-                    else: 
-                        # NOTE: but for other datasets, we are getting them from the lesion filenames
-                        fname_label = df[df['subjectID'] == subject]['filename'].values[idx]
-                        fname_image = fname_label.replace(f'/derivatives/{labels_folder}', '').replace(f'_{labels_suffix}.nii.gz', '.nii.gz')
+
+                    fname_label = df[df['subjectID'] == subject]['filename'].values[idx]
+                    fname_image = fname_label.replace(f'/derivatives/{labels_folder}', '').replace(f'_{labels_suffix}.nii.gz', '.nii.gz')
 
                     # # use when creating a balanced dataset
                     # temp_data["image"] = df[(df['subjectID'] == subject) & (df['split'] == name)].iloc[idx]['fname_image']
@@ -475,7 +468,12 @@ def main():
 
     # dump train/val/test splits into a yaml file
     with open(f"datasplits/datasplit_{dataset_name}_seed{args.seed}.yaml", 'w') as file:
-        yaml.dump({'train': sorted(train_subs_all), 'val': sorted(val_subs_all), 'test': sorted(test_subs_all)}, file, indent=2, sort_keys=True)
+        yaml.dump({
+            'dataset_name': dataset_name,
+            'dataset_version_commit': commit,
+            'train': sorted(train_subs_all), 
+            'val': sorted(val_subs_all), 
+            'test': sorted(test_subs_all)}, file, indent=2, sort_keys=True)
 
     # save the dataframe to a csv file
     # df.drop(columns=['filename'], inplace=True)     # drop the filename column

@@ -1,9 +1,9 @@
-nibabel
-seaborn
-matplotlib
-pandas
-numpy
+nibabel==5.1.0
+seaborn==0.13.2
+matplotlib==3.7.1
+pandas==2.0.1
+numpy<2.0.0
 tqdm
-pyyaml
+pyyaml==6.0
 loguru
-scikit-learn
+scikit-learn==1.2.2
