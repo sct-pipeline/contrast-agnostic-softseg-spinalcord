@@ -171,7 +171,15 @@ def create_df(args, dataset_path):
     if len(fname_files) == 0:
         logger.info(f"No image/label files found in {dataset_path}")
         return None
-    
+
+    # dcm-brno: exclude canal segmentations (label-canal_seg) which are not SC segmentations,
+    # and DWI labels referencing motion-corrected images (crop_crop_moco) absent from raw BIDS.
+    # Both cause step 3 to fail: the reconstructed raw image path does not exist.
+    if dataset_name == 'dcm-brno':
+        fname_files = [f for f in fname_files
+                       if 'label-canal' not in os.path.basename(f)
+                       and 'crop_crop_moco' not in os.path.basename(f)]
+
     # create a dataframe with two columns: filesegname and filename
     df = pd.DataFrame({'filename': fname_files})
     df['datasetName'] = os.path.basename(os.path.normpath(dataset_path))
@@ -288,10 +296,12 @@ def create_df(args, dataset_path):
     # Get only those images which have labels and are present in the dataframe (and belong to the pathology)
     for file in df['filename']:
         fname_label = file
-        gitannex_cmd_label = f'cd {dataset_path}; git annex get {fname_label}'
-        
+        rel_label = os.path.relpath(fname_label, dataset_path)
+        gitannex_cmd_label = f'cd {dataset_path}; git annex get {rel_label}'
+
         fname_image = fname_label.replace(f'/derivatives/{labels_folder}', '').replace(f'_{labels_suffix}.nii.gz', '.nii.gz')
-        gitannex_cmd_image = f'cd {dataset_path}; git annex get {fname_image}'
+        rel_image = os.path.relpath(fname_image, dataset_path)
+        gitannex_cmd_image = f'cd {dataset_path}; git annex get {rel_image}'
 
         try:
             subprocess.run(gitannex_cmd_label, shell=True, check=True)

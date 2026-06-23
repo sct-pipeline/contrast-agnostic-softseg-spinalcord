@@ -26,19 +26,22 @@ from utils import get_git_branch_and_commit
 
 
 def download_dataset(dataset_name, dataset_commit):
-    # Clone the dataset
-    if dataset_name == 'data-multi-subject':
-        subprocess.run(["git", "clone", f"https://github.com/spine-generic/{dataset_name}"])
+    if os.path.isdir(dataset_name):
+        # Already cloned — fetch and checkout the requested commit
+        os.chdir(dataset_name)
+        subprocess.run(["git", "fetch", "--all"])
     else:
-        subprocess.run(["git", "clone", f"git@data.neuro.polymtl.ca:datasets/{dataset_name}"])
-    os.chdir(dataset_name)
-    
+        # Fresh clone
+        if dataset_name == 'data-multi-subject':
+            subprocess.run(["git", "clone", f"https://github.com/spine-generic/{dataset_name}"])
+        else:
+            subprocess.run(["git", "clone", f"git@data.neuro.polymtl.ca:datasets/{dataset_name}"])
+        os.chdir(dataset_name)
+        subprocess.run(["git", "annex", "init"])
+        subprocess.run(["git", "annex", "dead", "here"])
+
     # Checkout the specific commit
     subprocess.run(["git", "checkout", f"{dataset_commit}"])
-    
-    # Get the git-annex files
-    subprocess.run(["git", "annex", "init"])
-    subprocess.run(["git", "annex", "dead", "here"])
 
     # Get the git commit ID of the dataset
     dataset_path = os.getcwd()

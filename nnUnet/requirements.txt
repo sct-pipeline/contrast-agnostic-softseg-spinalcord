@@ -1,9 +1,15 @@
+# PyTorch must be installed separately before this file, matching your CUDA version.
+# Tested on tassan (RTX PRO 6000, Blackwell sm_120, CUDA 13.0):
+#   pip install torch==2.12.1+cu130 --extra-index-url https://download.pytorch.org/whl/cu130
+
+nnunetv2==2.6.0
+sc-crop==0.6.0
 nibabel==5.1.0
 seaborn==0.13.2
 matplotlib==3.7.1
-pandas==2.0.1
-numpy<2.0.0
-tqdm
+pandas==2.3.3
+numpy==1.26.4
+tqdm==4.67.3
 pyyaml==6.0
-loguru
-scikit-learn==1.2.2
+loguru==0.7.3
+scikit-learn==1.7.2

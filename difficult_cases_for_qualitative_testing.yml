@@ -12,7 +12,7 @@ FILES_IMAGES:
 		- sub-cal175/ses-M12/anat/sub-cal175_ses-M12_STIR.nii.gz
 		- sub-tor053/ses-M12/anat/sub-tor053_ses-M12_PSIR.nii.gz
 		- sub-tor065/ses-M12/anat/sub-tor065_ses-M12_PSIR.nii.gz
-		- sub-tor103/ses-M12/anat/sub-tor067_ses-M12_PSIR.nii.gz
+		- sub-tor103/ses-M12/anat/sub-tor103_ses-M12_PSIR.nii.gz
 		- sub-van138/ses-M12/anat/sub-van138_ses-M12_PSIR.nii.gz
 	dcm-brno:
 		- sub-1860B6472B/ses-6472B/anat/sub-1860B6472B_ses-6472B_T2w.nii.gz
