@@ -1,5 +1,5 @@
 dataset_name: basel-mp2rage
-dataset_version_commit: 1efa01bc306292bc043f9f6a6ea8c6ed4d6c44fd
+dataset_version_commit: ff042c41750122a47094dc9ed4b564b71aeba373
 test:
 - sub-C069
 - sub-C090
