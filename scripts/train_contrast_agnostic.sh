@@ -14,19 +14,19 @@ set -e
 # ====================================
 
 # Full path to the contrast-agnostic repository
-PATH_REPO="/path/to/contrast-agnostic-softseg-spinalcord"
+PATH_REPO="/home/quentinr/contrast-agnostic-softseg-spinalcord"
 
 # Full path to the folder where datasets will be downloaded
-PATH_DATA_BASE="/path/to/datasets"
+PATH_DATA_BASE="/home/quentinr/datasets_contrast_agnostic_retraining"
 
 # Full path to the folder where datalists (JSON files) will be saved
-PATH_OUT_BASE="/path/to/datalists"
+PATH_OUT_BASE="/home/quentinr/datalists"
 
 # Full path to nnUNet directories (set nnUNet_raw / nnUNet_preprocessed / nnUNet_results)
-PATH_NNUNET_BASE="/path/to/nnunet-v2"
+PATH_NNUNET_BASE="/home/quentinr/nnunet-v2"
 
 # Full path to the SCT bin directory (needed for sct_* commands)
-PATH_SCT_BIN="/path/to/spinalcordtoolbox/bin"
+PATH_SCT_BIN="/home/quentinr/spinalcordtoolbox/bin"
 
 
 # ====================================

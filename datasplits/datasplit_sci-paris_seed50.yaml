@@ -1,5 +1,5 @@
 dataset_name: sci-paris
-dataset_version_commit: 0a0d252c95e2400038f86e80bde85ffba0ffff0e 
+dataset_version_commit: 0a0d252c95e2400038f86e80bde85ffba0ffff0e
 test:
 - sub-045
 - sub-049
