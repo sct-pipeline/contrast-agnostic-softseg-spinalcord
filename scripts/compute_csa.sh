@@ -121,7 +121,7 @@ segment_sc(){
   # Get the start time
   start_time=$(date +%s)
   # Run SC segmentation (natively with sct_deepseg)
-  sct_deepseg spinalcord -i ${file}.nii.gz -o ${FILESEG}.nii.gz -qc ${PATH_QC} -qc-subject ${SUBJECT}
+  sct_deepseg spinalcord -fast -i ${file}.nii.gz -o ${FILESEG}.nii.gz -qc ${PATH_QC} -qc-subject ${SUBJECT}
   # Get the end time
   end_time=$(date +%s)
   # Calculate the time difference

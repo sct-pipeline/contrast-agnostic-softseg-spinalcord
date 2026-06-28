@@ -94,8 +94,8 @@ jobs:
           # for more info about why `cd ..`, refer to
           # https://github.com/spinalcordtoolbox/spinalcordtoolbox/issues/4813#issuecomment-2741165452
           
-          # clone and install SCT
-          git clone https://github.com/spinalcordtoolbox/spinalcordtoolbox.git
+          # clone and install SCT (use sc-crop branch for -fast support)
+          git clone -b qr/sc-crop-integration https://github.com/spinalcordtoolbox/spinalcordtoolbox.git
           cd spinalcordtoolbox
           ./.ci.sh -i
           cat ~/.bashrc | grep "export SCT_DIR" | cut -d " " -f 2 >> $GITHUB_ENV
