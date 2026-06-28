@@ -2,10 +2,14 @@
 import numpy as np
 from typing import Dict, Hashable, Mapping
 from scipy.ndimage.morphology import binary_erosion
+import scipy.ndimage as ndi
 import torch
 import monai.transforms as transforms
 from monai.config import KeysCollection
 from monai.transforms import MapTransform
+import torchio as tio
+
+rs = np.random.RandomState()
 
 
 class SpinalCordContourd(MapTransform):
@@ -57,6 +61,65 @@ class SpinalCordContourd(MapTransform):
 
     def inverse(self, data: Mapping[Hashable, torch.Tensor]) -> Dict[Hashable, torch.Tensor]:
         return data
+
+
+def train_transforms_totalspineseg(crop_size, lbl_key="label", pad_mode="zero", device="cuda"):
+    
+    transforms_monai = [
+        # pre-processing
+        transforms.LoadImaged(keys=["image", lbl_key]),
+        transforms.EnsureChannelFirstd(keys=["image", lbl_key]),
+        transforms.Orientationd(keys=["image", lbl_key], axcodes="RPI"),
+        # NOTE: spine interpolation with order=2 is spline, order=1 is linear
+        transforms.Spacingd(keys=["image", "label"], pixdim=(1.0, 1.0, 1.0), mode=(2, 1)),
+        transforms.ResizeWithPadOrCropd(keys=["image", lbl_key], spatial_size=crop_size,
+                                        mode="constant" if pad_mode == "zero" else pad_mode),
+        # convert the data to Tensor without meta, move to GPU and cache it to avoid CPU -> GPU sync in every epoch
+        transforms.EnsureTyped(keys=["image", lbl_key], device=device, track_meta=False),
+        # Contrast augmentation
+        transforms.RandLambdad(keys=["image"], func=lambda x: ndi.laplace(x)),                          # laplacian
+        transforms.RandAdjustContrastd(keys=["image"], gamma=(0.5, 3.), prob=0.3),    # this is monai's RandomGamma
+        transforms.NormalizeIntensityd(keys=["image"], nonzero=False, channel_wise=False),
+        transforms.HistogramNormalized(keys=["image"], num_bins=256, min=0.0, max=1.0),
+        transforms.RandLambdad(keys=["image"], func=lambda x: torch.log(1 + x), prob=0.05),             # log
+        transforms.RandLambdad(keys=["image"], func=lambda x: torch.sqrt(x), prob=0.05),                # square root
+        transforms.RandLambdad(keys=["image"], func=lambda x: torch.exp(x), prob=0.05),                 # exponential
+        transforms.RandLambdad(keys=["image"], func=lambda x: torch.sin(x), prob=0.05),                 # sine
+        transforms.RandLambdad(keys=["image"], func=lambda x: 1/(1+torch.exp(-x)), prob=0.05),          # sigmoid
+        # transforms.RandScaleIntensityd(keys=["image"], factors=(-0.25, 1), prob=0.1),                  # nnUNet's BrightnessMultiplicativeTransform
+        # transforms.RandGaussianSharpen(keys=["image"], prob=0.1),
+    ]
+    # todo: add inverse color augmentation
+
+    # artifacts augmentation
+    if rs.rand() < 0.7:
+        transforms_monai.append(rs.choice([
+            tio.RandomMotion(include=["image", lbl_key]), 
+            tio.RandomGhosting(include=["image", lbl_key]),
+            tio.RandomSpike(intensity=(1,2), include=["image"]),
+            tio.RandomBiasField(include=["image"]),
+            tio.RandomBlur(include=["image"]),
+        ]))
+    transforms_monai.append(transforms.RandGaussianNoised(keys=["image"], mean=0.0, std=0.1, prob=0.1))
+    transforms_monai.append(transforms.RandGaussianSharpend(keys=["image"], prob=0.1),)
+
+    # spatial augmentation
+    transforms_monai.append(tio.RandomFlip(axes=('LR'), flip_probability=0.3, include=["image", lbl_key]))
+
+    if rs.rand() < 0.7:
+        transforms_monai.append(rs.choice([
+            tio.RandomAffine(image_interpolation='bspline', label_interpolation='linear', include=["image", lbl_key]),
+            tio.RandomAffine(image_interpolation='linear', label_interpolation='nearest', include=["image", lbl_key]),
+            tio.RandomElasticDeformation(max_displacement=30, include=["image", lbl_key]),
+        ]))
+
+    # simulate low resolution
+    if rs.rand() < 0.7:
+        transforms_monai.append(tio.RandomAnisotropy(downsampling=(1.5, 5), include=["image", lbl_key]))
+
+    transforms_monai.append(tio.RescaleIntensity(out_min_max=(0, 1), percentiles=(0.5, 99.5), include=["image"]))
+
+    return transforms.Compose(transforms_monai)
 
 
 def train_transforms(crop_size, lbl_key="label", pad_mode="zero", device="cuda"):
